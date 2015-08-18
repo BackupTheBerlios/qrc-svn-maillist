@@ -1,0 +1,194 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r291 - qrc/branches/fork-for-gaim-2/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2006-November/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r291%20-%20qrc/branches/fork-for-gaim-2/gaym/src&In-Reply-To=%3C200611111927.kABJRjSS027886%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000220.html">
+   <LINK REL="Next"  HREF="000222.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r291 - qrc/branches/fork-for-gaim-2/gaym/src</H1>
+    <B>jblebrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r291%20-%20qrc/branches/fork-for-gaim-2/gaym/src&In-Reply-To=%3C200611111927.kABJRjSS027886%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r291 - qrc/branches/fork-for-gaim-2/gaym/src">jblebrun at mail.berlios.de
+       </A><BR>
+    <I>Sat Nov 11 20:28:35 CET 2006</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000220.html">[Qrc-svn] r290 - in qrc/branches/fork-for-gaim-2: . gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000222.html">[Qrc-svn] r292 - qrc/branches/fork-for-gaim-2/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#221">[ date ]</a>
+              <a href="thread.html#221">[ thread ]</a>
+              <a href="subject.html#221">[ subject ]</a>
+              <a href="author.html#221">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2006-11-11 20:27:43 +0100 (Sat, 11 Nov 2006)
+New Revision: 291
+
+Modified:
+   qrc/branches/fork-for-gaim-2/gaym/src/cmds.c
+   qrc/branches/fork-for-gaim-2/gaym/src/gaym.c
+   qrc/branches/fork-for-gaim-2/gaym/src/msgs.c
+   qrc/branches/fork-for-gaim-2/gaym/src/weblogin.c
+Log:
+Modify weblogin so that login doesn't hang.
+Oops, I broke incoming pvt msgs. Should be fixed.
+Also, the overescaped msgs should be fixed, although it still shows up 
+incorrectly in your own chat window.
+
+
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/cmds.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/cmds.c	2006-11-04 07:56:27 UTC (rev 290)
++++ qrc/branches/fork-for-gaim-2/gaym/src/cmds.c	2006-11-11 19:27:43 UTC (rev 291)
+@@ -405,13 +405,15 @@
+     } else {
+         nick = g_strdup(args[0]);
+     }
+-    cur = args[1];
+-    end = args[1];
++    gchar* unescaped=gaim_unescape_html(args[1]);
++    cur = unescaped;
++    end = unescaped;
+     while (*end &amp;&amp; *cur) {
+         end = strchr(cur, '\n');
+         if (!end)
+             end = cur + strlen(cur);
+         msg = g_strndup(cur, end - cur);
++
+         buf = gaym_format(gaym, &quot;vt:&quot;, &quot;PRIVMSG&quot;, nick, msg);
+ 	gaim_debug_misc(&quot;gaym_cmd_privmsg&quot;,buf);
+         gaym_send(gaym, buf);
+@@ -420,6 +422,7 @@
+         cur = end + 1;
+     }
+     g_free(nick);
++    g_free(unescaped);
+     return 0;
+ }
+ 
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/gaym.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/gaym.c	2006-11-04 07:56:27 UTC (rev 290)
++++ qrc/branches/fork-for-gaim-2/gaym/src/gaym.c	2006-11-11 19:27:43 UTC (rev 291)
+@@ -1622,7 +1622,7 @@
+     NULL,                                                 /**&lt; destroy        */
+     NULL,                                                  /**&lt; ui_info        */
+     &amp;prpl_info,                                           /**&lt; extra_info     */
+-    NULL,//&amp;prefs_info,
++    &amp;prefs_info,
+     gaym_actions
+ };
+ 
+@@ -1687,7 +1687,6 @@
+ static void _init_plugin(GaimPlugin * plugin)
+ {
+ 
+-    printf(&quot;INIT PLUGIN DAMMIT!\n&quot;);
+     GaimAccountOption *option;
+ 
+     option = gaim_account_option_string_new(_(&quot;Bio Line&quot;), &quot;bioline&quot;, &quot;&quot;);
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/msgs.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/msgs.c	2006-11-04 07:56:27 UTC (rev 290)
++++ qrc/branches/fork-for-gaim-2/gaym/src/msgs.c	2006-11-11 19:27:43 UTC (rev 291)
+@@ -1172,7 +1172,7 @@
+                                             gaym-&gt;account);
+ 
+     notice = !strcmp(args[0], &quot; notice &quot;);
+-    msg = gaym_parse_ctcp(gaym, nick, args[0], args[1], notice);
++    tmp = gaym_parse_ctcp(gaym, nick, args[0], args[1], notice);
+ 
+     if (!tmp) {
+         g_free(nick);
+@@ -1180,13 +1180,14 @@
+     }
+ 
+     if (!gaym_privacy_check(gc, nick)) {
++	g_free(tmp);
+         g_free(nick);
+         return;
+     }
+ 
+     //msg = g_markup_escape_text(tmp, -1);
+-
+     //g_free(tmp);
++    msg=tmp;
+ 
+     if (notice) {
+         tmp = g_strdup_printf(&quot;(notice) %s&quot;, msg);
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/weblogin.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/weblogin.c	2006-11-04 07:56:27 UTC (rev 290)
++++ qrc/branches/fork-for-gaim-2/gaym/src/weblogin.c	2006-11-11 19:27:43 UTC (rev 291)
+@@ -104,8 +104,13 @@
+ 	    if(!url || !session)
+ 		return 0;
+ 
+-	    gchar* buf = g_strdup_printf(&quot;GET %s HTTP/1.1\r\n&quot; &quot;Accept-Encoding: identity\r\n&quot;
+-                       &quot;Host: www.gay.com\r\n&quot; &quot;Cookie: %s\r\n&quot;,
++	    gchar* buf = g_strdup_printf(   &quot;GET %s HTTP/1.0\r\n&quot; 
++					    &quot;Accept-Charset: utf-8\r\n&quot;
++					    &quot;User-Agent: Mozilla/4.0\r\n&quot;
++					    &quot;Accept-Encoding: identity\r\n&quot;
++					    &quot;Host: www.gay.com\r\n&quot; 
++					    &quot;Cookie: %s\r\n&quot;
++					    &quot;Connction: Close\r\n&quot;,
+                        url, session-&gt;cookies);
+ 	gchar* res; 
+ 	if (session-&gt;hasFormData)
+@@ -233,9 +238,10 @@
+ 	gaim_debug_misc(&quot;weblogin&quot;,&quot;About to build url\n&quot;);
+ 	gchar* request=gaym_build_session_request(url, session);
+ 	gaim_debug_misc(&quot;weblogin&quot;,&quot;Requesting: %s\n&quot;,request);
+-        gaim_util_fetch_url_request(url, FALSE, NULL, FALSE, 
++        gaim_util_fetch_url_request(url, FALSE, NULL, TRUE, 
+ 				    request, TRUE, gaym_weblogin_step5,
+ 				    session);
++	gaim_debug_misc(&quot;weblogin&quot;,&quot;applet fetched&quot;);
+     } else {
+         gaim_debug_misc(&quot;gaym&quot;, &quot;Connection was cancelled before step4\n&quot;);
+         gaim_debug_misc(&quot;gaym&quot;, &quot;session: %x\n&quot;, session);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000220.html">[Qrc-svn] r290 - in qrc/branches/fork-for-gaim-2: . gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000222.html">[Qrc-svn] r292 - qrc/branches/fork-for-gaim-2/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#221">[ date ]</a>
+              <a href="thread.html#221">[ thread ]</a>
+              <a href="subject.html#221">[ subject ]</a>
+              <a href="author.html#221">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

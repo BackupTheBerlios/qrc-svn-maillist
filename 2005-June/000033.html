@@ -1,0 +1,150 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r96 - trunk
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r96%20-%20trunk&In-Reply-To=%3C200506122001.j5CK1096027752%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000032.html">
+   <LINK REL="Next"  HREF="000034.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r96 - trunk</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r96%20-%20trunk&In-Reply-To=%3C200506122001.j5CK1096027752%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r96 - trunk">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Sun Jun 12 22:01:00 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000032.html">[Qrc-svn] r95 - trunk
+</A></li>
+        <LI>Next message: <A HREF="000034.html">[Qrc-svn] r97 - trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#33">[ date ]</a>
+              <a href="thread.html#33">[ thread ]</a>
+              <a href="subject.html#33">[ subject ]</a>
+              <a href="author.html#33">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-12 22:00:59 +0200 (Sun, 12 Jun 2005)
+New Revision: 96
+
+Removed:
+   trunk/autogen.sh
+Log:
+Removing autogen.sh; use 'autoreconf --force --install --install --symlink' instead.
+
+Deleted: trunk/autogen.sh
+===================================================================
+--- trunk/autogen.sh	2005-06-12 17:17:20 UTC (rev 95)
++++ trunk/autogen.sh	2005-06-12 20:00:59 UTC (rev 96)
+@@ -1,74 +0,0 @@
+-#!/bin/sh
+-
+-# Run this when building from subversion.  Don't commit
+-# any of the files it generates.
+-
+-#
+-# Require libtool, automake, and autoconf
+-#
+-(libtoolize --version) &lt; /dev/null &gt; /dev/null 2&gt;&amp;1 || {
+-	echo;
+-	echo &quot;You must have libtool installed to compile the QRC Plugins.&quot;;
+-	echo;
+-	exit;
+-}
+-
+-(automake --version) &lt; /dev/null &gt; /dev/null 2&gt;&amp;1 || {
+-	echo;
+-	echo &quot;You must have automake installed to compile the QRC plugins.&quot;;
+-	echo;
+-	exit;
+-}
+-
+-(autoconf --version) &lt; /dev/null &gt; /dev/null 2&gt;&amp;1 || {
+-	echo;
+-	echo &quot;You must have autoconf installed to compile the QRC plugins.&quot;;
+-	echo;
+-	exit;
+-}
+-
+-echo;
+-echo &quot;Generating configuration files for the QRC plugins, please wait....&quot;
+-
+-echo;
+-echo &quot;Running libtoolize, please ignore non-fatal messages....&quot;
+-echo;
+-libtoolize --force || exit;
+-
+-#
+-# Account for odd location of macros
+-#
+-for dir in &quot;/usr/local/share/aclocal&quot; \
+-	&quot;/opt/gnome-1.4/share/aclocal&quot; \
+-	&quot;/sw/share/aclocal&quot;
+-do
+-	if test -d $dir ; then
+-		ACLOCAL_FLAGS=&quot;$ACLOCAL_FLAGS -I $dir&quot;
+-	fi
+-done
+-
+-echo;
+-echo &quot;Running aclocal....&quot;
+-echo;
+-aclocal $ACLOCAL_FLAGS || exit;
+-
+-echo;
+-echo &quot;Running autoheader....&quot;
+-echo;
+-autoheader --force || exit;
+-
+-echo;
+-echo &quot;Running automake....&quot;
+-echo;
+-automake --force-missing --add-missing || exit;
+-
+-echo;
+-echo &quot;Running autoconf....&quot;
+-echo;
+-autoconf --force || exit;
+-
+-echo;
+-echo &quot;Finished generating configuration files for the QRC plugins.&quot;
+-echo &quot;Now you may run './configure'.&quot;
+-echo;
+-
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000032.html">[Qrc-svn] r95 - trunk
+</A></li>
+	<LI>Next message: <A HREF="000034.html">[Qrc-svn] r97 - trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#33">[ date ]</a>
+              <a href="thread.html#33">[ thread ]</a>
+              <a href="subject.html#33">[ subject ]</a>
+              <a href="author.html#33">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

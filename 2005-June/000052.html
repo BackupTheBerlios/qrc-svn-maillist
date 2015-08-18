@@ -1,0 +1,264 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r120 - trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r120%20-%20trunk/gaym/src&In-Reply-To=%3C200506231406.j5NE6ZuS025316%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000051.html">
+   <LINK REL="Next"  HREF="000053.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r120 - trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r120%20-%20trunk/gaym/src&In-Reply-To=%3C200506231406.j5NE6ZuS025316%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r120 - trunk/gaym/src">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Thu Jun 23 16:06:35 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000051.html">[Qrc-svn] r119 - trunk/bot-challenger
+</A></li>
+        <LI>Next message: <A HREF="000053.html">[Qrc-svn] r121 - trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#52">[ date ]</a>
+              <a href="thread.html#52">[ thread ]</a>
+              <a href="subject.html#52">[ subject ]</a>
+              <a href="author.html#52">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-23 16:06:28 +0200 (Thu, 23 Jun 2005)
+New Revision: 120
+
+Modified:
+   trunk/gaym/src/gaym.c
+   trunk/gaym/src/gaympriv.c
+   trunk/gaym/src/gaympriv.h
+   trunk/gaym/src/msgs.c
+Log:
+- removed option to suppress join/part messages:  this is already
+  available in the Extended Preferences (<A HREF="http://gaim-extprefs.sf.net/">http://gaim-extprefs.sf.net/</A>)
+  plugin
+- Fixed a corner case where ignored member left chat, user removed
+  member from the ignore list, and previously ignored member joined chat
+
+
+Modified: trunk/gaym/src/gaym.c
+===================================================================
+--- trunk/gaym/src/gaym.c	2005-06-23 03:32:03 UTC (rev 119)
++++ trunk/gaym/src/gaym.c	2005-06-23 14:06:28 UTC (rev 120)
+@@ -1003,14 +1003,8 @@
+ 
+     ppref =
+         gaim_plugin_pref_new_with_name_and_label
+-        (&quot;/plugins/prpl/gaym/show_join_leave_msgs&quot;,
+-         _(&quot;Show entrance/exit messages&quot;));
+-    gaim_plugin_pref_frame_add(frame, ppref);
+-
+-    ppref =
+-        gaim_plugin_pref_new_with_name_and_label
+         (&quot;/plugins/prpl/gaym/show_bio_with_join&quot;,
+-         _(&quot;Show bio when entrance messages are shown&quot;));
++         _(&quot;Show member bio with entrance announcement&quot;));
+     gaim_plugin_pref_frame_add(frame, ppref);
+ 
+     ppref =
+@@ -1080,20 +1074,6 @@
+         g_list_append(prpl_info.protocol_options, option);
+ 
+     /**
+-     * gaim doesn't support suppressing entrance messages
+-     */
+-    gaim_signal_connect(gaim_conversations_get_handle(),
+-                        &quot;chat-buddy-joining&quot;, plugin,
+-                        GAIM_CALLBACK(gaym_ignore_joining_leaving), NULL);
+-
+-    /**
+-     * gaim doesn't support suppressing exit messages
+-     */
+-    gaim_signal_connect(gaim_conversations_get_handle(),
+-                        &quot;chat-buddy-leaving&quot;, plugin,
+-                        GAIM_CALLBACK(gaym_ignore_joining_leaving), NULL);
+-
+-    /**
+      * We have to pull thumbnails, since they aren't pushed like with
+      * other protocols.
+      */
+@@ -1103,7 +1083,6 @@
+ 
+     gaim_prefs_add_none(&quot;/plugins/prpl/gaym&quot;);
+     gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/show_bio_with_join&quot;, TRUE);
+-    gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/show_join_leave_msgs&quot;, TRUE);
+     gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/only_buddies_can_im&quot;, FALSE);
+ 
+     _gaym_plugin = plugin;
+
+Modified: trunk/gaym/src/gaympriv.c
+===================================================================
+--- trunk/gaym/src/gaympriv.c	2005-06-23 03:32:03 UTC (rev 119)
++++ trunk/gaym/src/gaympriv.c	2005-06-23 14:06:28 UTC (rev 120)
+@@ -27,21 +27,6 @@
+ #include &quot;gaympriv.h&quot;
+ #include &quot;gaym.h&quot;
+ 
+-int gaym_ignore_joining_leaving(GaimConversation * conv, char *name)
+-{
+-    GaimConnection *gc = gaim_conversation_get_gc(conv);
+-    if (!gc) {
+-        return 1;
+-    }
+-    if (!gaim_prefs_get_bool(&quot;/plugins/prpl/gaym/show_join_leave_msgs&quot;)) {
+-        return 1;
+-    }
+-    if (!gaym_privacy_check(gc, name)) {
+-        return 1;
+-    }
+-    return 0;
+-}
+-
+ gboolean gaym_privacy_check(GaimConnection * gc, const char *nick)
+ {
+     /**
+
+Modified: trunk/gaym/src/gaympriv.h
+===================================================================
+--- trunk/gaym/src/gaympriv.h	2005-06-23 03:32:03 UTC (rev 119)
++++ trunk/gaym/src/gaympriv.h	2005-06-23 14:06:28 UTC (rev 120)
+@@ -29,17 +29,6 @@
+ #include &lt;glib.h&gt;
+ 
+ /**
+- * Selectively ignores joining / leaving messages based on GayM
+- * preferences and Gaim privacy settings.
+- *
+- * @param gc   The connection.
+- * @param name The user joining or leaving.
+- *
+- * @return 0 to show the join/leave message, or @c 1 otherwise.
+- */
+-int gaym_ignore_joining_leaving(GaimConversation * conv, char *name);
+-
+-/**
+  * Check if the account's privacy settings allow or block the user
+  * (shamelessly taken from the yahoo prpl).
+  *
+
+Modified: trunk/gaym/src/msgs.c
+===================================================================
+--- trunk/gaym/src/msgs.c	2005-06-23 03:32:03 UTC (rev 119)
++++ trunk/gaym/src/msgs.c	2005-06-23 14:06:28 UTC (rev 120)
+@@ -1074,22 +1074,26 @@
+             flags = GAIM_CBFLAGS_OP;
+     }
+ 
++    gboolean gaym_privacy_permit = gaym_privacy_check(gc, nick);
++
+     if (gaim_prefs_get_bool(&quot;/plugins/prpl/gaym/show_bio_with_join&quot;)) {
+         gaim_conv_chat_add_user(GAIM_CONV_CHAT(convo), nick, bio_markedup,
+-                                flags, TRUE);
++                                flags, gaym_privacy_permit);
+     } else {
+         gaim_conv_chat_add_user(GAIM_CONV_CHAT(convo), nick, NULL,
+-                                flags, TRUE);
++                                flags, gaym_privacy_permit);
+     }
+ 
+     /**
+      * Make the ignore.png icon appear next to the nick.
+      */
+     GaimConversationUiOps *ops = gaim_conversation_get_ui_ops(convo);
+-    if (!gaym_privacy_check(gc, nick)) {
++    if (gaym_privacy_permit) {
++        gaim_conv_chat_unignore(GAIM_CONV_CHAT(convo), nick);
++    } else {
+         gaim_conv_chat_ignore(GAIM_CONV_CHAT(convo), nick);
+-        ops-&gt;chat_update_user((convo), nick);
+     }
++    ops-&gt;chat_update_user((convo), nick);
+ 
+     if ((ib = g_hash_table_lookup(gaym-&gt;buddies, nick)) != NULL) {
+         ib-&gt;flag = TRUE;
+@@ -1223,7 +1227,7 @@
+     GaimConnection *gc = gaim_account_get_connection(gaym-&gt;account);
+     char *nick = gaym_mask_nick(from);
+ 
+-    if (!args || !args[0] || !gc) {
++    if (!args || !args[0] || !gc || !nick) {
+         g_free(nick);
+         return;
+     }
+@@ -1240,7 +1244,24 @@
+         serv_got_chat_left(gc,
+                            gaim_conv_chat_get_id(GAIM_CONV_CHAT(convo)));
+     } else {
+-        gaim_conv_chat_remove_user(GAIM_CONV_CHAT(convo), nick, NULL);
++        if (gaym_privacy_check(gc, nick)) {
++            gaim_conv_chat_remove_user(GAIM_CONV_CHAT(convo), nick, NULL);
++        } else {
++            GaimConversationUiOps *ops =
++                gaim_conversation_get_ui_ops(convo);
++            if (ops != NULL &amp;&amp; ops-&gt;chat_remove_user != NULL) {
++                ops-&gt;chat_remove_user(convo, nick);
++            }
++            GaimConvChatBuddy *cb =
++                gaim_conv_chat_cb_find(GAIM_CONV_CHAT(convo), nick);
++            if (cb) {
++                gaim_conv_chat_set_users(GAIM_CONV_CHAT(convo),
++                                         g_list_remove
++                                         (gaim_conv_chat_get_users
++                                          (GAIM_CONV_CHAT(convo)), cb));
++                gaim_conv_chat_cb_destroy(cb);
++            }
++        }
+     }
+ 
+     g_free(nick);
+@@ -1590,10 +1611,12 @@
+      * Make the ignore.png icon appear next to the nick.
+      */
+     GaimConversationUiOps *ops = gaim_conversation_get_ui_ops(convo);
+-    if (!gaym_privacy_check(gc, nick)) {
++    if (gaym_privacy_check(gc, nick)) {
++        gaim_conv_chat_unignore(GAIM_CONV_CHAT(convo), nick);
++    } else {
+         gaim_conv_chat_ignore(GAIM_CONV_CHAT(convo), nick);
+-        ops-&gt;chat_update_user((convo), nick);
+     }
++    ops-&gt;chat_update_user((convo), nick);
+ }
+ 
+ /**
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000051.html">[Qrc-svn] r119 - trunk/bot-challenger
+</A></li>
+	<LI>Next message: <A HREF="000053.html">[Qrc-svn] r121 - trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#52">[ date ]</a>
+              <a href="thread.html#52">[ thread ]</a>
+              <a href="subject.html#52">[ subject ]</a>
+              <a href="author.html#52">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,204 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r123 - trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r123%20-%20trunk/gaym/src&In-Reply-To=%3C200506240050.j5O0ovGe012458%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000054.html">
+   <LINK REL="Next"  HREF="000056.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r123 - trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r123%20-%20trunk/gaym/src&In-Reply-To=%3C200506240050.j5O0ovGe012458%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r123 - trunk/gaym/src">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Fri Jun 24 02:50:57 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000054.html">[Qrc-svn] r122 - trunk
+</A></li>
+        <LI>Next message: <A HREF="000056.html">[Qrc-svn] r124 - trunk/bot-challenger
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#55">[ date ]</a>
+              <a href="thread.html#55">[ thread ]</a>
+              <a href="subject.html#55">[ subject ]</a>
+              <a href="author.html#55">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-24 02:50:37 +0200 (Fri, 24 Jun 2005)
+New Revision: 123
+
+Modified:
+   trunk/gaym/src/gaym.c
+   trunk/gaym/src/msgs.c
+Log:
+Added buddy list context menu for 999=* channel types, and a preference
+for how many instances to generate/show that affects the roomlist and
+this context menu.
+
+
+Modified: trunk/gaym/src/gaym.c
+===================================================================
+--- trunk/gaym/src/gaym.c	2005-06-23 14:28:01 UTC (rev 122)
++++ trunk/gaym/src/gaym.c	2005-06-24 00:50:37 UTC (rev 123)
+@@ -239,15 +239,57 @@
+     return list;
+ }
+ 
+-#if 0
++static void gaym_blist_join_chat_cb(GaimBlistNode * node, gpointer data)
++{
++    const char *args[1];
++
++    GaimChat *chat = (GaimChat *) node;
++    struct gaym_conn *gaym = chat-&gt;account-&gt;gc-&gt;proto_data;
++    args[0] = data;
++
++    g_return_if_fail(args[0] != NULL);
++    g_return_if_fail(gaym != NULL);
++
++    gaym_cmd_join(gaym, &quot;join&quot;, NULL, args);
++}
++
+ static GList *gaym_blist_node_menu(GaimBlistNode * node)
+ {
+     GList *m = NULL;
+-    GaimBlistNodeAction *act;
++    GaimBlistNodeAction *act = NULL;
++    int i = 0;
+ 
++    if (node-&gt;type != GAIM_BLIST_CHAT_NODE) {
++        return m;
++    }
++
++    GaimChat *chat = (GaimChat *) node;
++    char *channel = g_hash_table_lookup(chat-&gt;components, &quot;channel&quot;);
++
++    if (!channel) {
++        return m;
++    }
++
++    if (!g_str_has_suffix(channel, &quot;=*&quot;)) {
++        return m;
++    }
++
++    char *label = NULL;
++    char *instance = NULL;
++
++    int max = gaim_prefs_get_int(&quot;/plugins/prpl/gaym/chat_room_instances&quot;);
++
++    for (i = 1; i &lt;= max; i++) {
++        label = g_strdup_printf(_(&quot;Join Room %d&quot;), i);
++        instance =
++            g_strdup_printf(&quot;%.*s%d&quot;, strlen(channel) - 1, channel, i);
++        act =
++            gaim_blist_node_action_new(label, gaym_blist_join_chat_cb,
++                                       instance);
++        m = g_list_append(m, act);
++    }
+     return m;
+ }
+-#endif
+ 
+ static GList *gaym_chat_join_info(GaimConnection * gc)
+ {
+@@ -925,7 +967,7 @@
+     NULL,                       /* status_text */
+     NULL,                       /* tooltip_text */
+     gaym_away_states,           /* away_states */
+-    NULL,                       /* blist_node_menu */
++    gaym_blist_node_menu,       /* blist_node_menu */
+     gaym_chat_join_info,        /* chat_info */
+     gaym_chat_info_defaults,    /* chat_info_defaults */
+     gaym_login,                 /* login */
+@@ -1019,6 +1061,13 @@
+     gaim_plugin_pref_frame_add(frame, ppref);
+ 
+     ppref =
++        gaim_plugin_pref_new_with_name_and_label
++        (&quot;/plugins/prpl/gaym/chat_room_instances&quot;,
++         _(&quot;Number of chat room instances to display&quot;));
++    gaim_plugin_pref_set_bounds(ppref, 0, 9);
++    gaim_plugin_pref_frame_add(frame, ppref);
++
++    ppref =
+         gaim_plugin_pref_new_with_label(_
+                                         (&quot;Instant Messages (stricter privacy settings override these)&quot;));
+     gaim_plugin_pref_frame_add(frame, ppref);
+@@ -1093,6 +1142,7 @@
+                         GAIM_CALLBACK(gaym_get_photo_info), NULL);
+ 
+     gaim_prefs_add_none(&quot;/plugins/prpl/gaym&quot;);
++    gaim_prefs_add_int(&quot;/plugins/prpl/gaym/chat_room_instances&quot;, 4);
+     gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/show_bio_with_join&quot;, TRUE);
+     gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/only_buddies_can_im&quot;, FALSE);
+ 
+
+Modified: trunk/gaym/src/msgs.c
+===================================================================
+--- trunk/gaym/src/msgs.c	2005-06-23 14:28:01 UTC (rev 122)
++++ trunk/gaym/src/msgs.c	2005-06-24 00:50:37 UTC (rev 123)
+@@ -385,7 +385,7 @@
+         return;
+     }
+     /**
+-     * The list of member created room
++     * The list of member created rooms
+      */
+     if (!strcmp(name, &quot;322&quot;)) {
+         GaimRoomlistRoom *room;
+@@ -473,6 +473,9 @@
+         char *name_inst = NULL;
+         char *num_inst = NULL;
+ 
++        int max =
++            gaim_prefs_get_int(&quot;/plugins/prpl/gaym/chat_room_instances&quot;);
++
+         if (!gaym-&gt;configtxt) {
+             gaim_debug_fatal(&quot;gaym&quot;,
+                              &quot;Room list parsing error: No config webpage\n&quot;);
+@@ -592,7 +595,7 @@
+                      * and now the room instances (1, 2, 3 ...)
+                      */
+                     room_inst = 0;
+-                    for (room_inst = 1; room_inst &lt;= 4; room_inst++) {
++                    for (room_inst = 1; room_inst &lt;= max; room_inst++) {
+                         name_inst =
+                             g_strdup_printf(&quot;%s:%i&quot;, name, room_inst);
+                         num_inst = g_strdup_printf(&quot;%s%i&quot;, num, room_inst);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000054.html">[Qrc-svn] r122 - trunk
+</A></li>
+	<LI>Next message: <A HREF="000056.html">[Qrc-svn] r124 - trunk/bot-challenger
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#55">[ date ]</a>
+              <a href="thread.html#55">[ thread ]</a>
+              <a href="subject.html#55">[ subject ]</a>
+              <a href="author.html#55">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

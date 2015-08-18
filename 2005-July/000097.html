@@ -1,0 +1,100 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r166 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r166%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507080059.j680x2QE018099%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000096.html">
+   <LINK REL="Next"  HREF="000098.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r166 - qrc/trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r166%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507080059.j680x2QE018099%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r166 - qrc/trunk/gaym/src">deckrider at berlios.de
+       </A><BR>
+    <I>Fri Jul  8 02:59:02 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000096.html">[Qrc-svn] r164 - qrc/trunk
+</A></li>
+        <LI>Next message: <A HREF="000098.html">[Qrc-svn] r167 - debian/gaim-qrc/branches/upstream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#97">[ date ]</a>
+              <a href="thread.html#97">[ thread ]</a>
+              <a href="subject.html#97">[ subject ]</a>
+              <a href="author.html#97">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-08 02:58:25 +0200 (Fri, 08 Jul 2005)
+New Revision: 166
+
+Modified:
+   qrc/trunk/gaym/src/configtxt.c
+Log:
+Nicks coming from config.txt are in gay.com IRC server format and must
+be converted to GayM internal format.
+
+
+Modified: qrc/trunk/gaym/src/configtxt.c
+===================================================================
+--- qrc/trunk/gaym/src/configtxt.c	2005-07-07 20:22:08 UTC (rev 165)
++++ qrc/trunk/gaym/src/configtxt.c	2005-07-08 00:58:25 UTC (rev 166)
+@@ -37,6 +37,7 @@
+ /* local headers for this plugin */
+ #include &quot;gaympriv.h&quot;
+ #include &quot;gaym.h&quot;
++#include &quot;helpers.h&quot;
+ 
+ void synchronize_deny_list(GaimConnection * gc, const char *configtxt)
+ {
+@@ -55,6 +56,14 @@
+ 
+     srvdenylist = g_strsplit(srvdeny, &quot;,&quot;, -1);
+ 
++    /**
++     * The nicks come in here as if they came from the IRC server
++     * so they need to be converted to GayM format
++     */
++    for (i = 0; srvdenylist[i]; i++) {
++        gcom_nick_to_gaym(srvdenylist[i]);
++    }
++
+     /* Add server deny list from config.txt to local deny list */
+     for (i = 0; srvdenylist[i]; i++) {
+         needsync = TRUE;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000096.html">[Qrc-svn] r164 - qrc/trunk
+</A></li>
+	<LI>Next message: <A HREF="000098.html">[Qrc-svn] r167 - debian/gaim-qrc/branches/upstream
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#97">[ date ]</a>
+              <a href="thread.html#97">[ thread ]</a>
+              <a href="subject.html#97">[ subject ]</a>
+              <a href="author.html#97">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

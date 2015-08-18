@@ -1,0 +1,331 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r262 - in qrc/trunk: gaym/src gaym-extras/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r262%20-%20in%20qrc/trunk%3A%20gaym/src%20gaym-extras/src&In-Reply-To=%3C200507310745.j6V7jZSR020066%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000191.html">
+   <LINK REL="Next"  HREF="000193.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r262 - in qrc/trunk: gaym/src gaym-extras/src</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r262%20-%20in%20qrc/trunk%3A%20gaym/src%20gaym-extras/src&In-Reply-To=%3C200507310745.j6V7jZSR020066%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r262 - in qrc/trunk: gaym/src gaym-extras/src">jblebrun at berlios.de
+       </A><BR>
+    <I>Sun Jul 31 09:45:35 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000191.html">[Qrc-svn] r261 - qrc/trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000193.html">[Qrc-svn] r263 - in qrc/branches: . buddy_icon_hack/gaym/src buddy_icon_hack/gaym-extras/src buddy_icon_hack/nsis
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#192">[ date ]</a>
+              <a href="thread.html#192">[ thread ]</a>
+              <a href="subject.html#192">[ subject ]</a>
+              <a href="author.html#192">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-07-31 09:45:24 +0200 (Sun, 31 Jul 2005)
+New Revision: 262
+
+Modified:
+   qrc/trunk/gaym-extras/src/roombrowse.c
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/gaym.h
+   qrc/trunk/gaym/src/msgs.c
+Log:
+Hammer system fixed.
+I need people to run in debug mode to verify one corner case:
+I want to make sure that if you cancel, but the last pending join was actually 
+successful, it should just do a part right away.
+
+There will be an obvious debug message when this case occurs. Normally, you will see
+HAMMER CANCELLED ON FULL MESSAGE
+
+the case I want to verify will say
+JOINED, BUT HAMMER CANCELLED: ABORT!!!!
+
+
+
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-31 05:32:56 UTC (rev 261)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-31 07:45:24 UTC (rev 262)
+@@ -493,6 +493,8 @@
+     gaym-&gt;msgs = g_hash_table_new(g_str_hash, g_str_equal);
+     gaym_msg_table_build(gaym);
+     gaym-&gt;roomlist_filter = NULL;
++
++    gaym-&gt;hammers = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)hammer_cb_data_destroy);
+     /**
+      * The last parameter needs to be NULL here, since the same
+      * field is added for both the key and the value (and if we
+@@ -641,6 +643,11 @@
+ 
+     }
+ }
++
++void kill_hammer(gpointer* room, struct hammer_cb_data* data, gpointer *null) {
++    hammer_cb_data_destroy(data);
++}
++
+ static void gaym_close(GaimConnection * gc)
+ {
+     struct gaym_conn *gaym = gc-&gt;proto_data;
+@@ -696,9 +703,7 @@
+ 
+     g_hash_table_destroy(gaym-&gt;confighash);
+ 
+-    if (gaym-&gt;hammer_cancel_dialog)
+-        gaim_request_close(GAIM_REQUEST_ACTION,
+-                           gaym-&gt;hammer_cancel_dialog);
++    g_hash_table_foreach(gaym-&gt;hammers, (GHFunc)kill_hammer, NULL);
+ 
+     g_free(gaym-&gt;server);
+     g_free(gaym);
+
+Modified: qrc/trunk/gaym/src/gaym.h
+===================================================================
+--- qrc/trunk/gaym/src/gaym.h	2005-07-31 05:32:56 UTC (rev 261)
++++ qrc/trunk/gaym/src/gaym.h	2005-07-31 07:45:24 UTC (rev 262)
+@@ -94,9 +94,7 @@
+     GHashTable *confighash;
+     GHashTable *entry_order;
+ 
+-    char *persist_room;
+-    gboolean cancelling_persist;
+-    void *hammer_cancel_dialog;
++    GHashTable *hammers;
+ 
+ };
+ 
+@@ -134,6 +132,14 @@
+ gboolean gaym_unreference_channel_member(struct gaym_conn *gaym,
+                                          gchar * name);
+ 
++struct hammer_cb_data {
++   struct gaym_conn* gaym;
++   char* room;
++   void* cancel_dialog;
++} hammer_cb_data;
++
++void hammer_cb_data_destroy(struct hammer_cb_data *hdata);
++
+ typedef int (*IRCCmdCallback) (struct gaym_conn * gaym, const char *cmd,
+                                const char *target, const char **args);
+ 
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-07-31 05:32:56 UTC (rev 261)
++++ qrc/trunk/gaym/src/msgs.c	2005-07-31 07:45:24 UTC (rev 262)
+@@ -694,6 +694,7 @@
+ void gaym_msg_join(struct gaym_conn *gaym, const char *name,
+                    const char *from, char **args)
+ {
++    gaim_debug_misc(&quot;join&quot;,&quot;got join for %s\n&quot;,args[0]);
+     GaimConnection *gc = gaim_account_get_connection(gaym-&gt;account);
+     g_return_if_fail(gc != NULL);
+ 
+@@ -708,6 +709,18 @@
+     gcom_nick_to_gaym(nick);
+     if (!gaim_utf8_strcasecmp(nick, gaim_connection_get_display_name(gc))) {
+         /* We are joining a channel for the first time */
++
++	gpointer data, unused;
++	gboolean hammering=g_hash_table_lookup_extended
++	    (gaym-&gt;hammers,args[1],&amp;unused, &amp;data);
++	//There was a hammer, but it is cancelled. Leave!
++	if(hammering &amp;&amp; !data) { //hammer was cancelled.
++	    gaim_debug_misc(&quot;gaym&quot;,&quot;JOINED, BUT HAMMER CANCELLED: ABORT!!!!\n&quot;);
++	    g_hash_table_remove(gaym-&gt;hammers, args[0]);
++	    gaym_cmd_part(gaym, NULL, NULL, (const char**)args);
++	    return;
++	}
++#if 0
+         if (gaym-&gt;persist_room &amp;&amp; !strcmp(gaym-&gt;persist_room, args[0])) {
+             g_free(gaym-&gt;persist_room);
+             gaym-&gt;persist_room = NULL;
+@@ -715,7 +728,8 @@
+                                gaym-&gt;hammer_cancel_dialog);
+ 
+         }
+-
++#endif
++	g_hash_table_remove(gaym-&gt;hammers, args[0]);
+         serv_got_joined_chat(gc, id++, args[0]);
+ 
+         gint *entry = g_new(gint, 1);
+@@ -1145,37 +1159,56 @@
+ void gaym_msg_who(struct gaym_conn *gaym, const char *name,
+                   const char *from, char **args)
+ {
++    //Use the who msgs cross-referenced with the NAMES list to figure out who is who. Resolve conflicts.
++    
+ }
+ 
+ void hammer_stop_cb(gpointer data)
+ {
++    struct hammer_cb_data* hdata = (struct hammer_cb_data *) data;
+ 
+-    struct gaym_conn *gaym = (struct gaym_conn *) data;
++    gaim_debug_misc(&quot;gaym&quot;,&quot;hammer stopped, dialog is %x\n&quot;,hdata-&gt;cancel_dialog);
++    //This destroys the hammer data!
++    gaim_debug_misc(&quot;gaym&quot;, &quot;Cancelling hammer: %s\n&quot;,hdata-&gt;room);
++    //I'm not sure if the dialog data is freed. 
++    //For now, I assume not. 
++    //hdata-&gt;cancel_dialog=0;
++    //The old key gets freed, so strdup it again
++    g_hash_table_replace(hdata-&gt;gaym-&gt;hammers, g_strdup(hdata-&gt;room), NULL); 
++}
+ 
+-    gaym-&gt;cancelling_persist = TRUE;
+-    gaim_debug_misc(&quot;gaym&quot;, &quot;Cancelling persist: %s\n&quot;,
+-                    gaym-&gt;persist_room);
++void hammer_cb_data_destroy(struct hammer_cb_data *hdata) {
++    if(!hdata)
++	return;
++    if(hdata-&gt;cancel_dialog)
++	gaim_request_close(GAIM_REQUEST_ACTION, hdata-&gt;cancel_dialog);
++    if(hdata-&gt;room)
++	g_free(hdata-&gt;room);
++    g_free(hdata);
+ }
+ 
+-void hammer_cb(gpointer data)
++void hammer_cb_no(gpointer data) {
++    hammer_cb_data_destroy(data);
++}
++
++void hammer_cb_yes(gpointer data)
+ {
+-
+-    struct gaym_conn *gaym = (struct gaym_conn *) data;
+-    const char *args[1];
++    struct hammer_cb_data *hdata = (struct hammer_cb_data *) data;
++    char* room=g_strdup(hdata-&gt;room);
++    const char *args[1]={room};
++    
+     char *msg;
+-    gaim_debug_misc(&quot;gaym&quot;, &quot;Persisting room %s\n&quot;, gaym-&gt;persist_room);
+-    args[0] = gaym-&gt;persist_room;
+-    gaym-&gt;cancelling_persist = FALSE;
+-    msg = g_strdup_printf(&quot;Hammering into room %s&quot;, gaym-&gt;persist_room);
+-    gaym-&gt;hammer_cancel_dialog =
+-        gaim_request_action(gaym-&gt;account-&gt;gc, _(&quot;Cancel Hammer&quot;), msg,
+-                            NULL, 0, gaym, 1, (&quot;Cancel&quot;), hammer_stop_cb);
+-
+-    gaym_cmd_join(gaym, NULL, NULL, args);
++    msg = g_strdup_printf(&quot;Hammering into room %s&quot;, hdata-&gt;room);
++    hdata-&gt;cancel_dialog =
++        gaim_request_action(hdata-&gt;gaym-&gt;account-&gt;gc, _(&quot;Cancel Hammer&quot;), msg,
++                            NULL, 0, hdata, 1, (&quot;Cancel&quot;), hammer_stop_cb);
++    g_hash_table_insert(hdata-&gt;gaym-&gt;hammers, g_strdup(hdata-&gt;room), hdata);
++    gaym_cmd_join(hdata-&gt;gaym, NULL, NULL, args);
+     if (msg)
+         g_free(msg);
++    if (room)
++	g_free(room);
+ }
+-
+ void gaym_msg_chanfull(struct gaym_conn *gaym, const char *name,
+                        const char *from, char **args)
+ {
+@@ -1188,27 +1221,33 @@
+ 
+     joinargs[0] = args[1];
+ 
+-    if (gaym-&gt;persist_room &amp;&amp; !strcmp(gaym-&gt;persist_room, args[1]))
+-        if (gaym-&gt;cancelling_persist) {
+-            if (gaym-&gt;persist_room) {
+-                g_free(gaym-&gt;persist_room);
+-                gaym-&gt;persist_room = NULL;
+-            }
+-            gaym-&gt;cancelling_persist = FALSE;
+-        } else {
+-            gaim_debug_misc(&quot;gaym&quot;, &quot;trying again\n&quot;);
+-            gaym_cmd_join(gaym, NULL, NULL, joinargs);
+-    } else {
++    gpointer unused=NULL;
++    gpointer data=NULL;
++    gboolean hammering=g_hash_table_lookup_extended
++	(gaym-&gt;hammers,args[1],&amp;unused, &amp;data);
+ 
+-        gaym-&gt;persist_room = g_strdup(args[1]);
++    if(hammering &amp;&amp; data) {
++        //Add delay here?
++	gaym_cmd_join(gaym, NULL, NULL, joinargs);
++    }
++    else if(hammering &amp;&amp; !data) { //hammer was cancelled.
++	    gaim_debug_misc(&quot;gaym&quot;,&quot;HAMMER CANCELLED ON FULL MESSAGE\n&quot;);
++	g_hash_table_remove(gaym-&gt;hammers, args[1]);
++    }
++    else {
+         buf =
+             g_strdup_printf(&quot;%s is full. Do you want to keep trying?&quot;,
+                             args[1]);
++	struct hammer_cb_data* hdata = g_new0(struct hammer_cb_data, 1);
++	hdata-&gt;gaym=gaym;
++	hdata-&gt;room=g_strdup(args[1]);
++	hdata-&gt;cancel_dialog=NULL;
+         gaim_request_yes_no(gc, _(&quot;Room Full&quot;), _(&quot;Room Full&quot;), buf, 0,
+-                            gaym, hammer_cb, NULL);
++                            hdata, hammer_cb_yes, hammer_cb_no);
+ 
+         g_free(buf);
+     }
++	
+ }
+ 
+ void gaym_msg_create_pay_only(struct gaym_conn *gaym, const char *name,
+
+Modified: qrc/trunk/gaym-extras/src/roombrowse.c
+===================================================================
+--- qrc/trunk/gaym-extras/src/roombrowse.c	2005-07-31 05:32:56 UTC (rev 261)
++++ qrc/trunk/gaym-extras/src/roombrowse.c	2005-07-31 07:45:24 UTC (rev 262)
+@@ -422,7 +422,7 @@
+     *menu = g_list_append(*menu, act);
+     // g_free(label);
+ }
+-static gboolean roombrowse_load(GaimPlugin * plugin)
++static gboolean roombrowse_init()
+ {
+     gaim_signal_connect(gaim_blist_get_handle(),
+                         &quot;blist-node-extended-menu&quot;,
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000191.html">[Qrc-svn] r261 - qrc/trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000193.html">[Qrc-svn] r263 - in qrc/branches: . buddy_icon_hack/gaym/src buddy_icon_hack/gaym-extras/src buddy_icon_hack/nsis
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#192">[ date ]</a>
+              <a href="thread.html#192">[ thread ]</a>
+              <a href="subject.html#192">[ subject ]</a>
+              <a href="author.html#192">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

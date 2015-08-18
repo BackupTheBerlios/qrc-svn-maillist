@@ -1,0 +1,123 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r118 - trunk/bot-challenger
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r118%20-%20trunk/bot-challenger&In-Reply-To=%3C200506211506.j5LF6iiY030371%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000049.html">
+   <LINK REL="Next"  HREF="000051.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r118 - trunk/bot-challenger</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r118%20-%20trunk/bot-challenger&In-Reply-To=%3C200506211506.j5LF6iiY030371%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r118 - trunk/bot-challenger">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Tue Jun 21 17:06:44 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000049.html">[Qrc-svn] r117 - trunk/bot-challenger
+</A></li>
+        <LI>Next message: <A HREF="000051.html">[Qrc-svn] r119 - trunk/bot-challenger
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#50">[ date ]</a>
+              <a href="thread.html#50">[ thread ]</a>
+              <a href="subject.html#50">[ subject ]</a>
+              <a href="author.html#50">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-21 17:06:42 +0200 (Tue, 21 Jun 2005)
+New Revision: 118
+
+Modified:
+   trunk/bot-challenger/bot-challenger.c
+Log:
+Added function to clean up when the plugin is unloaded, and updated
+on-screen text.
+
+
+Modified: trunk/bot-challenger/bot-challenger.c
+===================================================================
+--- trunk/bot-challenger/bot-challenger.c	2005-06-20 20:28:08 UTC (rev 117)
++++ trunk/bot-challenger/bot-challenger.c	2005-06-21 15:06:42 UTC (rev 118)
+@@ -321,7 +321,7 @@
+     ppref =
+         gaim_plugin_pref_new_with_name_and_label
+         (&quot;/plugins/core/bot/challenger/auto_add_permit&quot;,
+-         _(&quot;Add this person to your Permit List&quot;));
++         _(&quot;Add this person to your Allow List&quot;));
+     gaim_plugin_pref_frame_add(frame, ppref);
+ 
+     return frame;
+@@ -353,6 +353,21 @@
+     return TRUE;
+ }
+ 
++static gboolean plugin_unload(GaimPlugin * plugin)
++{
++    GSList *search = NULL;
++    for (search = pending_list; search; search = search-&gt;next) {
++        PendingMessage *pending = search-&gt;data;
++        g_free(pending-&gt;protocol);
++        g_free(pending-&gt;username);
++        g_free(pending-&gt;sender);
++        g_free(pending-&gt;message);
++        g_free(pending);
++        pending_list = g_slist_remove_link(pending_list, search);
++    }
++    return TRUE;
++}
++
+ static GaimPluginInfo info = {
+     GAIM_PLUGIN_MAGIC,
+     GAIM_MAJOR_VERSION,
+@@ -369,12 +384,12 @@
+                                                           /**  summary        */
+     N_(&quot;Block robots from sending Instant Messages&quot;),
+                                                           /**  description    */
+-    N_(&quot;A simple challenge-response system to permit only real people to send you instant messages&quot;),
++    N_(&quot;A simple challenge-response system to prevent spam-bots from sending you instant messages.  Think of it as a pop-up blocker.  You define a question and an answer.  Instant messages from others will be ignored unless one of the following is true:\n\n\t* the sender is in your Buddy List\n\t* the sender is in your Allow List\n\t* the sender correctly answers your question\n\nOptionally, you may have the sender automatically added to your Allow List when the correct answer is provided.&quot;),
+     &quot;David Everly &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">deckrider at gmail.com</A>&gt;&quot;,                 /**&lt; author         */
+     &quot;<A HREF="http://developer.berlios.de/projects/qrc/">http://developer.berlios.de/projects/qrc/</A>&quot;,          /**&lt; homepage       */
+ 
+     plugin_load,                                          /**&lt; load           */
+-    NULL,                                                 /**&lt; unload         */
++    plugin_unload,                                        /**&lt; unload         */
+     NULL,                                                 /**&lt; destroy        */
+ 
+     NULL,                                                 /**&lt; ui_info        */
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000049.html">[Qrc-svn] r117 - trunk/bot-challenger
+</A></li>
+	<LI>Next message: <A HREF="000051.html">[Qrc-svn] r119 - trunk/bot-challenger
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#50">[ date ]</a>
+              <a href="thread.html#50">[ thread ]</a>
+              <a href="subject.html#50">[ subject ]</a>
+              <a href="author.html#50">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

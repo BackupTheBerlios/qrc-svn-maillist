@@ -1,0 +1,1162 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r265 - in qrc/trunk: gaym/src gaym-extras/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-August/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r265%20-%20in%20qrc/trunk%3A%20gaym/src%20gaym-extras/src&In-Reply-To=%3C200508010536.j715a3DN010005%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="000196.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r265 - in qrc/trunk: gaym/src gaym-extras/src</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r265%20-%20in%20qrc/trunk%3A%20gaym/src%20gaym-extras/src&In-Reply-To=%3C200508010536.j715a3DN010005%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r265 - in qrc/trunk: gaym/src gaym-extras/src">jblebrun at berlios.de
+       </A><BR>
+    <I>Mon Aug  1 07:36:03 CEST 2005</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="000196.html">[Qrc-svn] r266 - in qrc/trunk: gaym/src gaym-extras/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#195">[ date ]</a>
+              <a href="thread.html#195">[ thread ]</a>
+              <a href="subject.html#195">[ subject ]</a>
+              <a href="author.html#195">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-08-01 07:35:48 +0200 (Mon, 01 Aug 2005)
+New Revision: 265
+
+Modified:
+   qrc/trunk/gaym-extras/src/Makefile.am
+   qrc/trunk/gaym-extras/src/gaym-extras.c
+   qrc/trunk/gaym-extras/src/gaym-extras.h
+   qrc/trunk/gaym-extras/src/roombrowse.c
+   qrc/trunk/gaym/src/cmds.c
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/gaym.h
+   qrc/trunk/gaym/src/helpers.c
+   qrc/trunk/gaym/src/msgs.c
+   qrc/trunk/gaym/src/weblogin.c
+Log:
+NEW FEATURE: ROOM BROWSER!
+It's new and experimental. 
+Don't be suprised if it does weird stuff. I'm still trying to make it perfect.
+Play around with it! Right click on a room in your buddy list and choose &quot;Browse &lt;roomname&gt;&quot;
+
+The &quot;Pref&quot; column is the shortened version of user name that /WHO gives.
+The &quot;?&quot; column shows an N if the WHO list and the NAMES list get out of sync.
+
+There are probably some memory leaks, but hopefully nothing that opens hundreds of file pointers and leaves them dangling ;-)
+
+One known bug that I realize as I write this: if you try to do a list on, say, #557=1 and #557=2 at the same time, bad things will happen. Probably not too bad, but not good, either. I need to update the hash and equals functions to fix this. 
+
+File changes in gaym-extras are trivial, except for roombrowse.c, which was just a complete re-write.
+
+cmds.c:
+    Added the &quot;WHO&quot; command
+
+
+msgs.c:
+    Added a handler for the WHO command. It also manages a structure which is eventually sent back to the requester.
+
+
+gaym.c:
+    Add the gaym_get_room_namelist function for the plugin to call.
+    Add a hash table for room lists.
+    Add a function for hashing that allows #557=* to be the same as #557=1 or #557=8. Needs to be updated.  
+
+weblogin.c:
+    Got rid of some noisy debug messages.
+
+gaym.h: 
+    Add the GaymNamelist structure.
+    Add the namelists hash to struct gaym_conn
+    Add a prefix field to gaym buddies
+    Add declaration for gaym_cmd_who
+    Add declaration for get_room_namelist
+
+helpers.c:
+    Just commented out a debug msg I am not using anymore.
+
+
+
+
+
+Modified: qrc/trunk/gaym/src/cmds.c
+===================================================================
+--- qrc/trunk/gaym/src/cmds.c	2005-07-31 19:13:29 UTC (rev 264)
++++ qrc/trunk/gaym/src/cmds.c	2005-08-01 05:35:48 UTC (rev 265)
+@@ -574,7 +574,20 @@
+     g_free(converted_nick);
+     return 0;
+ }
++int gaym_cmd_who(struct gaym_conn *gaym, const char *cmd,
++                   const char *target, const char **args)
++{
++    char *buf;
++    if (!args || !args[0])
++        return 0;
+ 
++    buf = gaym_format(gaym, &quot;vn&quot;, &quot;WHO&quot;, args[0]);
++    gaim_debug_misc(&quot;cmds&quot;,&quot;Exceuting %s\n&quot;,buf);
++    gaym_send(gaym, buf);
++    g_free(buf);
++    return 0;
++}
++
+ static void gaym_do_mode(struct gaym_conn *gaym, const char *target,
+                          const char *sign, char **ops)
+ {
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-31 19:13:29 UTC (rev 264)
++++ qrc/trunk/gaym/src/gaym.c	2005-08-01 05:35:48 UTC (rev 265)
+@@ -448,6 +448,16 @@
+ 
+ }
+ 
++guint gaym_room_hash(gconstpointer key) {
++
++    if(*((char*)key)==0)
++	return 0;
++
++    return atoi((char*)(key+1));
++
++
++}
++
+ static void gaym_login(GaimAccount * account)
+ {
+     GaimConnection *gc;
+@@ -478,6 +488,12 @@
+     /**
+      * gaym-&gt;server = &quot;www.gay.com&quot;;
+      */
++
++
++    gaym-&gt;namelists = g_hash_table_new_full((GHashFunc)gaym_room_hash,
++					    g_int_equal,
++					    g_free,
++					    NULL);
+     gaym-&gt;buddies =
+         g_hash_table_new_full((GHashFunc) gaym_nick_hash,
+                               (GEqualFunc) gaym_nick_equal, NULL,
+@@ -529,13 +545,15 @@
+                                   const gchar * config_text, size_t len)
+ {
+     struct gaym_conn *gaym = (struct gaym_conn *) proto_data;
+-    GaimConnection *gc = gaim_account_get_connection(gaym-&gt;account);
++    //GaimConnection *gc = gaim_account_get_connection(gaym-&gt;account);
+ 
+     g_return_if_fail(config_text != NULL);
+ 
+     gaym-&gt;confighash = gaym_properties_new(config_text);
+     g_return_if_fail(gaym-&gt;confighash != NULL);
+ 
++    //if(roomlist=g_hash_table_lookup(gaym-&gt;confighash, &quot;roomlist&quot;))
++    //    gaym-&gt;roomlist = gaym_parse_roomlist();
+     // synchronize_deny_list(gc, gaym-&gt;confighash);
+ 
+     return;
+@@ -1201,7 +1219,6 @@
+                 if (chat-&gt;account == account &amp;&amp; chat_name != NULL &amp;&amp;
+                     name != NULL
+                     &amp;&amp; g_pattern_match_simple(chat_name, name)) {
+-
+                     return chat;
+                 }
+             }
+@@ -1552,13 +1569,26 @@
+     NULL,                                                 /**&lt; load           */
+     NULL,                                                 /**&lt; unload         */
+     NULL,                                                 /**&lt; destroy        */
+-
+     NULL,                                                  /**&lt; ui_info        */
+     &amp;prpl_info,                                           /**&lt; extra_info     */
+     &amp;prefs_info,
+     gaym_actions
+ };
+ 
++
++void gaym_get_room_namelist(const char* room, struct gaym_conn* gaym) {
++
++    const char* args[1]={room};
++    GaymNamelist *namelist = g_new0(GaymNamelist, 1);
++    namelist-&gt;roomname=g_strdup(room);
++    namelist-&gt;members=NULL;
++    namelist-&gt;num_rooms=100;
++    namelist-&gt;current=0;
++    g_hash_table_insert(gaym-&gt;namelists, g_strdup(room), namelist); 
++    
++    //g_hash_table_insert(gaym-&gt;namelist_pending, list);
++    gaym_cmd_who(gaym, NULL, NULL, args);
++}
+ static void _init_plugin(GaimPlugin * plugin)
+ {
+ 
+@@ -1600,8 +1630,15 @@
+                          gaim_value_new(GAIM_TYPE_POINTER,
+                                         GAIM_TYPE_CHAR));
+ 
++     gaim_signal_register(gaim_accounts_get_handle(),
++                         &quot;namelist-complete&quot;,
++                         gaim_marshal_VOID__POINTER_POINTER, NULL, 2,
++                         gaim_value_new(GAIM_TYPE_SUBTYPE,
++                                        GAIM_SUBTYPE_ACCOUNT),
++                         gaim_value_new(GAIM_TYPE_POINTER));
+ 
+ 
++
+     gaim_prefs_add_none(&quot;/plugins/prpl/gaym&quot;);
+     gaim_prefs_add_int(&quot;/plugins/prpl/gaym/chat_room_instances&quot;, 4);
+     gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/show_join&quot;, TRUE);
+
+Modified: qrc/trunk/gaym/src/gaym.h
+===================================================================
+--- qrc/trunk/gaym/src/gaym.h	2005-07-31 19:13:29 UTC (rev 264)
++++ qrc/trunk/gaym/src/gaym.h	2005-08-01 05:35:48 UTC (rev 265)
+@@ -96,6 +96,9 @@
+ 
+     GHashTable *hammers;
+ 
++
++    GHashTable *namelists;
++
+ };
+ 
+ typedef struct {
+@@ -120,6 +123,7 @@
+     char *thumbnail;            /* thumbnail string */
+     char *sex;                  /* sex string */
+     char *age;                  /* age string */
++    char *prefix;		/* prefix string */
+     char *location;             /* location string */
+     gboolean gaymuser;		/* gaym detected */
+ };
+@@ -233,8 +237,14 @@
+ cmd_handler gaym_cmd_trace;
+ cmd_handler gaym_cmd_wallops;
+ cmd_handler gaym_cmd_whois;
++cmd_handler gaym_cmd_who;
+ 
+-
++typedef struct GaymNamelist {
++    char* roomname;
++    GSList *members; //List of GaymBuddies;
++    int num_rooms;
++    GSList* current; //Pointer to gaymbuddy to be updated next (during names pass)
++} GaymNamelist;
+ void gaym_dccsend_send_file(GaimConnection * gc, const char *who,
+                             const char *file);
+ void gaym_dccsend_recv(struct gaym_conn *gaym, const char *from,
+@@ -242,6 +252,7 @@
+ void gaym_get_chat_key_from_weblogin(GaimAccount * account,
+                                      void (*callback) (GaimAccount *));
+ 
++void gaym_get_room_namelist(const char* room, struct gaym_conn* gaym);
+ void gaim_session_fetch(const char *url, gboolean full,
+                         const char *user_agent, gboolean http11,
+                         void (*cb) (gpointer, const char *, size_t),
+
+Modified: qrc/trunk/gaym/src/helpers.c
+===================================================================
+--- qrc/trunk/gaym/src/helpers.c	2005-07-31 19:13:29 UTC (rev 264)
++++ qrc/trunk/gaym/src/helpers.c	2005-08-01 05:35:48 UTC (rev 265)
+@@ -221,6 +221,7 @@
+     }
+ }
+ 
++
+ GHashTable *gaym_properties_new(const gchar * str)
+ {
+ 
+@@ -288,7 +289,7 @@
+         proparr = g_strsplit(tmparr[i], &quot;=&quot;, 2);
+         if (proparr[0] &amp;&amp; strlen(g_strstrip(proparr[0])) &gt; 0
+             &amp;&amp; proparr[1] &amp;&amp; strlen(g_strstrip(proparr[1])) &gt; 0) {
+-	    gaim_debug_misc(&quot;properties&quot;,&quot;Inserted %s=%s\n&quot;,proparr[0],proparr[1]);
++	    //gaim_debug_misc(&quot;properties&quot;,&quot;Inserted %s=%s\n&quot;,proparr[0],proparr[1]);
+             g_hash_table_insert(props, g_strdup(proparr[0]),
+                                 g_strdup(proparr[1]));
+ 
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-07-31 19:13:29 UTC (rev 264)
++++ qrc/trunk/gaym/src/msgs.c	2005-08-01 05:35:48 UTC (rev 265)
+@@ -427,16 +427,26 @@
+ {
+     char *names, *cur, *end, *tmp, *msg;
+     GaimConversation *convo;
+-
++    
+     if (!strcmp(name, &quot;366&quot;)) {
+-        convo =
++	GaymNamelist* namelist=g_hash_table_lookup(gaym-&gt;namelists, args[1]);
++        if(!strncmp(namelist-&gt;roomname, args[1], strlen(namelist-&gt;roomname)))
++	{
++	    gaim_debug_misc(&quot;names&quot;,&quot;*****Got all names responses for %s\n&quot;,args[1]);
++	    //g_hash_table_remove(gaym-&gt;namelists, args[2]);
++	    GaymNamelist* namelist=g_hash_table_lookup(gaym-&gt;namelists, args[1]);
++	    gaim_debug_misc(&quot;msgs&quot;,&quot;should be emitting namelist-complete signal passing namelist %x\n&quot;,namelist);
++	    gaim_signal_emit(gaim_accounts_get_handle(), &quot;namelist-complete&quot;, gaym-&gt;account, namelist);
++	    return;
++	}
++	convo =
+             gaim_find_conversation_with_account(gaym-&gt;nameconv ? gaym-&gt;
+                                                 nameconv : args[1],
+                                                 gaym-&gt;account);
+         if (!convo) {
+             gaim_debug(GAIM_DEBUG_ERROR, &quot;gaym&quot;,
+                        &quot;Got a NAMES list for %s, which doesn't exist\n&quot;,
+-                       args[2]);
++                       args[1]);
+             g_string_free(gaym-&gt;names, TRUE);
+             gaym-&gt;names = NULL;
+             g_free(gaym-&gt;nameconv);
+@@ -490,10 +500,29 @@
+         }
+         g_free(names);
+     } else {
+-        if (!gaym-&gt;names)
++        if (gaym-&gt;nameconv &amp;&amp; !gaym-&gt;names) {
+             gaym-&gt;names = g_string_new(&quot;&quot;);
++	    gaym-&gt;names = g_string_append(gaym-&gt;names, args[3]);
++	}
++	gaim_debug_misc(&quot;names&quot;,&quot;Response: %s\n&quot;,args[3]);
++	GaymNamelist* nameslist=g_hash_table_lookup(gaym-&gt;namelists, args[2]);
++	if(nameslist)
++	{
++	    gchar** names=g_strsplit(args[3],&quot; &quot;,-1);
++	    	    
+ 
+-        gaym-&gt;names = g_string_append(gaym-&gt;names, args[3]);
++		int i=0;
++		gaim_debug_misc(&quot;names&quot;,&quot;names[i]: %s, nameslist-&gt;current: %x\n&quot;, names[i], nameslist-&gt;current);
++	    	while(names[i] &amp;&amp; strlen(names[i]) &amp;&amp; nameslist-&gt;current)
++		{
++			gaim_debug_misc(&quot;names&quot;,&quot;append %s (length %i)\n&quot;,names[i],strlen(names[i]));
++			((GaymBuddy*)(nameslist-&gt;current-&gt;data))-&gt;name=g_strdup(names[i]);
++			nameslist-&gt;current=g_slist_next(nameslist-&gt;current);
++			i++;
++		}
++		g_strfreev(names);
++	    
++	}
+     }
+ }
+ 
+@@ -712,23 +741,16 @@
+ 
+ 	gpointer data, unused;
+ 	gboolean hammering=g_hash_table_lookup_extended
+-	    (gaym-&gt;hammers,args[1],&amp;unused, &amp;data);
++	    (gaym-&gt;hammers,args[0],&amp;unused, &amp;data);
+ 	//There was a hammer, but it is cancelled. Leave!
++	gaim_debug_misc(&quot;join&quot;,&quot;Joined %s\n&quot;,args[0]);
+ 	if(hammering &amp;&amp; !data) { //hammer was cancelled.
+ 	    gaim_debug_misc(&quot;gaym&quot;,&quot;JOINED, BUT HAMMER CANCELLED: ABORT!!!!\n&quot;);
+ 	    g_hash_table_remove(gaym-&gt;hammers, args[0]);
+ 	    gaym_cmd_part(gaym, NULL, NULL, (const char**)args);
+ 	    return;
+ 	}
+-#if 0
+-        if (gaym-&gt;persist_room &amp;&amp; !strcmp(gaym-&gt;persist_room, args[0])) {
+-            g_free(gaym-&gt;persist_room);
+-            gaym-&gt;persist_room = NULL;
+-            gaim_request_close(GAIM_REQUEST_ACTION,
+-                               gaym-&gt;hammer_cancel_dialog);
+-
+-        }
+-#endif
++	
+ 	g_hash_table_remove(gaym-&gt;hammers, args[0]);
+         serv_got_joined_chat(gc, id++, args[0]);
+ 
+@@ -1159,6 +1181,72 @@
+ void gaym_msg_who(struct gaym_conn *gaym, const char *name,
+                   const char *from, char **args)
+ {
++    char* pos;
++    GaymNamelist* nameslist;
++
++    if (!strncmp(name,&quot;315&quot;,3))
++    {
++	
++	nameslist=g_hash_table_lookup(gaym-&gt;namelists, args[1]);
++        nameslist-&gt;members=g_slist_reverse(nameslist-&gt;members);
++	nameslist-&gt;current=nameslist-&gt;members;
++
++	//If we are doing an &quot;umbrella room&quot; then we send out this names thing.
++	//Because the names parsing section terminates on a &quot;names&quot; from 
++	//The exact channel name match.
++	if(g_str_has_suffix(args[1],&quot;=*&quot;))
++	{
++	    gaim_debug_misc(&quot;who&quot;,&quot;Has a =* suffix, sending out one more namescmd \n&quot;);
++	    const char* cmdargs[1]={args[1]};
++	    gaym_cmd_names(gaym, NULL, NULL, cmdargs);
++	}
++	return;
++    }
++
++    if(args[2])
++    {
++
++	nameslist=g_hash_table_lookup(gaym-&gt;namelists, args[1]);
++	if(!nameslist)
++	    return;
++	GaymBuddy *member=g_new0(GaymBuddy, 1);
++	gchar** parts=g_strsplit(args[2],&quot;|&quot;,2);
++	if(args[1])
++	{
++	    member-&gt;bio=gaym_bio_strdup(parts[1]);
++	    member-&gt;thumbnail=gaym_thumbnail_strdup(parts[1]);
++	    member-&gt;prefix=g_strndup(parts[1],6);
++	    
++	    gchar* stats=gaym_stats_strdup(parts[1]);
++	    if(stats) 
++	    {
++		gchar** stat_parts=g_strsplit(stats,&quot;|&quot;,3);
++		member-&gt;sex=stat_parts[0];
++		member-&gt;age=stat_parts[1];
++		member-&gt;location=stat_parts[2];
++		g_free(stats);
++	    }
++	    
++	    nameslist-&gt;members=g_slist_prepend(nameslist-&gt;members, member);
++	}
++	g_strfreev(parts);	
++	
++	pos=strrchr(args[1], '=');
++	int val=0;
++	if (!pos)
++	    return;
++	val=g_ascii_digit_value(*(++pos));
++	if (val&lt;nameslist-&gt;num_rooms)
++	{
++	    gaim_debug_misc(&quot;msgs&quot;,&quot;*******NEXT ROOM******\n&quot;);
++	    const char* cmdargs[1]={args[1]};
++	    gaym_cmd_names(gaym, NULL, NULL, cmdargs);
++	    nameslist-&gt;num_rooms=val;
++	}
++    }
++
++     
++    
+     //Use the who msgs cross-referenced with the NAMES list to figure out who is who. Resolve conflicts.
+     
+ }
+
+Modified: qrc/trunk/gaym/src/weblogin.c
+===================================================================
+--- qrc/trunk/gaym/src/weblogin.c	2005-07-31 19:13:29 UTC (rev 264)
++++ qrc/trunk/gaym/src/weblogin.c	2005-08-01 05:35:48 UTC (rev 265)
+@@ -71,7 +71,6 @@
+         g_free(session-&gt;username);
+     if (session-&gt;password)
+         g_free(session-&gt;password);
+-    gaim_debug_misc(&quot;gaym&quot;, &quot;freeing session: %x\n&quot;, session);
+     g_free(session);
+ }
+ 
+@@ -86,13 +85,11 @@
+             *retval = ' ';
+         retval++;
+     }
+-    gaim_debug_info(&quot;gaym&quot;, &quot;Changed %s with gaym_url_decode\n&quot;, string);
+     return string;
+ }
+ 
+ static void destroy_fetch_url_data(GaimFetchUrlData * gfud)
+ {
+-    gaim_debug_misc(&quot;gaym&quot;, &quot;destroy_fetch_url_data called\n&quot;);
+     if (gfud-&gt;webdata != NULL)
+         g_free(gfud-&gt;webdata);
+     if (gfud-&gt;url != NULL)
+@@ -190,7 +187,6 @@
+        if we make sure that there is indeed a \n in our header. */
+     if (p &amp;&amp; g_strstr_len(p, data_len - (p - data), &quot;\n&quot;)) {
+         sscanf(p, &quot;Content-Length: %zu&quot;, &amp;content_len);
+-        gaim_debug_misc(&quot;parse_content_len&quot;, &quot;parsed %u\n&quot;, content_len);
+     }
+ 
+     return content_len;
+@@ -327,10 +323,6 @@
+                     size_t content_len;
+                     gfud-&gt;startsaving = TRUE;
+ 
+-                    gaim_debug_misc(&quot;gaim_url_fetch&quot;,
+-                                    &quot;Response headers: '%*.*s'\n&quot;,
+-                                    gfud-&gt;len, gfud-&gt;len, gfud-&gt;webdata);
+-
+                     // JBL 10-16-2004: Put cookies into session
+ 
+                     parse_cookies(gfud-&gt;webdata, gfud-&gt;session, gfud-&gt;len);
+
+Modified: qrc/trunk/gaym-extras/src/Makefile.am
+===================================================================
+--- qrc/trunk/gaym-extras/src/Makefile.am	2005-07-31 19:13:29 UTC (rev 264)
++++ qrc/trunk/gaym-extras/src/Makefile.am	2005-08-01 05:35:48 UTC (rev 265)
+@@ -2,7 +2,7 @@
+ 	$(GAIM_LIBDIR)/gaim
+ 
+ GAYMSOURCES = \
+-	gaym-extras.c chatsort.c bio-popups.c chaticon.c gaym-extras.h
++	gaym-extras.c chatsort.c bio-popups.c chaticon.c gaym-extras.h roombrowse.c
+ 
+ AM_CFLAGS = \
+ 	$(st)
+
+Modified: qrc/trunk/gaym-extras/src/gaym-extras.c
+===================================================================
+--- qrc/trunk/gaym-extras/src/gaym-extras.c	2005-07-31 19:13:29 UTC (rev 264)
++++ qrc/trunk/gaym-extras/src/gaym-extras.c	2005-08-01 05:35:48 UTC (rev 265)
+@@ -95,7 +95,7 @@
+ {
+     init_chat_icons();
+     init_popups();
+-
++    init_roombrowse(plugin);
+     gaim_signal_connect(gaim_conversations_get_handle(), &quot;chat-joined&quot;,
+                         plugin, GAIM_CALLBACK(redochatwindow), NULL);
+ 
+@@ -109,7 +109,6 @@
+     gaim_signal_connect(gaim_conversations_get_handle(),
+                         &quot;deleting-conversation&quot;, plugin,
+                         GAIM_CALLBACK(clean_popup_stuff), NULL);
+-
+     gaim_prefs_add_none(&quot;/plugins/gaym-extras&quot;);
+     gaim_prefs_add_none(&quot;/plugins/gaym-extras/silly&quot;);
+ 
+
+Modified: qrc/trunk/gaym-extras/src/gaym-extras.h
+===================================================================
+--- qrc/trunk/gaym-extras/src/gaym-extras.h	2005-07-31 19:13:29 UTC (rev 264)
++++ qrc/trunk/gaym-extras/src/gaym-extras.h	2005-08-01 05:35:48 UTC (rev 265)
+@@ -73,6 +73,7 @@
+ void add_im_popup_stuff(GaimConversation * c);
+ void init_chat_icons();
+ void init_popups();
++void init_roombrowse(GaimPlugin* plugin);
+ 
+ 
+ static struct StockIcon {
+
+Modified: qrc/trunk/gaym-extras/src/roombrowse.c
+===================================================================
+--- qrc/trunk/gaym-extras/src/roombrowse.c	2005-07-31 19:13:29 UTC (rev 264)
++++ qrc/trunk/gaym-extras/src/roombrowse.c	2005-08-01 05:35:48 UTC (rev 265)
+@@ -21,415 +21,223 @@
+ #include &quot;gtkblist.h&quot;
+ #include &quot;gtkimhtmltoolbar.h&quot;
+ #include &lt;gdk/gdkkeysyms.h&gt;
++#include &quot;gaym-extras.h&quot;
+ 
+-#define CHATSORT_PLUGIN_ID &quot;gtk-chatsort&quot;
+-#define CHATSORT_USERS_COLUMNS 4
+-#define CHATSORT_USERS_ENTRY_COLUMN 3
++#include &quot;../../gaym/src/gaym.h&quot;
+ 
+-/**
+- * Unused variables:
+- *
+- * static GList *browsers = NULL;
+- */
+ 
++static GHashTable *browsers = NULL;
++
++
++enum {
++    COLUMN_PHOTO,
++    COLUMN_SYNC,
++    COLUMN_NAME,
++    COLUMN_PREFIX,
++    COLUMN_INFO,
++    N_COLUMNS
++};
++
+ struct RoomBrowseInfo {
+ 
+     GaimAccount *account;
+     GaimConnection *gc;
+ };
+ 
+-static GtkWidget *setup_roombrowse_pane(GaimConversation * conv)
+-{
+-    GaimGtkConversation *gtkconv;
+-    GaimGtkChatPane *gtkchat;
+-    GaimConnection *gc;
+-    GtkWidget *vpaned, *hpaned;
+-    GtkWidget *vbox;
++struct update_cb_data {
++    GaimConnection* gc;
++    const char* room;
++};
+ 
+-        /**
+-	 * Unused variables:
+-	 *
+-	 * GaimPluginProtocolInfo *prpl_info = NULL;
+-	 * GtkWidget *hbox;
+-	 * GtkWidget *lbox, *bbox;
+-	 * GtkWidget *label;
+-	 * GtkWidget *list;
+-	 * GtkWidget *button;
+-	 * GtkWidget *sw;
+-	 * GtkListStore *ls;
+-	 * GtkCellRenderer *rend;
+-	 * GtkTreeViewColumn *col;
+-	 * GList *focus_chain = NULL;
+-	 */
++typedef struct RoomBrowseGui {
++    GtkWidget* window;
++    GtkWidget* button;
++    GtkWidget* list;
++    GtkTreeModel* model;
++    GtkWidget* label;
++    GtkTreeIter iter;
++    GaimConnection* gc;
++} RoomBrowseGui;
+ 
+-    gtkconv = GAIM_GTK_CONVERSATION(conv);
+-    gtkchat = gtkconv-&gt;u.chat;
+-    gc = gaim_conversation_get_gc(conv);
++void roombrowse_add_info(gpointer data, RoomBrowseGui* browser) {
++    /* Add a new row to the model */
++    GaymBuddy* member=(GaymBuddy*)data;
++    gaim_debug_misc(&quot;roombrowse&quot;,&quot;append row%s\n&quot;,member-&gt;name);
++    char* sync=&quot;Y&quot;;
++    if(!member-&gt;name || !member-&gt;prefix)
++	return;
++    if(strncmp(member-&gt;name, member-&gt;prefix, (MIN(strlen(member-&gt;name),strlen(member-&gt;prefix))-1))) 
++    {
++	    sync=&quot;N&quot;;
++    }
++    GString* info=g_string_new(&quot;&quot;);
++    if(member-&gt;age)
++	g_string_append_printf(info, &quot;\nAge: %s&quot;, member-&gt;age); 
++    if(member-&gt;location)
++	g_string_append_printf(info, &quot;\nLocation: %s&quot;, member-&gt;location); 
++    if(member-&gt;bio)
++	g_string_append_printf(info, &quot;\nInfo: %s&quot;, member-&gt;bio); 
++    g_string_erase(info, 0, 1);
++    char* infoc=g_string_free(info, FALSE);
++    gtk_list_store_append (GTK_LIST_STORE(browser-&gt;model), &amp;browser-&gt;iter);
++    if(member-&gt;thumbnail) {
+ 
+-    /* Setup the outer pane. */
+-    vpaned = gtk_vpaned_new();
+-    gtk_widget_show(vpaned);
+-    /* Setup the top part of the pane. */
+-    vbox = gtk_vbox_new(FALSE, 6);
+-    gtk_paned_pack1(GTK_PANED(vpaned), vbox, TRUE, TRUE);
+-    gtk_widget_show(vbox);
++	GdkPixbuf *pixbuf=lookup_cached_thumbnail(	browser-&gt;gc-&gt;account, 
++						gaim_normalize(browser-&gt;gc-&gt;account,member-&gt;name));
++        gtk_list_store_set(GTK_LIST_STORE(browser-&gt;model), &amp;browser-&gt;iter, COLUMN_PHOTO, pixbuf, -1);
+ 
+-    /* Setup the horizontal pane. */
+-    hpaned = gtk_hpaned_new();
+-    gtk_box_pack_start(GTK_BOX(vbox), hpaned, TRUE, TRUE, 0);
+-    gtk_widget_show(hpaned);
+-
+-    /* Setup the scrolled window to put gtkimhtml in. */
+-    gtkconv-&gt;sw = gtk_scrolled_window_new(NULL, NULL);
+-    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(gtkconv-&gt;sw),
+-                                   GTK_POLICY_AUTOMATIC,
+-                                   GTK_POLICY_ALWAYS);
+-    gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(gtkconv-&gt;sw),
+-                                        GTK_SHADOW_IN);
+-    gtk_paned_pack1(GTK_PANED(hpaned), gtkconv-&gt;sw, TRUE, TRUE);
+-
+-    gtk_widget_set_size_request(gtkconv-&gt;sw,
+-                                gaim_prefs_get_int
+-                                (&quot;/gaim/gtk/conversations/chat/default_width&quot;),
+-                                gaim_prefs_get_int
+-                                (&quot;/gaim/gtk/conversations/chat/default_height&quot;));
+-
+-    // g_signal_connect(G_OBJECT(gtkconv-&gt;sw), &quot;size-allocate&quot;,
+-    // G_CALLBACK(size_allocate_cb), conv);
+-
+-    gtk_widget_show(gtkconv-&gt;sw);
+-
+-    return vpaned;
+-}
+-
+-static gint close_conv_cb(GtkWidget * w, gpointer d)
+-{
+-    GaimConversation *conv = (GaimConversation *) d;
+-
+-    gaim_conversation_destroy(conv);
+-
+-    return TRUE;
+-}
+-
+-GdkPixbuf *get_tab_icon(GaimConversation * conv, gboolean small_icon)
+-{
+-    GaimAccount *account = NULL;
+-    const char *name = NULL;
+-    GdkPixbuf *status = NULL;
+-
+-    g_return_val_if_fail(conv != NULL, NULL);
+-
+-    account = gaim_conversation_get_account(conv);
+-    name = gaim_conversation_get_name(conv);
+-
+-    g_return_val_if_fail(account != NULL, NULL);
+-    g_return_val_if_fail(name != NULL, NULL);
+-
+-
+-    if (gaim_conversation_get_type(conv) == GAIM_CONV_IM) {
+-        GaimBuddy *b = gaim_find_buddy(account, name);
+-        if (b != NULL) {
+-            status = gaim_gtk_blist_get_status_icon((GaimBlistNode *) b,
+-                                                    (small_icon ?
+-                                                     GAIM_STATUS_ICON_SMALL
+-                                                     :
+-                                                     GAIM_STATUS_ICON_LARGE));
+-        }
+     }
++    gtk_list_store_set (GTK_LIST_STORE(browser-&gt;model), &amp;browser-&gt;iter,
++			    COLUMN_SYNC, sync,
++                          COLUMN_NAME, member-&gt;name, 
++			  COLUMN_PREFIX, member-&gt;prefix,
++			  COLUMN_INFO, infoc,
++			  -1);
+ 
+-    if (!status) {
+-        GdkPixbuf *pixbuf;
+-        pixbuf = create_prpl_icon(account);
+ 
+-        if (small_icon &amp;&amp; pixbuf != NULL) {
+-            status = gdk_pixbuf_scale_simple(pixbuf, 15, 15,
+-                                             GDK_INTERP_BILINEAR);
+-            g_object_unref(pixbuf);
+-        } else
+-            status = pixbuf;
+-    }
+-    return status;
+ }
++void roombrowse_update_list(GaimAccount* account, GaymNamelist* namelist) {
+ 
+-/**
+- * Unused function
+- */
+-#if 0
+-static void update_tab_icon(GaimConversation * conv)
+-{
+-    GaimGtkConversation *gtkconv;
+-    GaimConvWindow *win = gaim_conversation_get_window(conv);
+-    GaimAccount *account;
+-    const char *name;
+-    GdkPixbuf *status = NULL;
+-
+-    g_return_if_fail(conv != NULL);
+-
+-    gtkconv = GAIM_GTK_CONVERSATION(conv);
+-    name = gaim_conversation_get_name(conv);
+-    account = gaim_conversation_get_account(conv);
+-
+-    status = get_tab_icon(conv, TRUE);
+-
+-    g_return_if_fail(status != NULL);
+-
+-    gtk_image_set_from_pixbuf(GTK_IMAGE(gtkconv-&gt;icon), status);
+-    gtk_image_set_from_pixbuf(GTK_IMAGE(gtkconv-&gt;menu_icon), status);
+-
+-    if (status != NULL)
+-        g_object_unref(status);
+-
+-    if (gaim_conv_window_get_active_conversation(win) == conv &amp;&amp;
+-        gtkconv-&gt;u.im-&gt;anim == NULL) {
+-        status = get_tab_icon(conv, FALSE);
+-
+-        gtk_window_set_icon(GTK_WINDOW(GAIM_GTK_WINDOW(win)-&gt;window),
+-                            status);
+-
+-        if (status != NULL)
+-            g_object_unref(status);
++    gaim_debug_misc(&quot;roombrowse&quot;,&quot;update_list from namelist at %x\n&quot;,namelist);
++    g_return_if_fail(namelist);
++    
++    RoomBrowseGui* browser=g_hash_table_lookup(browsers, namelist-&gt;roomname);
++    if(!browser) {
++	gaim_debug_misc(&quot;roombrowse&quot;,&quot;No browser found for %s\n&quot;,namelist-&gt;roomname);
+     }
++    gtk_list_store_clear(GTK_LIST_STORE(browser-&gt;model));
++    g_slist_foreach(namelist-&gt;members, (GFunc)roombrowse_add_info, browser);
++    
+ }
+-#endif
+-
+-/* Courtesy of Galeon! */
+-static void
+-tab_close_button_state_changed_cb(GtkWidget * widget,
+-                                  GtkStateType prev_state)
+-{
+-    if (GTK_WIDGET_STATE(widget) == GTK_STATE_ACTIVE)
+-        gtk_widget_set_state(widget, GTK_STATE_NORMAL);
++gboolean update_list(GtkWidget* button, gpointer data) {
++    
++    gaim_debug_misc(&quot;roombrowse&quot;,&quot;Doing list update!\n&quot;);
++    struct update_cb_data* udata=(struct update_cb_data*)data;
++    
++    gaym_get_room_namelist(udata-&gt;room, udata-&gt;gc-&gt;proto_data);
++    return TRUE;
+ }
+-
+-static void
+-roombrowse_gtk_add_conversation(GaimConvWindow * win,
+-                                GaimConversation * conv)
++static void roombrowse_menu_cb(GaimBlistNode * node, gpointer data)
+ {
+-    GaimGtkWindow *gtkwin;
+-    GaimGtkConversation *gtkconv, *focus_gtkconv;
+-    GaimConversation *focus_conv;
+-    GtkWidget *pane = NULL;
+-    GtkWidget *tab_cont;
+-    GtkWidget *tabby, *menu_tabby;
+-    GtkWidget *close_image;
+-    gboolean new_ui;
+-    GaimConversationType conv_type;
+-    const char *name;
++    RoomBrowseGui* browser=g_new0(RoomBrowseGui, 1);
++    GaimConnection* gc=(GaimConnection*)data;
++    browser-&gt;window=gtk_window_new(GTK_WINDOW_TOPLEVEL);
++   
++    browser-&gt;gc=gc;
++    //GaimAccount *account = ((GaimChat *) node)-&gt;account;
++    //if (!win)
++    //    win = gaim_conv_window_new();
++    GaimChat *chat = ((GaimChat *) node);
++    
++    const char* room = gaim_chat_get_name(chat);
++    const char* channel = g_hash_table_lookup(chat-&gt;components, &quot;channel&quot;);
++    gaim_debug_misc(&quot;roombrowse&quot;,&quot;chat name: %s\n&quot;,room);
++    gaim_debug_misc(&quot;roombrowse&quot;,&quot;channel name: %s\n&quot;,channel);
++    gtk_window_set_title(GTK_WINDOW(browser-&gt;window), room);
++    
++    GtkWidget* vbox=gtk_vbox_new(FALSE, 6);
++    gtk_container_add(GTK_CONTAINER(browser-&gt;window), vbox);
++    gtk_widget_show(vbox);
++    
++    browser-&gt;label=gtk_label_new(room);
++    gtk_box_pack_start(GTK_BOX(vbox),browser-&gt;label, FALSE, FALSE, 0);
++    gtk_widget_show(browser-&gt;label);
++    GtkWidget* sw=gtk_scrolled_window_new(NULL, NULL);
++    gtk_box_pack_start(GTK_BOX(vbox), sw, TRUE, TRUE, 0);
++    gtk_widget_set_size_request(GTK_WIDGET(sw), 100, 200);
++    gtk_widget_show(sw);
+ 
+-    name = gaim_conversation_get_name(conv);
+-    conv_type = gaim_conversation_get_type(conv);
+-    gtkwin = GAIM_GTK_WINDOW(win);
++    GtkListStore* ls=gtk_list_store_new(N_COLUMNS,
++					GDK_TYPE_PIXBUF,
++					G_TYPE_STRING,
++					G_TYPE_STRING, 
++					G_TYPE_STRING, 
++					G_TYPE_STRING);
++    browser-&gt;model=GTK_TREE_MODEL(ls);
++        
++    browser-&gt;list=gtk_tree_view_new_with_model(GTK_TREE_MODEL(ls));
++    //gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(browser-&gt;list), FALSE); 
++    GtkCellRenderer* rend;
++    GtkTreeViewColumn* col;
++    
++    rend=gtk_cell_renderer_pixbuf_new();
++    col=gtk_tree_view_column_new_with_attributes(&quot;Photo&quot;, rend, &quot;pixbuf&quot;, COLUMN_PHOTO, NULL);
++    gtk_tree_view_append_column(GTK_TREE_VIEW(browser-&gt;list), col);
+ 
+-    if (conv-&gt;ui_data != NULL) {
+-        gtkconv = (GaimGtkConversation *) conv-&gt;ui_data;
++    rend=gtk_cell_renderer_text_new();
++    col=gtk_tree_view_column_new_with_attributes(&quot;?&quot;, rend, &quot;text&quot;, COLUMN_SYNC, NULL);
++    gtk_tree_view_append_column(GTK_TREE_VIEW(browser-&gt;list), col);
+ 
+-        tab_cont = gtkconv-&gt;tab_cont;
+ 
+-        new_ui = FALSE;
+-    } else {
+-        gtkconv = g_malloc0(sizeof(GaimGtkConversation));
+-        conv-&gt;ui_data = gtkconv;
++    rend=gtk_cell_renderer_text_new();
++    col=gtk_tree_view_column_new_with_attributes(&quot;Name&quot;, rend, &quot;text&quot;, COLUMN_NAME, NULL);
++    gtk_tree_view_append_column(GTK_TREE_VIEW(browser-&gt;list), col);
++  
++    rend=gtk_cell_renderer_text_new();
++    col=gtk_tree_view_column_new_with_attributes(&quot;Pref&quot;, rend, &quot;text&quot;, COLUMN_PREFIX, NULL);
++    gtk_tree_view_append_column(GTK_TREE_VIEW(browser-&gt;list), col);
+ 
+-        /* Setup some initial variables. */
+-        gtkconv-&gt;sg = gtk_size_group_new(GTK_SIZE_GROUP_BOTH);
+-        gtkconv-&gt;tooltips = gtk_tooltips_new();
+ 
+-        gaim_debug_misc(&quot;roombrowse&quot;, &quot;setting up pane\n&quot;);
+-        pane = setup_roombrowse_pane(conv);
++    rend=gtk_cell_renderer_text_new();
++    col=gtk_tree_view_column_new_with_attributes(&quot;Info&quot;, rend, &quot;text&quot;, COLUMN_INFO, NULL);
++    gtk_tree_view_append_column(GTK_TREE_VIEW(browser-&gt;list), col);
+ 
+-        gaim_debug_misc(&quot;roombrowse&quot;, &quot;set up pane\n&quot;);
+ 
+-        if (pane == NULL) {
+-            g_free(gtkconv);
+-            conv-&gt;ui_data = NULL;
++    gtk_container_add(GTK_CONTAINER(sw), browser-&gt;list);
++    gtk_widget_show(browser-&gt;list); 
+ 
+-            return;
+-        }
++    
++    browser-&gt;button=gtk_button_new_with_label(&quot;Update&quot;);
++    struct update_cb_data* udata=g_new0(struct update_cb_data, 1);
++    udata-&gt;gc=gc;
++    udata-&gt;room=channel;
++    
++    g_signal_connect(browser-&gt;button, &quot;clicked&quot;, G_CALLBACK(update_list), udata);
++    gtk_box_pack_start(GTK_BOX(vbox), browser-&gt;button, FALSE, FALSE, 0);
++    gtk_widget_show(browser-&gt;button);
+ 
++    gtk_widget_show(browser-&gt;window);
+ 
+-
+-        /* Setup the container for the tab. */
+-        gtkconv-&gt;tab_cont = tab_cont = gtk_vbox_new(FALSE, 6);
+-        gtk_container_set_border_width(GTK_CONTAINER(tab_cont), 6);
+-        gtk_container_add(GTK_CONTAINER(tab_cont), pane);
+-        gtk_widget_show(pane);
+-
+-        new_ui = TRUE;
+-
+-        gtkconv-&gt;make_sound = FALSE;
+-        gtkconv-&gt;show_formatting_toolbar = FALSE;
+-        gtkconv-&gt;show_timestamps = FALSE;
+-
+-        g_signal_connect_swapped(G_OBJECT(pane), &quot;focus&quot;,
+-                                 G_CALLBACK(gtk_widget_grab_focus),
+-                                 gtkconv-&gt;entry);
+-    }
+-
+-    gaim_debug_misc(&quot;roombrowse&quot;, &quot;Setting up tabs\n&quot;);
+-    gtkconv-&gt;tabby = tabby = gtk_hbox_new(FALSE, 6);
+-    gtkconv-&gt;menu_tabby = menu_tabby = gtk_hbox_new(FALSE, 6);
+-    gtkconv-&gt;entry = gtk_imhtml_new(NULL, NULL);
+-    gtkconv-&gt;toolbar = gtk_imhtmltoolbar_new();
+-
+-    gaim_debug_misc(&quot;roombrowse&quot;, &quot;Setting up close button\n&quot;);
+-    /* Close button. */
+-    gtkconv-&gt;close = gtk_button_new();
+-    gtk_widget_set_size_request(GTK_WIDGET(gtkconv-&gt;close), 16, 16);
+-    gtk_button_set_relief(GTK_BUTTON(gtkconv-&gt;close), GTK_RELIEF_NONE);
+-    close_image =
+-        gtk_image_new_from_stock(GTK_STOCK_CLOSE, GTK_ICON_SIZE_MENU);
+-    gtk_widget_show(close_image);
+-    gtk_container_add(GTK_CONTAINER(gtkconv-&gt;close), close_image);
+-    gtk_tooltips_set_tip(gtkconv-&gt;tooltips, gtkconv-&gt;close,
+-                         _(&quot;Close conversation&quot;), NULL);
+-
+-    g_signal_connect(G_OBJECT(gtkconv-&gt;close), &quot;clicked&quot;,
+-                     G_CALLBACK(close_conv_cb), conv);
+-
+-    /* 
+-     * I love Galeon. They have a fix for that stupid annoying visible
+-     * border bug. I love you guys! -- ChipX86
+-     */
+-    g_signal_connect(G_OBJECT(gtkconv-&gt;close), &quot;state_changed&quot;,
+-                     G_CALLBACK(tab_close_button_state_changed_cb), NULL);
+-
+-    /* Status icon. */
+-    gtkconv-&gt;icon = gtk_image_new();
+-    gtkconv-&gt;menu_icon = gtk_image_new();
+-    // update_tab_icon(conv);
+-
+-    /* Tab label. */
+-    gtkconv-&gt;tab_label = gtk_label_new(gaim_conversation_get_title(conv));
+-    gtkconv-&gt;menu_label = gtk_label_new(gaim_conversation_get_title(conv));
+-#if 0
+-    gtk_misc_set_alignment(GTK_MISC(gtkconv-&gt;tab_label), 0.00, 0.5);
+-    gtk_misc_set_padding(GTK_MISC(gtkconv-&gt;tab_label), 4, 0);
+-#endif
+-
+-    gaim_debug_misc(&quot;roombrowse&quot;, &quot;Packing\n&quot;);
+-    /* Pack it all together. */
+-    gtk_box_pack_start(GTK_BOX(tabby), gtkconv-&gt;icon, FALSE, FALSE, 0);
+-    gtk_box_pack_start(GTK_BOX(menu_tabby), gtkconv-&gt;menu_icon,
+-                       FALSE, FALSE, 0);
+-
+-    gtk_widget_show_all(gtkconv-&gt;icon);
+-    gtk_widget_show_all(gtkconv-&gt;menu_icon);
+-
+-    gtk_box_pack_start(GTK_BOX(tabby), gtkconv-&gt;tab_label, TRUE, TRUE, 0);
+-    gtk_box_pack_start(GTK_BOX(menu_tabby), gtkconv-&gt;menu_label, TRUE,
+-                       TRUE, 0);
+-    gtk_widget_show(gtkconv-&gt;tab_label);
+-    gtk_widget_show(gtkconv-&gt;menu_label);
+-    gtk_misc_set_alignment(GTK_MISC(gtkconv-&gt;menu_label), 0, 0);
+-
+-    gtk_box_pack_start(GTK_BOX(tabby), gtkconv-&gt;close, FALSE, FALSE, 0);
+-    if (gaim_prefs_get_bool(&quot;/gaim/gtk/conversations/close_on_tabs&quot;))
+-        gtk_widget_show(gtkconv-&gt;close);
+-
+-    gtk_widget_show(tabby);
+-    gtk_widget_show(menu_tabby);
+-
+-    if (gaim_conversation_get_type(conv) == GAIM_CONV_IM)
+-        gaim_gtkconv_update_buddy_icon(conv);
+-
+-    gaim_debug_misc(&quot;roombrowse&quot;, &quot;Adding to notebook\n&quot;);
+-    gaim_debug_misc(&quot;roombrowse&quot;, &quot;gtkwin-&gt;notebook=%x\n&quot;,
+-                    gtkwin-&gt;notebook);
+-    gaim_debug_misc(&quot;roombrowse&quot;, &quot;gtkwin=%x\n&quot;, gtkwin);
+-    gaim_debug_misc(&quot;roombrowse&quot;, &quot;tabby=%x\n&quot;, tabby);
+-    gaim_debug_misc(&quot;roombrowse&quot;, &quot;menu_tabby=%x\n&quot;, menu_tabby);
+-    gaim_debug_misc(&quot;roombrowse&quot;, &quot;tab_cont=%x\n&quot;, tab_cont);
+-
+-    /* Add this pane to the conversation's notebook. */
+-    int n = gtk_notebook_get_n_pages(GTK_NOTEBOOK(gtkwin-&gt;notebook));
+-    gaim_debug_misc(&quot;roombrowse:&quot;, &quot;Notebook has %d pages\n&quot;, n);
+-    gtk_notebook_append_page_menu(GTK_NOTEBOOK(gtkwin-&gt;notebook), tab_cont,
+-                                  tabby, menu_tabby);
+-    gaim_debug_misc(&quot;roombrowse&quot;, &quot;Got through append_page_menu\n&quot;);
+-    gtk_widget_show(tab_cont);
+-
+-    if (gaim_conv_window_get_conversation_count(win) == 1) {
+-        /* Er, bug in notebooks? Switch to the page manually. */
+-        gtk_notebook_set_current_page(GTK_NOTEBOOK(gtkwin-&gt;notebook), 0);
+-
+-        gtk_notebook_set_show_tabs(GTK_NOTEBOOK(gtkwin-&gt;notebook),
+-                                   gaim_prefs_get_bool
+-                                   (&quot;/gaim/gtk/conversations/tabs&quot;));
+-    } else
+-        gtk_notebook_set_show_tabs(GTK_NOTEBOOK(gtkwin-&gt;notebook), TRUE);
+-    gaim_debug_misc(&quot;roombrowse&quot;, &quot;FOcus stuff\n&quot;);
+-    focus_conv = g_list_nth_data(gaim_conv_window_get_conversations(win),
+-                                 gtk_notebook_get_current_page(GTK_NOTEBOOK
+-                                                               (gtkwin-&gt;
+-                                                                notebook)));
+-    focus_gtkconv = GAIM_GTK_CONVERSATION(focus_conv);
+-    gtk_widget_grab_focus(focus_gtkconv-&gt;entry);
+-
+-    if (!new_ui)
+-        g_object_unref(gtkconv-&gt;tab_cont);
++    g_hash_table_insert(browsers, g_strdup(channel), browser);
++    update_list(browser-&gt;button, udata);
+ }
+-
+-
+-static void roombrowse_menu_cb(GaimBlistNode * node, gpointer data)
++static void roombrowse_menu_create(GaimBlistNode * node, GList** menu)
+ {
+-    GaimConvWindow *win = gaim_get_first_window_with_type(GAIM_CONV_MISC);
+-    GaimConversation *conv = g_new0(GaimConversation, 1);
+ 
+-    GaimAccount *account = ((GaimChat *) node)-&gt;account;
+-    if (!win)
+-        win = gaim_conv_window_new();
+-    GaimChat *chat = ((GaimChat *) node);
+-    char *room = g_strdup(g_hash_table_lookup(chat-&gt;components, &quot;name&quot;));
++    char *label;
+ 
+-
+-    gaim_debug_misc(&quot;roombrowser&quot;, &quot;In cb with node=%x, account=%x\n&quot;,
+-                    node, account);
+-    conv = gaim_conversation_new(GAIM_CONV_MISC, account, room);
+-
+-    gaim_conversation_set_logging(conv, FALSE);
+-
+-    roombrowse_gtk_add_conversation(conv-&gt;window, conv);
+-    gaim_conv_window_show(conv-&gt;window);
+-
+-    g_free(room);
+-
+-}
+-static void roombrowse_menu_create(GaimBlistNode * node, GList ** menu)
+-{
+-
+-    char *label, *room;
+-
+     struct gaym_conn *gaym;
+     GaimChat *chat = (GaimChat *) node;
+ 
+-    gaim_debug_misc(&quot;roombrowse&quot;, &quot;In callback\n&quot;);
++    
+     if (node-&gt;type != GAIM_BLIST_CHAT_NODE)
+         return;
+ 
+     gaym = chat-&gt;account-&gt;gc-&gt;proto_data;
+ 
+-    room = g_strdup(g_hash_table_lookup(chat-&gt;components, &quot;name&quot;));
+-    gaim_debug_misc(&quot;roombrowse&quot;, &quot;Room name: %s\n&quot;, room);
+-    if (!room)
+-        return;
++    //char* room = g_strdup(g_hash_table_lookup(chat-&gt;components, &quot;alias&quot;));
++    gaim_debug_misc(&quot;roombrowse&quot;, &quot;chat: %xRoom name: %s\n&quot;, chat, gaim_chat_get_name(chat));
+ 
+-
+-    label = g_strdup_printf(&quot;Lurk in %s&quot;, room);
++    label = g_strdup_printf(&quot;Browse users in %s&quot;, gaim_chat_get_name(chat));
+     GaimBlistNodeAction *act = gaim_blist_node_action_new(label,
+                                                           roombrowse_menu_cb,
+-                                                          chat-&gt;account);
++							  chat-&gt;account-&gt;gc);
+ 
+     *menu = g_list_append(*menu, act);
+     // g_free(label);
+ }
+-static gboolean roombrowse_init()
++void init_roombrowse(GaimPlugin* plugin)
+ {
+     gaim_signal_connect(gaim_blist_get_handle(),
+                         &quot;blist-node-extended-menu&quot;,
+                         plugin, GAIM_CALLBACK(roombrowse_menu_create),
+                         NULL);
+ 
+-
+-    gaim_debug_misc(&quot;roombrowse&quot;, &quot;Callback registered!\n&quot;);
+-    return TRUE;
++    gaim_signal_connect(gaim_accounts_get_handle(),
++			&quot;namelist-complete&quot;,
++			plugin, GAIM_CALLBACK(roombrowse_update_list), NULL);
++    
++    browsers=g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
++    
++    return;
+ }
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="000196.html">[Qrc-svn] r266 - in qrc/trunk: gaym/src gaym-extras/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#195">[ date ]</a>
+              <a href="thread.html#195">[ thread ]</a>
+              <a href="subject.html#195">[ subject ]</a>
+              <a href="author.html#195">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

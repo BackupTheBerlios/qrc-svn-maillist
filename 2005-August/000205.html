@@ -1,0 +1,606 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r275 - in qrc/trunk: . display-options
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-August/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r275%20-%20in%20qrc/trunk%3A%20.%20display-options&In-Reply-To=%3C200508220536.j7M5a8Ts018282%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000204.html">
+   <LINK REL="Next"  HREF="000206.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r275 - in qrc/trunk: . display-options</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r275%20-%20in%20qrc/trunk%3A%20.%20display-options&In-Reply-To=%3C200508220536.j7M5a8Ts018282%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r275 - in qrc/trunk: . display-options">jblebrun at berlios.de
+       </A><BR>
+    <I>Mon Aug 22 07:36:08 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000204.html">[Qrc-svn] r274 - qrc/trunk/gaym-extras/src
+</A></li>
+        <LI>Next message: <A HREF="000206.html">[Qrc-svn] r276 - qrc/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#205">[ date ]</a>
+              <a href="thread.html#205">[ thread ]</a>
+              <a href="subject.html#205">[ subject ]</a>
+              <a href="author.html#205">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-08-22 07:35:24 +0200 (Mon, 22 Aug 2005)
+New Revision: 275
+
+Added:
+   qrc/trunk/display-options/
+   qrc/trunk/display-options/Makefile.am
+   qrc/trunk/display-options/display-options.c
+Log:
+Display options stuff
+
+
+Added: qrc/trunk/display-options/Makefile.am
+===================================================================
+--- qrc/trunk/display-options/Makefile.am	2005-08-22 04:02:29 UTC (rev 274)
++++ qrc/trunk/display-options/Makefile.am	2005-08-22 05:35:24 UTC (rev 275)
+@@ -0,0 +1,26 @@
++pkgdir = \
++	$(GAIM_LIBDIR)/gaim
++
++GAYMSOURCES = \
++	display-options.c
++	
++AM_CFLAGS = \
++	$(st)
++
++libdisplay_options_la_LDFLAGS = \
++	-module \
++	-avoid-version \
++	$(GTK_LIBS) \
++	$(GAIM_LIBS)
++
++pkg_LTLIBRARIES = \
++	libdisplay-options.la
++
++libdisplay_options_la_SOURCES = \
++	$(GAYMSOURCES)
++
++AM_CPPFLAGS = \
++	$(DEBUG_CFLAGS) \
++	$(GTK_CFLAGS) \
++	$(GAIM_CFLAGS)
++	
+
+Added: qrc/trunk/display-options/display-options.c
+===================================================================
+--- qrc/trunk/display-options/display-options.c	2005-08-22 04:02:29 UTC (rev 274)
++++ qrc/trunk/display-options/display-options.c	2005-08-22 05:35:24 UTC (rev 275)
+@@ -0,0 +1,495 @@
++/*
++ * This is to try to add some extra readability to Gaim's aweful
++ * display.  I'd like the colors to be background colors, but not
++ * just font backgrounds .. a DIV or TD background.  Right now this
++ * isn't possible to do while still using GtkIMHTML.  I'd also like
++ * to have the thumbnails of who talks on the left-hand side, but for
++ * all protocols.  Would also like the name and/or thumbnail to be
++ * clickable, and pull up either the Get Info or Full Profile, and
++ * possibly a right click menu for Info/IM.
++ */
++
++#include &lt;glib.h&gt;
++#include &quot;internal.h&quot;
++#include &quot;gtkgaim.h&quot;
++
++#include &quot;conversation.h&quot;
++#include &quot;debug.h&quot;
++#include &quot;log.h&quot;
++#include &quot;prefs.h&quot;
++#include &quot;signals.h&quot;
++#include &quot;util.h&quot;
++#include &quot;version.h&quot;
++
++#include &quot;gtkconv.h&quot;
++#include &quot;gtkimhtml.h&quot;
++#include &quot;gtkplugin.h&quot;
++
++#define CHATSORT_PLUGIN_ID &quot;display-options&quot;
++
++/* XXX */
++#include &quot;gaim.h&quot;
++
++#define AUTO_RESPONSE &quot;&lt;AUTO-REPLY&gt; : &quot;
++
++#define SEND_COLOR &quot;#16569E&quot;
++#define RECV_COLOR &quot;#A82F2F&quot;
++
++/* These are right out of gaim, and they need to be darkened!*/
++static char nick_colors[][8] = {
++	&quot;#ba55d3&quot;,              /* Medium Orchid */
++	&quot;#ee82ee&quot;,              /* Violet */
++	&quot;#c715b4&quot;,              /* Medium Violet Red */
++	&quot;#ff69b4&quot;,              /* Hot Pink */
++	&quot;#ff6347&quot;,              /* Tomato */
++	&quot;#fa8c00&quot;,              /* Dark Orange */
++	&quot;#fa8072&quot;,              /* Salmon */
++	&quot;#b22222&quot;,              /* Fire Brick */
++	&quot;#f4a460&quot;,              /* Sandy Brown */
++	&quot;#cd5c5c&quot;,              /* Indian Red */
++	&quot;#bc8f8f&quot;,              /* Rosy Brown */
++	&quot;#f0e68c&quot;,              /* Khaki */
++	&quot;#bdb76b&quot;,              /* Dark Khaki */
++	&quot;#228b22&quot;,              /* Forest Green */
++	&quot;#9acd32&quot;,              /* Yellow Green */
++	&quot;#32cd32&quot;,              /* Lime Green */
++	&quot;#3cb371&quot;,              /* Medium Sea Green (Medium Sea Green?!  What are we women?!) */
++	&quot;#2e8b57&quot;,              /* Sea Green */
++	&quot;#8fbc8f&quot;,              /* Dark Sea Green */
++	&quot;#66cdaa&quot;,              /* Medium Aquamarine */
++	&quot;#5f9ea0&quot;,              /* Cadet Blue */
++	&quot;#48d1cc&quot;,              /* Medium Turquoise */
++	&quot;#00ced1&quot;,              /* Dark Turquoise */
++	&quot;#4682b4&quot;,              /* Stell Blue */
++	&quot;#00bfff&quot;,              /* Deep Sky Blue */
++	&quot;#1690ff&quot;,              /* Dodger Blue */
++	&quot;#4169ff&quot;,              /* Royal Blue */
++	&quot;#6a5acd&quot;,              /* Slate Blue */
++	&quot;#6495ed&quot;,              /* Cornflower Blue */
++	&quot;#708090&quot;,              /* Slate gray */
++	&quot;#2f4f4f&quot;,              /* Dark Slate Gray */
++	&quot;#ff8c00&quot;,              /* Dark Orange */
++	&quot;#006400&quot;,              /* DarkGreen */
++	&quot;#8b4513&quot;,              /* SaddleBrown */
++	&quot;#8b8989&quot;,              /* snow4 */
++	&quot;#7d26cd&quot;,              /* purple3 */
++};
++
++#define NUM_NICK_COLORS (sizeof(nick_colors) / sizeof(*nick_colors))
++
++/* Holds the last message spoken and who said it for each conversation to
++ * avoid annoying repeats and floods
++ */
++struct LastMessage {
++	gchar * who;
++	gchar * msg;
++};
++
++/* This holds the above Structs */
++static GHashTable * Conversations = NULL;
++
++/* Holds the pointer to the original function */
++static void (*disp_gtkconv_write_conv)(GaimConversation *conv, const char *who,
++        const char *message, GaimMessageFlags flags,time_t mtime);
++
++/* Holds UiOps pointer between calls */
++static GaimConversationUiOps *disp_op;
++
++/* Custom destructor */
++static void RemoveLastMessage (gpointer data)
++{
++	struct LastMessage * lm = data;
++	g_free (lm-&gt;msg);
++	g_free (lm-&gt;who);
++	g_free (lm);
++}
++
++/* Longer and more complex than I'd like */
++gchar * format_system_msg (const gchar * message,struct LastMessage * lm)
++{
++    char * newmessage = NULL;
++    gchar ** parts = NULL;
++	
++    parts = g_strsplit (message,&quot; &quot;,2);
++
++    if ((parts[0]) &amp;&amp; (parts[1])) {
++        gchar ** prebio = g_strsplit (parts[1],&quot;[&quot;,2);
++	if (lm-&gt;who) {
++		g_free(lm-&gt;who);
++	}
++	if (lm-&gt;msg) {
++		g_free(lm-&gt;msg);
++	}
++	lm-&gt;who = strdup (parts[0]);
++	lm-&gt;msg = NULL;
++	if (prebio &amp;&amp; prebio[1]) {
++	    gchar ** postbio = g_strsplit (prebio[1],&quot;]&quot;,2);
++	    if (postbio &amp;&amp; postbio[1]) {
++                newmessage = g_strdup_printf (&quot;&lt;font size=-2&gt;&lt;b&gt;%s&lt;/b&gt; %s[&lt;font color=\&quot;#006080\&quot;&gt;&lt;b&gt;%s&lt;/b&gt;&lt;/font&gt;]%s&lt;/font&gt;&quot;,parts[0],prebio[0],postbio[0],postbio[1]);
++	    }
++	    g_strfreev(postbio);
++	} else {
++            newmessage = g_strdup_printf (&quot;&lt;font size=-2&gt;&lt;b&gt;%s&lt;/b&gt; %s&lt;/font&gt;&quot;,parts[0],parts[1]);
++	}				
++	g_strfreev(prebio);
++    }
++    g_strfreev(parts);
++	
++    if (newmessage == NULL) {
++        newmessage = g_strdup_printf (&quot;&lt;font size=-2&gt;%s&lt;/font&gt;&quot;,message);
++    }
++    return newmessage;
++}
++
++/* This replaces gaim's default version */
++static void
++disp_write_convo (GaimConversation *conv, const char *who,
++						const char *message, GaimMessageFlags flags,
++						time_t mtime)
++{
++	GaimGtkConversation *gtkconv;
++	GaimConvWindow *win;
++	GaimConnection *gc;
++	int gtk_font_options = 0;
++	char buf[BUF_LONG];
++	char buf2[BUF_LONG];
++	char mdate[64];
++	char color[10];
++	char *str;
++	char *with_font_tag;
++	char *sml_attrib = NULL;
++	size_t length = strlen(message) + 1;
++
++	gtkconv = GAIM_GTK_CONVERSATION(conv);
++	gc = gaim_conversation_get_gc(conv);
++
++	win = gaim_conversation_get_window(conv);
++
++	if (!(flags &amp; GAIM_MESSAGE_NO_LOG) &amp;&amp;
++		((gaim_conversation_get_type(conv) == GAIM_CONV_CHAT &amp;&amp;
++		 gaim_prefs_get_bool(&quot;/gaim/gtk/conversations/chat/raise_on_events&quot;)) ||
++		(gaim_conversation_get_type(conv) == GAIM_CONV_IM &amp;&amp;
++		 gaim_prefs_get_bool(&quot;/gaim/gtk/conversations/im/raise_on_events&quot;)))) {
++		gaim_conv_window_show(win);
++	}
++/*
++	if (gtk_text_buffer_get_char_count(gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtkconv-&gt;imhtml))))
++		gtk_imhtml_append_text(GTK_IMHTML(gtkconv-&gt;imhtml), &quot;&lt;BR&gt;&quot;, 0);
++*/
++	if(time(NULL) &gt; mtime + 20*60) /* show date if older than 20 minutes */
++		strftime(mdate, sizeof(mdate), &quot;%Y-%m-%d %H:%M:%S&quot;, localtime(&amp;mtime));
++	else
++		strftime(mdate, sizeof(mdate), &quot;%H:%M:%S&quot;, localtime(&amp;mtime));
++
++	if(gc)
++		sml_attrib = g_strdup_printf(&quot;sml=\&quot;%s\&quot;&quot;,
++									 gaim_account_get_protocol_name(conv-&gt;account));
++
++	gtk_font_options ^= GTK_IMHTML_NO_COMMENTS;
++
++	if (gaim_prefs_get_bool(&quot;/gaim/gtk/conversations/ignore_colors&quot;))
++		gtk_font_options ^= GTK_IMHTML_NO_COLOURS;
++	if (gaim_prefs_get_bool(&quot;/gaim/gtk/conversations/ignore_fonts&quot;))
++		gtk_font_options ^= GTK_IMHTML_NO_FONTS;
++	if (gaim_prefs_get_bool(&quot;/gaim/gtk/conversations/ignore_font_sizes&quot;))
++		gtk_font_options ^= GTK_IMHTML_NO_SIZES;
++
++	/* this is gonna crash one day, I can feel it. */
++	if (GAIM_PLUGIN_PROTOCOL_INFO(gaim_find_prpl(gaim_account_get_protocol_id(conv-&gt;account)))-&gt;options &amp;
++	    OPT_PROTO_USE_POINTSIZE) {
++		gtk_font_options ^= GTK_IMHTML_USE_POINTSIZE;
++	}
++
++	if (flags &amp; GAIM_MESSAGE_SYSTEM) {
++		gchar * sep = &quot;&lt;BR&gt;&quot;;
++		gchar * newmessage = NULL; 
++		
++		struct LastMessage * lastconv = (struct LastMessage *)
++			g_hash_table_lookup(Conversations,conv); 
++
++		if (lastconv &amp;&amp; (lastconv-&gt;who) &amp;&amp; (lastconv-&gt;msg != NULL)) {
++			sep = &quot;&lt;HR&gt;&quot;;
++		}
++		newmessage = format_system_msg (message,lastconv);
++		
++		if (gaim_prefs_get_bool(&quot;/gaim/gtk/conversations/show_timestamps&quot;))
++			g_snprintf(buf, BUF_LONG, &quot;&lt;FONT SIZE=\&quot;2\&quot;&gt;(%s)&lt;/FONT&gt; %s&quot;,
++				   mdate, newmessage);
++		else
++			g_snprintf(buf, BUF_LONG, &quot;%s&quot;, newmessage);
++
++		g_snprintf(buf2, sizeof(buf2),
++			   &quot;%s&lt;FONT %s&gt;&lt;FONT SIZE=\&quot;2\&quot;&gt;&lt;!--(%s) --&gt;&lt;/FONT&gt;%s&quot;, sep, sml_attrib ? sml_attrib : &quot;&quot;, mdate, newmessage);
++
++		g_free(newmessage);
++		
++		gtk_imhtml_append_text(GTK_IMHTML(gtkconv-&gt;imhtml), buf2, 0);
++
++		/* Add the message to a conversations scrollback buffer */
++		conv-&gt;history = g_string_append(conv-&gt;history, buf);
++		conv-&gt;history = g_string_append(conv-&gt;history, &quot;&lt;BR&gt;\n&quot;);
++
++	} else if (flags &amp; GAIM_MESSAGE_ERROR) {
++		if (gaim_prefs_get_bool(&quot;/gaim/gtk/conversations/show_timestamps&quot;))
++			g_snprintf(buf, BUF_LONG, &quot;&lt;FONT COLOR=\&quot;#ff0000\&quot;&gt;&lt;FONT SIZE=\&quot;2\&quot;&gt;(%s)&lt;/FONT&gt; &lt;B&gt;%s&lt;/B&gt;&lt;/FONT&gt;&quot;,
++				   mdate, message);
++		else
++			g_snprintf(buf, BUF_LONG, &quot;&lt;FONT COLOR=\&quot;#ff0000\&quot;&gt;&lt;B&gt;%s&lt;/B&gt;&lt;/FONT&gt;&quot;, message);
++
++		g_snprintf(buf2, sizeof(buf2),
++			   &quot;&lt;BR&gt;&lt;FONT COLOR=\&quot;#ff0000\&quot;&gt;&lt;FONT %s&gt;&lt;FONT SIZE=\&quot;2\&quot;&gt;&lt;!--(%s) --&gt;&lt;/FONT&gt;&lt;B&gt;%s&lt;/B&gt;&lt;/FONT&gt;&lt;/FONT&gt;&quot;,
++			   sml_attrib ? sml_attrib : &quot;&quot;, mdate, message);
++
++		gtk_imhtml_append_text(GTK_IMHTML(gtkconv-&gt;imhtml), buf2, 0);
++
++		/* Add the message to a conversations scrollback buffer */
++		conv-&gt;history = g_string_append(conv-&gt;history, buf);
++		conv-&gt;history = g_string_append(conv-&gt;history, &quot;&lt;BR&gt;\n&quot;);
++	} else if (flags &amp; GAIM_MESSAGE_NO_LOG) {
++		g_snprintf(buf, BUF_LONG,
++			   &quot;&lt;BR&gt;&lt;B&gt;&lt;FONT %s COLOR=\&quot;#777777\&quot;&gt;%s&lt;/FONT&gt;&lt;/B&gt;&quot;,
++			   sml_attrib ? sml_attrib : &quot;&quot;, message);
++
++		gtk_imhtml_append_text(GTK_IMHTML(gtkconv-&gt;imhtml), buf, 0);
++	}
++	else {
++		char *new_message = g_memdup(message, length);
++		char *who_escaped = (who ? g_markup_escape_text(who, strlen(who)) : g_strdup(&quot;&quot;));
++
++		if (flags &amp; GAIM_MESSAGE_WHISPER) {
++			str = g_malloc(1024);
++
++			/* If we're whispering, it's not an autoresponse. */
++			if (gaim_message_meify(new_message, -1)) {
++				g_snprintf(str, 1024, &quot;***%s&quot;, who_escaped);
++				strcpy(color, &quot;#6C2585&quot;);
++			}
++			else {
++				g_snprintf(str, 1024, &quot;*%s*:&quot;, who_escaped);
++				strcpy(color, &quot;#00FF00&quot;);
++			}
++		}
++		else {
++			if (gaim_message_meify(new_message, -1)) {
++				str = g_malloc(1024);
++
++				if (flags &amp; GAIM_MESSAGE_AUTO_RESP)
++					g_snprintf(str, 1024, &quot;%s ***%s&quot;, AUTO_RESPONSE, who_escaped);
++				else
++					g_snprintf(str, 1024, &quot;***%s&quot;, who_escaped);
++
++				if (flags &amp; GAIM_MESSAGE_NICK)
++					strcpy(color, &quot;#AF7F00&quot;);
++				else
++					strcpy(color, &quot;#062585&quot;);
++			}
++			else {
++				str = g_malloc(1024);
++				if (flags &amp; GAIM_MESSAGE_AUTO_RESP)
++					g_snprintf(str, 1024, &quot;%s %s&quot;, who_escaped, AUTO_RESPONSE);
++				else
++					g_snprintf(str, 1024, &quot;%s&quot;, who_escaped);
++				if (flags &amp; GAIM_MESSAGE_NICK)
++					strcpy(color, &quot;#AF7F00&quot;);
++				else if (flags &amp; GAIM_MESSAGE_RECV) {
++					if (flags &amp; GAIM_MESSAGE_COLORIZE) {
++						const char *u;
++						int m = 0;
++						
++						for (u = who; *u != '\0'; u++) {
++							m += (*u);
++						}
++
++						m = m % NUM_NICK_COLORS;
++
++						strcpy(color, nick_colors[m]);
++					}
++					else
++						strcpy(color, RECV_COLOR);
++				}
++				else if (flags &amp; GAIM_MESSAGE_SEND)
++					strcpy(color, SEND_COLOR);
++				else {
++					gaim_debug_error(&quot;gtkconv&quot;, &quot;message missing flags\n&quot;);
++					strcpy(color, &quot;#000000&quot;);
++				}
++			}
++		}
++
++		if(who_escaped)
++			g_free(who_escaped);
++
++		if (gaim_prefs_get_bool(&quot;/gaim/gtk/conversations/show_timestamps&quot;))
++			g_snprintf(buf, BUF_LONG,
++				   &quot;&lt;HR&gt;&lt;FONT SIZE=\&quot;2\&quot;&gt;(%s)&lt;/FONT&gt; &quot;
++				   &quot;&lt;B&gt;&lt;A HREF=\&quot;<A HREF="http://my.gay.com/%s\">http://my.gay.com/%s\</A>&quot;&gt;&lt;FONT COLOR=\&quot;%s\&quot; %s&gt;%s:&lt;/FONT&gt;&lt;/A&gt;&lt;/B&gt;&lt;/FONT&gt; &quot;, mdate, str, color,
++				   sml_attrib ? sml_attrib : &quot;&quot;, str);
++		else
++			g_snprintf(buf, BUF_LONG,
++				   &quot;&lt;HR&gt;&lt;FONT SIZE=\&quot;2\&quot;&lt;B&gt;&lt;A HREF=\&quot;<A HREF="http://my.gay.com/%s\">http://my.gay.com/%s\</A>&quot;&gt;&lt;FONT COLOR=\&quot;%s\&quot; %s&gt;%s:&lt;/FONT&gt;&lt;/A&gt;&lt;/B&gt;&lt;/FONT&gt; &quot;, str, color,
++				   sml_attrib ? sml_attrib : &quot;&quot;, str);
++
++		/* FIXME: insert IMG tag in next line */
++		g_snprintf(buf2, BUF_LONG,
++			   &quot;&lt;HR&gt;&lt;FONT SIZE=\&quot;1\&quot;&gt;&lt;!--(%s) --&gt;&quot;
++			   &quot;&lt;B&gt;&lt;A HREF=\&quot;<A HREF="http://my.gay.com/%s\">http://my.gay.com/%s\</A>&quot;&gt;&lt;FONT COLOR=\&quot;%s\&quot; %s&gt;%s:&lt;/FONT&gt;&lt;/A&gt;&lt;/B&gt;&lt;/FONT&gt;&quot;,
++			   mdate, str, color, sml_attrib ? sml_attrib : &quot;&quot;, str);
++
++		g_free(str);
++
++		struct LastMessage * lastconv = (struct LastMessage *) 
++			g_hash_table_lookup(Conversations,conv); 
++
++		if (lastconv == NULL) {
++			gaim_debug_error (&quot;disp&quot;,&quot;## CONV NOT FOUND !!! ##\n&quot;);
++		} else {
++			gaim_debug_info (&quot;disp&quot;,&quot;who: %s lastwho: %s\n&quot;,who,lastconv-&gt;who);
++		}
++		if ((lastconv == NULL) || (lastconv-&gt;who == NULL) || (g_strcasecmp(who,lastconv-&gt;who))) {
++			gtk_imhtml_append_text(GTK_IMHTML(gtkconv-&gt;imhtml), buf2, 0);
++		}
++		if(gc){
++			char *pre = g_strdup_printf(&quot;&lt;br&gt;&lt;font color=%s&gt;&lt;font %s&gt;    &quot;, color, sml_attrib ? sml_attrib : &quot;&quot;);
++			char *post = &quot;&lt;/font&gt;&lt;/font&gt;&quot;;
++			int pre_len = strlen(pre);
++			int post_len = strlen(post);
++
++			with_font_tag = g_malloc(length + pre_len + post_len + 1);
++
++			strcpy(with_font_tag, pre);
++			memcpy(with_font_tag + pre_len, new_message, length);
++			strcpy(with_font_tag + pre_len + length, post);
++
++			length += pre_len + post_len;
++			g_free(pre);
++		}
++		else
++			with_font_tag = g_memdup(new_message, length);
++
++		if ((lastconv == NULL) || (lastconv-&gt;msg == NULL) || (g_strcasecmp(new_message,lastconv-&gt;msg) || (g_strcasecmp(who,lastconv-&gt;who))))  {
++			gtk_imhtml_append_text(GTK_IMHTML(gtkconv-&gt;imhtml),
++							 with_font_tag, gtk_font_options);
++			if (lastconv) {
++				if (lastconv-&gt;msg) {
++					g_free(lastconv-&gt;msg);
++				}
++				if ((lastconv-&gt;who) &amp;&amp; (g_strcasecmp(who,lastconv-&gt;who))) {
++					g_free(lastconv-&gt;who);
++				}
++				lastconv-&gt;msg = g_strdup(new_message);
++				lastconv-&gt;who = g_strdup(who);
++			}
++			conv-&gt;history = g_string_append(conv-&gt;history, buf);
++			conv-&gt;history = g_string_append(conv-&gt;history, new_message);
++			conv-&gt;history = g_string_append(conv-&gt;history, &quot;&lt;BR&gt;\n&quot;);
++		}
++		g_free(with_font_tag);
++		g_free(new_message);
++	}
++
++
++	if(sml_attrib)
++		g_free(sml_attrib);
++}
++
++
++/* Install the above */
++static void disp_conv_install (GaimConversation *conv)
++{
++    disp_op = gaim_conversation_get_ui_ops(conv);
++    
++    if (disp_op-&gt;write_conv != disp_write_convo) {
++        disp_gtkconv_write_conv = disp_op-&gt;write_conv;
++        disp_op-&gt;write_conv = disp_write_convo;
++    } else {
++        gaim_debug_info (&quot;disp_convo_created&quot;,&quot;Not Installed\n&quot;);
++    }
++    g_hash_table_insert (Conversations,conv,g_new0(struct LastMessage,1));
++
++}
++
++/* Remove a conversation on part */
++static gboolean disp_conv_uninstall (GaimConversation *conv)
++{
++    g_hash_table_remove (Conversations,conv);
++    return TRUE;
++}
++
++/* Attempts to find a conv to to call the installer above */
++static gboolean disp_install_wrapper (GaimPlugin *plugin)
++{
++    GList *conversations = gaim_get_conversations();
++    conversations = g_list_first(conversations);
++    
++    if (Conversations == NULL) {
++	    Conversations = g_hash_table_new_full 
++		    (g_direct_hash,g_direct_equal,NULL,RemoveLastMessage);
++    }
++    if (conversations) {
++        while(conversations) {
++    	    GaimConversation *conv = conversations-&gt;data;
++	    if (conv-&gt;type == GAIM_CONV_CHAT)
++	    {
++		disp_conv_install(conv);
++		return TRUE;
++	    }
++	    conversations = g_list_next(conversations);
++        }
++	return FALSE;
++    } else {
++	/* Are these right? */
++	gaim_signal_connect(gaim_conversations_get_handle(),
++	    &quot;chat-joined&quot;, plugin, GAIM_CALLBACK(disp_conv_install), NULL);
++	gaim_signal_connect(gaim_conversations_get_handle(),
++	    &quot;chat-left&quot;, plugin, GAIM_CALLBACK(disp_conv_uninstall), NULL);
++
++	return TRUE;
++    }
++}
++
++/* Uninstall the whole plugin */
++static gboolean disp_uninstall (GaimPlugin *plugin)
++{
++    if (disp_op) {
++    	if (disp_op-&gt;write_conv == disp_write_convo) {
++        	disp_op-&gt;write_conv = disp_gtkconv_write_conv;
++    	} 
++    } else {
++        	gaim_debug_info (&quot;display plugin unload&quot;,&quot;Not Installed&quot;);
++    }
++    if (Conversations) {
++	    g_hash_table_destroy(Conversations);
++	    Conversations = NULL;
++    }
++    return TRUE;
++}
++
++static GaimPluginInfo info = {
++    GAIM_PLUGIN_MAGIC,
++    GAIM_MAJOR_VERSION,
++    GAIM_MINOR_VERSION,
++    GAIM_PLUGIN_STANDARD,
++    GAIM_GTK_PLUGIN_TYPE,
++    0,
++    NULL,
++    GAIM_PRIORITY_DEFAULT,
++    CHATSORT_PLUGIN_ID,
++    N_(&quot;Display Options&quot;),
++    VERSION,
++    N_(&quot;Various changes to gaim's display properties&quot;),
++    N_(&quot;Changes message display format, adding links, display grouping, bioline highlights, smaller system messages, and removes annoying repeats!&quot;),
++    &quot;Evan Langlois &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">evan at coolrunningconcepts.com</A>&gt;&quot;,
++    GAIM_WEBSITE,
++    disp_install_wrapper,
++    disp_uninstall,
++    NULL,
++    NULL,
++    NULL,
++    NULL
++};
++
++static void init_plugin(GaimPlugin * plugin)
++{
++}
++
++GAIM_INIT_PLUGIN(history, init_plugin, info)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000204.html">[Qrc-svn] r274 - qrc/trunk/gaym-extras/src
+</A></li>
+	<LI>Next message: <A HREF="000206.html">[Qrc-svn] r276 - qrc/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#205">[ date ]</a>
+              <a href="thread.html#205">[ thread ]</a>
+              <a href="subject.html#205">[ subject ]</a>
+              <a href="author.html#205">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

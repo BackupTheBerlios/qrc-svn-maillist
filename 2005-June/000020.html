@@ -1,0 +1,491 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r80 - in trunk: . chatsort gaym gaym/pixmaps roombrowse
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r80%20-%20in%20trunk%3A%20.%20chatsort%20gaym%20gaym/pixmaps%20roombrowse&In-Reply-To=%3C200506090437.j594bP4m006536%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000019.html">
+   <LINK REL="Next"  HREF="000021.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r80 - in trunk: . chatsort gaym gaym/pixmaps roombrowse</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r80%20-%20in%20trunk%3A%20.%20chatsort%20gaym%20gaym/pixmaps%20roombrowse&In-Reply-To=%3C200506090437.j594bP4m006536%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r80 - in trunk: . chatsort gaym gaym/pixmaps roombrowse">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Thu Jun  9 06:37:25 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000019.html">[Qrc-svn] r71 - gaym/trunk/src
+</A></li>
+        <LI>Next message: <A HREF="000021.html">[Qrc-svn] r81 - in trunk: . chatsort roombrowse
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20">[ date ]</a>
+              <a href="thread.html#20">[ thread ]</a>
+              <a href="subject.html#20">[ subject ]</a>
+              <a href="author.html#20">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-09 06:36:53 +0200 (Thu, 09 Jun 2005)
+New Revision: 80
+
+Added:
+   trunk/chatsort/Makefile.mingw
+   trunk/gaym/Makefile.am
+   trunk/gaym/pixmaps/
+   trunk/gaym/pixmaps/Makefile.am
+   trunk/gaym/pixmaps/gaym.png
+   trunk/roombrowse/Makefile.am
+   trunk/roombrowse/Makefile.mingw
+Removed:
+   trunk/pixmaps/
+Modified:
+   trunk/Makefile.am
+   trunk/autogen.sh
+   trunk/configure.ac
+Log:
+make dist-check works with gaym
+
+Modified: trunk/Makefile.am
+===================================================================
+--- trunk/Makefile.am	2005-06-09 04:11:38 UTC (rev 79)
++++ trunk/Makefile.am	2005-06-09 04:36:53 UTC (rev 80)
+@@ -1,4 +1,5 @@
+ DIST_SUBDIRS = \
++	nsis \
+ 	chatsort \
+ 	gaym \
+ 	privacy \
+@@ -11,6 +12,5 @@
+ 
+ SUBDIRS = \
+ 	nsis \
+-        pixmaps \
+-	$ENABLED_PLUGINS
++	$(ENABLED_PLUGINS)
+ 
+
+Modified: trunk/autogen.sh
+===================================================================
+--- trunk/autogen.sh	2005-06-09 04:11:38 UTC (rev 79)
++++ trunk/autogen.sh	2005-06-09 04:36:53 UTC (rev 80)
+@@ -8,27 +8,27 @@
+ #
+ (libtoolize --version) &lt; /dev/null &gt; /dev/null 2&gt;&amp;1 || {
+ 	echo;
+-	echo &quot;You must have libtool installed to compile GayM.&quot;;
++	echo &quot;You must have libtool installed to compile the QRC Plugins.&quot;;
+ 	echo;
+ 	exit;
+ }
+ 
+ (automake --version) &lt; /dev/null &gt; /dev/null 2&gt;&amp;1 || {
+ 	echo;
+-	echo &quot;You must have automake installed to compile GayM.&quot;;
++	echo &quot;You must have automake installed to compile the QRC plugins.&quot;;
+ 	echo;
+ 	exit;
+ }
+ 
+ (autoconf --version) &lt; /dev/null &gt; /dev/null 2&gt;&amp;1 || {
+ 	echo;
+-	echo &quot;You must have autoconf installed to compile GayM.&quot;;
++	echo &quot;You must have autoconf installed to compile the QRC plugins.&quot;;
+ 	echo;
+ 	exit;
+ }
+ 
+ echo;
+-echo &quot;Generating configuration files for GayM, please wait....&quot;
++echo &quot;Generating configuration files for the QRC plugins, please wait....&quot;
+ 
+ echo;
+ echo &quot;Running libtoolize, please ignore non-fatal messages....&quot;
+@@ -68,7 +68,7 @@
+ autoconf --force || exit;
+ 
+ echo;
+-echo &quot;Finished generating configuration files for GayM.&quot;
++echo &quot;Finished generating configuration files for the QRC plugins.&quot;
+ echo &quot;Now you may run './configure'.&quot;
+ echo;
+ 
+
+Added: trunk/chatsort/Makefile.mingw
+===================================================================
+--- trunk/chatsort/Makefile.mingw	2005-06-09 04:11:38 UTC (rev 79)
++++ trunk/chatsort/Makefile.mingw	2005-06-09 04:36:53 UTC (rev 80)
+@@ -0,0 +1,122 @@
++#
++# Makefile.mingw
++#
++# Description: Makefile for win32 (mingw) version of libgaym
++
++# Compiler Options
++
++CFLAGS =
++
++DEFINES =
++
++
++# Use -g flag when building debug version of Gaim (including plugins).
++# Use -fnative-struct instead of -mms-bitfields when using mingw 1.1
++# (gcc 2.95)
++CFLAGS += -O2 -Wall -mno-cygwin -mms-bitfields
++
++# If not specified, dlls are built with the default base address of 0x10000000.
++# When loaded into a process address space a dll will be rebased if its base
++# address colides with the base address of an existing dll.  To avoid rebasing
++# we do the following.  Rebasing can slow down the load time of dlls and it
++# also renders debug info useless.
++DLL_LD_FLAGS += -Wl,--enable-auto-image-base
++
++ifdef GAIM_TOP
++VERSION := $(shell cat $(GAIM_TOP)/VERSION)
++endif
++
++DEFINES +=      -DVERSION=\&quot;$(VERSION)\&quot; \
++                -DHAVE_CONFIG_H
++
++##
++## TARGET
++##
++
++TARGET = libgaym
++
++##
++## INCLUDE PATHS
++##
++
++INCLUDE_PATHS +=	-I$../ \
++			-I$(GTK_TOP)/include \
++			-I$(GTK_TOP)/include/gtk-2.0 \
++			-I$(GTK_TOP)/include/glib-2.0 \
++			-I$(GTK_TOP)/include/pango-1.0 \
++			-I$(GTK_TOP)/include/atk-1.0 \
++			-I$(GTK_TOP)/lib/glib-2.0/include \
++			-I$(GTK_TOP)/lib/gtk-2.0/include \
++			-I$(GAIM_TOP)/src \
++			-I$(GAIM_TOP)/src/win32 \
++			-I$(GAIM_TOP)
++
++
++LIB_PATHS =		-L$(GTK_TOP)/lib \
++			-L$(GAIM_TOP)/src
++
++
++##
++##  SOURCES, OBJECTS
++##
++
++C_SRC =			cmds.c \
++			dcc_send.c \
++			gaym.c \
++			gaympriv.c \
++			helpers.c \
++			msgs.c \
++			parse.c \
++			weblogin.c
++
++
++OBJECTS = $(C_SRC:%.c=%.o)
++
++
++##
++## LIBRARIES
++##
++
++LIBS =			-lgtk-win32-2.0 \
++			-lglib-2.0 \
++			-lgdk-win32-2.0 \
++			-lgmodule-2.0 \
++			-lgobject-2.0 \
++			-lws2_32 \
++			-lintl \
++			-lgaim
++
++
++##
++## RULES
++##
++
++# How to make a C file
++
++%.o: %.c
++	$(CC) $(CFLAGS) $(DEFINES) $(INCLUDE_PATHS) -o $@ -c $&lt;
++
++##
++## TARGET DEFINITIONS
++##
++
++.PHONY: all clean
++
++all: $(TARGET).dll
++
++
++##
++## BUILD DLL
++##
++
++$(TARGET).dll: $(OBJECTS)
++	$(CC) -shared $(OBJECTS) $(LIB_PATHS) $(LIBS) $(DLL_LD_FLAGS) -Wl,--out-implib,$(TARGET).lib -o $(TARGET).dll
++
++##
++## CLEAN RULES
++##
++
++clean:
++	-rm *.o
++	-rm $(TARGET).dll
++	-rm $(TARGET).lib
+
+Modified: trunk/configure.ac
+===================================================================
+--- trunk/configure.ac	2005-06-09 04:11:38 UTC (rev 79)
++++ trunk/configure.ac	2005-06-09 04:36:53 UTC (rev 80)
+@@ -9,7 +9,7 @@
+ REQUIRED_GAIM=&quot;gaim &gt;= 1.2 gaim &lt; 2.0&quot;
+ AC_SUBST(REQUIRED_GAIM)
+ 
+-AC_CONFIG_SRCDIR([gaym/gaym.h])
++AC_CONFIG_SRCDIR([gaym/src/gaym.h])
+ AC_CONFIG_HEADER([config.h])
+ 
+ AC_DEFINE(GAIM_PLUGINS, 1, [Define if plugins are enabled.])
+@@ -57,22 +57,23 @@
+ 
+ ENABLED_PLUGINS=&quot;&quot;
+ 
+-AC_ARG_ENABLE([chatsort],AC_HELP_STRING([--disable-chatsort],[don't build the chatsort plugin]),,[ENABLED_PLUGINS=&quot;$ENABLED_PLUGINS chatsort&quot;])
++AC_ARG_ENABLE([chatsort],AC_HELP_STRING([--enable-chatsort],[build the chatsort plugin @&lt;:@default=no@:&gt;@]),[ENABLED_PLUGINS=&quot;$ENABLED_PLUGINS chatsort&quot;],)
+ 
+-AC_ARG_ENABLE([gaym],AC_HELP_STRING([--disable-gaym],[don't build the gaym plugin]),,[ENABLED_PLUGINS=&quot;$ENABLED_PLUGINS gaym&quot;])
++AC_ARG_ENABLE([gaym],AC_HELP_STRING([--enable-gaym],[build the gaym plugin @&lt;:@default=yes@:&gt;@]),,[ENABLED_PLUGINS=&quot;$ENABLED_PLUGINS gaym&quot;])
+ 
+-AC_ARG_ENABLE([privacy],AC_HELP_STRING([--enable-privacy],[build the privacy plugin]),[ENABLED_PLUGINS=&quot;$ENABLED_PLUGINS privacy&quot;],)
++AC_ARG_ENABLE([privacy],AC_HELP_STRING([--enable-privacy],[build the privacy plugin @&lt;:@default=no@:&gt;@]),[ENABLED_PLUGINS=&quot;$ENABLED_PLUGINS privacy&quot;],)
+ 
+-AC_ARG_ENABLE([roombrowse],AC_HELP_STRING([--enable-roombrowse],[build the roombrowse plugin]),[ENABLED_PLUGINS=&quot;$ENABLED_PLUGINS roombrowse&quot;],)
++AC_ARG_ENABLE([roombrowse],AC_HELP_STRING([--enable-roombrowse],[build the roombrowse plugin @&lt;:@default=no@:&gt;@]),[ENABLED_PLUGINS=&quot;$ENABLED_PLUGINS roombrowse&quot;],)
+ 
+ AC_SUBST(ENABLED_PLUGINS)
+ 
+ AC_CONFIG_FILES([Makefile
+                  chatsort/Makefile
+                  gaym/Makefile
++                 gaym/pixmaps/Makefile
++                 gaym/src/Makefile
+                  nsis/Makefile
+ 		 nsis/locale/Makefile
+-                 pixmaps/Makefile
+                  privacy/Makefile
+                  roombrowse/Makefile])
+ AC_OUTPUT
+
+Added: trunk/gaym/Makefile.am
+===================================================================
+--- trunk/gaym/Makefile.am	2005-06-09 04:11:38 UTC (rev 79)
++++ trunk/gaym/Makefile.am	2005-06-09 04:36:53 UTC (rev 80)
+@@ -0,0 +1,3 @@
++SUBDIRS = \
++	src \
++        pixmaps
+
+Copied: trunk/gaym/pixmaps/Makefile.am (from rev 78, trunk/pixmaps/Makefile.am)
+
+Copied: trunk/gaym/pixmaps/gaym.png (from rev 78, trunk/pixmaps/gaym.png)
+
+Added: trunk/roombrowse/Makefile.am
+===================================================================
+--- trunk/roombrowse/Makefile.am	2005-06-09 04:11:38 UTC (rev 79)
++++ trunk/roombrowse/Makefile.am	2005-06-09 04:36:53 UTC (rev 80)
+@@ -0,0 +1,26 @@
++EXTRA_DIST = \
++	Makefile.mingw
++
++pkgdir = \
++	$(GAIM_LIBDIR)/gaim
++
++GAYMSOURCES = \
++	roombrowse.c
++
++AM_CFLAGS = \
++	$(st)
++
++libroombrowse_la_LDFLAGS = \
++	-module \
++	-avoid-version \
++	$(GAIM_LIBS)
++
++pkg_LTLIBRARIES = \
++	libroombrowse.la
++
++libroombrowse_la_SOURCES = \
++	$(GAYMSOURCES)
++
++AM_CPPFLAGS = \
++	$(GAIM_CFLAGS) \
++	$(DEBUG_CFLAGS)
+
+Added: trunk/roombrowse/Makefile.mingw
+===================================================================
+--- trunk/roombrowse/Makefile.mingw	2005-06-09 04:11:38 UTC (rev 79)
++++ trunk/roombrowse/Makefile.mingw	2005-06-09 04:36:53 UTC (rev 80)
+@@ -0,0 +1,122 @@
++#
++# Makefile.mingw
++#
++# Description: Makefile for win32 (mingw) version of libgaym
++
++# Compiler Options
++
++CFLAGS =
++
++DEFINES =
++
++
++# Use -g flag when building debug version of Gaim (including plugins).
++# Use -fnative-struct instead of -mms-bitfields when using mingw 1.1
++# (gcc 2.95)
++CFLAGS += -O2 -Wall -mno-cygwin -mms-bitfields
++
++# If not specified, dlls are built with the default base address of 0x10000000.
++# When loaded into a process address space a dll will be rebased if its base
++# address colides with the base address of an existing dll.  To avoid rebasing
++# we do the following.  Rebasing can slow down the load time of dlls and it
++# also renders debug info useless.
++DLL_LD_FLAGS += -Wl,--enable-auto-image-base
++
++ifdef GAIM_TOP
++VERSION := $(shell cat $(GAIM_TOP)/VERSION)
++endif
++
++DEFINES +=      -DVERSION=\&quot;$(VERSION)\&quot; \
++                -DHAVE_CONFIG_H
++
++##
++## TARGET
++##
++
++TARGET = libgaym
++
++##
++## INCLUDE PATHS
++##
++
++INCLUDE_PATHS +=	-I$../ \
++			-I$(GTK_TOP)/include \
++			-I$(GTK_TOP)/include/gtk-2.0 \
++			-I$(GTK_TOP)/include/glib-2.0 \
++			-I$(GTK_TOP)/include/pango-1.0 \
++			-I$(GTK_TOP)/include/atk-1.0 \
++			-I$(GTK_TOP)/lib/glib-2.0/include \
++			-I$(GTK_TOP)/lib/gtk-2.0/include \
++			-I$(GAIM_TOP)/src \
++			-I$(GAIM_TOP)/src/win32 \
++			-I$(GAIM_TOP)
++
++
++LIB_PATHS =		-L$(GTK_TOP)/lib \
++			-L$(GAIM_TOP)/src
++
++
++##
++##  SOURCES, OBJECTS
++##
++
++C_SRC =			cmds.c \
++			dcc_send.c \
++			gaym.c \
++			gaympriv.c \
++			helpers.c \
++			msgs.c \
++			parse.c \
++			weblogin.c
++
++
++OBJECTS = $(C_SRC:%.c=%.o)
++
++
++##
++## LIBRARIES
++##
++
++LIBS =			-lgtk-win32-2.0 \
++			-lglib-2.0 \
++			-lgdk-win32-2.0 \
++			-lgmodule-2.0 \
++			-lgobject-2.0 \
++			-lws2_32 \
++			-lintl \
++			-lgaim
++
++
++##
++## RULES
++##
++
++# How to make a C file
++
++%.o: %.c
++	$(CC) $(CFLAGS) $(DEFINES) $(INCLUDE_PATHS) -o $@ -c $&lt;
++
++##
++## TARGET DEFINITIONS
++##
++
++.PHONY: all clean
++
++all: $(TARGET).dll
++
++
++##
++## BUILD DLL
++##
++
++$(TARGET).dll: $(OBJECTS)
++	$(CC) -shared $(OBJECTS) $(LIB_PATHS) $(LIBS) $(DLL_LD_FLAGS) -Wl,--out-implib,$(TARGET).lib -o $(TARGET).dll
++
++##
++## CLEAN RULES
++##
++
++clean:
++	-rm *.o
++	-rm $(TARGET).dll
++	-rm $(TARGET).lib
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000019.html">[Qrc-svn] r71 - gaym/trunk/src
+</A></li>
+	<LI>Next message: <A HREF="000021.html">[Qrc-svn] r81 - in trunk: . chatsort roombrowse
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#20">[ date ]</a>
+              <a href="thread.html#20">[ thread ]</a>
+              <a href="subject.html#20">[ subject ]</a>
+              <a href="author.html#20">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,1086 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r259 - in qrc/trunk: . gaym/src gaym-extras/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r259%20-%20in%20qrc/trunk%3A%20.%20gaym/src%20gaym-extras/src&In-Reply-To=%3C200507302219.j6UMJUpO031266%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000188.html">
+   <LINK REL="Next"  HREF="000190.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r259 - in qrc/trunk: . gaym/src gaym-extras/src</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r259%20-%20in%20qrc/trunk%3A%20.%20gaym/src%20gaym-extras/src&In-Reply-To=%3C200507302219.j6UMJUpO031266%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r259 - in qrc/trunk: . gaym/src gaym-extras/src">jblebrun at berlios.de
+       </A><BR>
+    <I>Sun Jul 31 00:19:30 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000188.html">[Qrc-svn] r258 - in qrc/trunk: . gaym-extras nsis
+</A></li>
+        <LI>Next message: <A HREF="000190.html">[Qrc-svn] r260 - in qrc/trunk: gaym/src gaym-extras/src nsis
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#189">[ date ]</a>
+              <a href="thread.html#189">[ thread ]</a>
+              <a href="subject.html#189">[ subject ]</a>
+              <a href="author.html#189">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-07-31 00:19:23 +0200 (Sun, 31 Jul 2005)
+New Revision: 259
+
+Added:
+   qrc/trunk/format
+Modified:
+   qrc/trunk/gaym-extras/src/bio-popups.c
+   qrc/trunk/gaym-extras/src/chaticon.c
+   qrc/trunk/gaym-extras/src/chatsort.c
+   qrc/trunk/gaym-extras/src/gaym-extras.c
+   qrc/trunk/gaym-extras/src/gaym-extras.h
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/gayminfo.c
+   qrc/trunk/gaym/src/helpers.c
+Log:
+Reformatted the code with indent.
+Added a small script to reformat all code.
+
+
+
+Added: qrc/trunk/format
+===================================================================
+--- qrc/trunk/format	2005-07-30 22:17:19 UTC (rev 258)
++++ qrc/trunk/format	2005-07-30 22:19:23 UTC (rev 259)
+@@ -0,0 +1,3 @@
++indent -kr -lc75 -fc1 -fca -nut gaym/src/*.[ch]
++indent -kr -lc75 -fc1 -fca -nut gaym-extras/src/*.[ch]
++indent -kr -lc75 -fc1 -fca -nut bot-challenger/*.[ch]
+
+
+Property changes on: qrc/trunk/format
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-30 22:17:19 UTC (rev 258)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-30 22:19:23 UTC (rev 259)
+@@ -535,7 +535,7 @@
+     gaym-&gt;confighash = gaym_properties_new(config_text);
+     g_return_if_fail(gaym-&gt;confighash != NULL);
+ 
+-    //synchronize_deny_list(gc, gaym-&gt;confighash);
++    // synchronize_deny_list(gc, gaym-&gt;confighash);
+ 
+     return;
+ }
+@@ -1549,7 +1549,7 @@
+     NULL,                                                 /**&lt; unload         */
+     NULL,                                                 /**&lt; destroy        */
+ 
+-    NULL,				                   /**&lt; ui_info        */
++    NULL,                                                  /**&lt; ui_info        */
+     &amp;prpl_info,                                           /**&lt; extra_info     */
+     &amp;prefs_info,
+     gaym_actions
+@@ -1595,9 +1595,9 @@
+                                         GAIM_SUBTYPE_ACCOUNT),
+                          gaim_value_new(GAIM_TYPE_POINTER,
+                                         GAIM_TYPE_CHAR));
+-    
+-    
+ 
++
++
+     gaim_prefs_add_none(&quot;/plugins/prpl/gaym&quot;);
+     gaim_prefs_add_int(&quot;/plugins/prpl/gaym/chat_room_instances&quot;, 4);
+     gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/show_join&quot;, TRUE);
+
+Modified: qrc/trunk/gaym/src/gayminfo.c
+===================================================================
+--- qrc/trunk/gaym/src/gayminfo.c	2005-07-30 22:17:19 UTC (rev 258)
++++ qrc/trunk/gaym/src/gayminfo.c	2005-07-30 22:19:23 UTC (rev 259)
+@@ -120,24 +120,27 @@
+     if (!pic_data) {
+         return;
+     }
+-    
++
+     if (len &amp;&amp; !g_strrstr_len(pic_data, len, &quot;Server Error&quot;)) {
+-        char *dir = g_build_filename(gaim_user_dir(), &quot;icons&quot;, &quot;gaym&quot;, d-&gt;who, NULL);
++        char *dir =
++            g_build_filename(gaim_user_dir(), &quot;icons&quot;, &quot;gaym&quot;, d-&gt;who,
++                             NULL);
+         char *filename = g_strdup(d-&gt;filename);
+         char *path = g_build_filename(dir, filename, NULL);
+-	gaim_debug_misc(&quot;gayminfo&quot;,&quot;dir: %s\n&quot;,dir);
+-	gaim_debug_misc(&quot;gayminfo&quot;,&quot;filename: %s\n&quot;,filename);
+-	gaim_debug_misc(&quot;gayminfo&quot;,&quot;path: %s\n&quot;,path);
+-	if(!g_file_test(dir, G_FILE_TEST_EXISTS))
++        gaim_debug_misc(&quot;gayminfo&quot;, &quot;dir: %s\n&quot;, dir);
++        gaim_debug_misc(&quot;gayminfo&quot;, &quot;filename: %s\n&quot;, filename);
++        gaim_debug_misc(&quot;gayminfo&quot;, &quot;path: %s\n&quot;, path);
++        if (!g_file_test(dir, G_FILE_TEST_EXISTS))
+             gaim_build_dir(dir, S_IRUSR | S_IWUSR | S_IXUSR);
+-	
+-	if(path &amp;&amp; !g_file_test(path, G_FILE_TEST_EXISTS)) {
++
++        if (path &amp;&amp; !g_file_test(path, G_FILE_TEST_EXISTS)) {
+             FILE *file;
+             if ((file = g_fopen(path, &quot;wb&quot;))) {
+                 fwrite(pic_data, 1, len, file);
+                 fclose(file);
+             } else {
+-                gaim_debug_misc(&quot;fetch_thumbnail_cb&quot;, &quot;Couldn't write file\n&quot;);
++                gaim_debug_misc(&quot;fetch_thumbnail_cb&quot;,
++                                &quot;Couldn't write file\n&quot;);
+             }
+             g_free(filename);
+             g_free(path);
+@@ -147,12 +150,12 @@
+     if (GAIM_CONNECTION_IS_VALID(d-&gt;gc) &amp;&amp; len) {
+         gaim_signal_emit(gaim_accounts_get_handle(), &quot;info-updated&quot;,
+                          d-&gt;gc, NULL, d-&gt;who);
+-        if(gaim_find_conversation_with_account(d-&gt;who, d-&gt;gc-&gt;account)) 
+-	{
+-	   gaim_buddy_icons_set_for_user(gaim_connection_get_account(d-&gt;gc),
+-                                      d-&gt;who, (void *) pic_data, len);
+-	}
+-	   
++        if (gaim_find_conversation_with_account(d-&gt;who, d-&gt;gc-&gt;account)) {
++            gaim_buddy_icons_set_for_user(gaim_connection_get_account
++                                          (d-&gt;gc), d-&gt;who,
++                                          (void *) pic_data, len);
++        }
++
+     } else {
+         gaim_debug_error(&quot;gaym&quot;, &quot;Fetching buddy icon failed.\n&quot;);
+     }
+@@ -200,51 +203,62 @@
+     struct gaym_buddy *ib = g_hash_table_lookup(gaym-&gt;buddies, name);
+ 
+     char *normalized = g_strdup(gaim_normalize(gaym-&gt;account, name));
+-    
++
+     if (thumbnail) {
+-	gboolean do_fetch=1;
+-	GError* err=NULL;
++        gboolean do_fetch = 1;
++        GError *err = NULL;
+         if (!ib || gaim_utf8_strcasecmp(thumbnail, ib-&gt;thumbnail)) {
+-	    char* dirname=g_build_filename(gaim_user_dir(), &quot;icons&quot;, &quot;gaym&quot;, gaim_normalize(gaym-&gt;account,name), NULL);
+-	    GDir* gdir=g_dir_open(dirname, 0 , &amp;err);
+-	    if(gdir)
+-	    {
+-	        const char* filename;
+-		
+-	        while((filename=g_dir_read_name(gdir))) //don't free filename: owned by glib.
+-		{
+-		    char* thumbnail_base=g_path_get_basename(thumbnail);
+-		    gaim_debug_misc(&quot;gaym&quot;,&quot;compared %s and %s\n&quot;,thumbnail_base, filename);
+-		    if(!gaim_utf8_strcasecmp(thumbnail_base, filename))
+-		    {
+-			do_fetch=0;
+-			break;
+-		    }
+-		    g_free(thumbnail_base);
+-		}	
+-	    }
+-	    if(do_fetch) {
+-		
+-		gaim_debug_misc(&quot;gaym&quot;,&quot;********************************************\n&quot;);
+-		gaim_debug_misc(&quot;gaym&quot;,&quot;*****************FETCH**********************\n&quot;);
+-		gaim_debug_misc(&quot;gaym&quot;,&quot;********************************************\n&quot;);
+-		char *hashurl = NULL;
+-		hashurl =
+-		    g_hash_table_lookup(gaym-&gt;confighash,
+-					&quot;mini-profile-panel.thumbnail-prefix&quot;);
+-		g_return_if_fail(hashurl != NULL);
+-		data = g_new0(struct gaym_fetch_thumbnail_data, 1);
+-		data-&gt;gc = gaim_account_get_connection(gaym-&gt;account);
+-		data-&gt;who = g_strdup(gaim_normalize(gaym-&gt;account,name));
+-		data-&gt;filename=g_strdup(g_strrstr(thumbnail, &quot;/&quot;));
+-		gaim_debug_misc(&quot;gayminfo&quot;,&quot;Found filename: %s\n&quot;,data-&gt;filename);
+-		url = g_strdup_printf(&quot;%s%s&quot;, hashurl, thumbnail);
+-		gaim_url_fetch(url, FALSE, &quot;Mozilla/4.0&quot;, FALSE,
+-			       gaym_fetch_thumbnail_cb, data);
+-		g_free(url);
+-	    }
+-    
+-	}
++            char *dirname =
++                g_build_filename(gaim_user_dir(), &quot;icons&quot;, &quot;gaym&quot;,
++                                 gaim_normalize(gaym-&gt;account, name),
++                                 NULL);
++            GDir *gdir = g_dir_open(dirname, 0, &amp;err);
++            if (gdir) {
++                const char *filename;
++
++                while ((filename = g_dir_read_name(gdir)))      // don't
++                    // free
++                    // filename: 
++                    // owned
++                    // by
++                    // glib.
++                {
++                    char *thumbnail_base = g_path_get_basename(thumbnail);
++                    gaim_debug_misc(&quot;gaym&quot;, &quot;compared %s and %s\n&quot;,
++                                    thumbnail_base, filename);
++                    if (!gaim_utf8_strcasecmp(thumbnail_base, filename)) {
++                        do_fetch = 0;
++                        break;
++                    }
++                    g_free(thumbnail_base);
++                }
++            }
++            if (do_fetch) {
++
++                gaim_debug_misc(&quot;gaym&quot;,
++                                &quot;********************************************\n&quot;);
++                gaim_debug_misc(&quot;gaym&quot;,
++                                &quot;*****************FETCH**********************\n&quot;);
++                gaim_debug_misc(&quot;gaym&quot;,
++                                &quot;********************************************\n&quot;);
++                char *hashurl = NULL;
++                hashurl =
++                    g_hash_table_lookup(gaym-&gt;confighash,
++                                        &quot;mini-profile-panel.thumbnail-prefix&quot;);
++                g_return_if_fail(hashurl != NULL);
++                data = g_new0(struct gaym_fetch_thumbnail_data, 1);
++                data-&gt;gc = gaim_account_get_connection(gaym-&gt;account);
++                data-&gt;who = g_strdup(gaim_normalize(gaym-&gt;account, name));
++                data-&gt;filename = g_strdup(g_strrstr(thumbnail, &quot;/&quot;));
++                gaim_debug_misc(&quot;gayminfo&quot;, &quot;Found filename: %s\n&quot;,
++                                data-&gt;filename);
++                url = g_strdup_printf(&quot;%s%s&quot;, hashurl, thumbnail);
++                gaim_url_fetch(url, FALSE, &quot;Mozilla/4.0&quot;, FALSE,
++                               gaym_fetch_thumbnail_cb, data);
++                g_free(url);
++            }
++
++        }
+     }
+ 
+     g_free(normalized);
+
+Modified: qrc/trunk/gaym/src/helpers.c
+===================================================================
+--- qrc/trunk/gaym/src/helpers.c	2005-07-30 22:17:19 UTC (rev 258)
++++ qrc/trunk/gaym/src/helpers.c	2005-07-30 22:19:23 UTC (rev 259)
+@@ -205,27 +205,25 @@
+ 
+ void replace_dollar_n(gpointer key, gpointer value, gpointer user_data)
+ {
+- 
++
+     /**
+      * replace $[0-9] with %s, so we can use printf style
+      * processing with the provided property values
+      */
+-    gchar* pos=(gchar*)value;
+-    while((pos=(strchr(pos, '$'))))
+-    {
+-	pos++;
+-	if(g_ascii_isdigit(*pos))
+-	{
+-		*pos='s';
+-		*(pos-1)='%';
+-		
+-	}
++    gchar *pos = (gchar *) value;
++    while ((pos = (strchr(pos, '$')))) {
++        pos++;
++        if (g_ascii_isdigit(*pos)) {
++            *pos = 's';
++            *(pos - 1) = '%';
++
++        }
+     }
+ }
+ 
+ GHashTable *gaym_properties_new(const gchar * str)
+ {
+-    
++
+     gchar *tmpstr = NULL;
+     gchar **tmparr = NULL;
+     gchar **proparr = NULL;
+@@ -242,19 +240,18 @@
+     /**
+      * strip out continuation character followed by newline 
+      */
+-    //tmparr = g_strsplit(tmpstr, &quot;\\\n&quot;, -1);
+-    //g_free(tmpstr);
+-    //tmpstr = g_strjoinv(NULL, tmparr);
+-    //g_strfreev(tmparr);
++    // tmparr = g_strsplit(tmpstr, &quot;\\\n&quot;, -1);
++    // g_free(tmpstr);
++    // tmpstr = g_strjoinv(NULL, tmparr);
++    // g_strfreev(tmparr);
+     /**
+      * Since the properties get stripped of spaces later,
+      * just replace \\\n with &lt;space&gt;\n in-place, for speed.
+      * */
+-    char* pos=tmpstr;
+-    while((pos=g_strrstr(pos, &quot;\\\n&quot;)))
+-    {
+-	*pos=' ';
+-	*(pos+1)=' ';
++    char *pos = tmpstr;
++    while ((pos = g_strrstr(pos, &quot;\\\n&quot;))) {
++        *pos = ' ';
++        *(pos + 1) = ' ';
+     }
+     /**
+      * We're getting close.  Now we need an array as follows:
+@@ -291,12 +288,12 @@
+         proparr = g_strsplit(tmparr[i], &quot;=&quot;, 2);
+         if (proparr[0] &amp;&amp; strlen(g_strstrip(proparr[0])) &gt; 0
+             &amp;&amp; proparr[1] &amp;&amp; strlen(g_strstrip(proparr[1])) &gt; 0) {
+-            
+-		g_hash_table_insert(props, g_strdup(proparr[0]),
++
++            g_hash_table_insert(props, g_strdup(proparr[0]),
+                                 g_strdup(proparr[1]));
+-	    
++
+         }
+-	g_strfreev(proparr);
++        g_strfreev(proparr);
+     }
+ 
+     g_strfreev(tmparr);
+@@ -460,8 +457,8 @@
+ char *build_tooltip_text(struct gaym_buddy *ib)
+ {
+     char *escaped;
+-     GString *tooltip = g_string_new(&quot;&quot;);
+-    g_string_printf(tooltip, &quot;&lt;b&gt;&lt;i&gt;%s&lt;/i&gt;&lt;/b&gt;&quot;,ib-&gt;name);
++    GString *tooltip = g_string_new(&quot;&quot;);
++    g_string_printf(tooltip, &quot;&lt;b&gt;&lt;i&gt;%s&lt;/i&gt;&lt;/b&gt;&quot;, ib-&gt;name);
+ 
+     g_return_val_if_fail(ib != NULL, NULL);
+ 
+@@ -495,9 +492,8 @@
+     if (tooltip-&gt;len == 0) {
+         g_string_append_printf(tooltip, _(&quot; No info.&quot;));
+     }
++    // g_string_erase(tooltip, 0, 1);
+ 
+-    //g_string_erase(tooltip, 0, 1);
+-
+     return g_string_free(tooltip, FALSE);
+ }
+ 
+
+Modified: qrc/trunk/gaym-extras/src/bio-popups.c
+===================================================================
+--- qrc/trunk/gaym-extras/src/bio-popups.c	2005-07-30 22:17:19 UTC (rev 258)
++++ qrc/trunk/gaym-extras/src/bio-popups.c	2005-07-30 22:19:23 UTC (rev 259)
+@@ -6,8 +6,8 @@
+ void clean_popup_stuff(GaimConversation * c)
+ {
+ 
+-    if (!g_strrstr(gaim_account_get_protocol_id(c-&gt;account),&quot;prpl-gaym&quot;))
+-	    return;
++    if (!g_strrstr(gaim_account_get_protocol_id(c-&gt;account), &quot;prpl-gaym&quot;))
++        return;
+     GaimGtkConversation *gtkconv = GAIM_GTK_CONVERSATION(c);
+     if (c-&gt;type == GAIM_CONV_IM) {
+         g_hash_table_remove(popup_timeouts, gtkconv-&gt;tab_label);
+@@ -41,11 +41,11 @@
+                                GdkEventExpose * event, gpointer data)
+ {
+     g_return_if_fail(data);
+-	
+-    char *tooltiptext= ((struct paint_data *) data)-&gt;tooltiptext;
+-    GdkPixbuf* pixbuf = ((struct paint_data *)data)-&gt;pixbuf;
+-    GtkStyle *style=NULL;
+-        
++
++    char *tooltiptext = ((struct paint_data *) data)-&gt;tooltiptext;
++    GdkPixbuf *pixbuf = ((struct paint_data *) data)-&gt;pixbuf;
++    GtkStyle *style = NULL;
++
+     PangoLayout *layout;
+ 
+     layout = gtk_widget_create_pango_layout(tipwindow, NULL);
+@@ -69,7 +69,8 @@
+ #endif
+ 
+     gtk_paint_layout(style, tipwindow-&gt;window, GTK_STATE_NORMAL, TRUE,
+-                     NULL, tipwindow, &quot;tooltip&quot;, gdk_pixbuf_get_width(pixbuf)+9, 4, layout);
++                     NULL, tipwindow, &quot;tooltip&quot;,
++                     gdk_pixbuf_get_width(pixbuf) + 9, 4, layout);
+ 
+     g_object_unref(pixbuf);
+     g_object_unref(layout);
+@@ -78,31 +79,33 @@
+ 
+     return;
+ }
+-GdkPixbuf* lookup_cached_thumbnail(GaimAccount* account, const char*fullname) {
+-    GDir* gdir=NULL;
+-    GError* err=NULL;
+-    GdkPixbuf *pixbuf=NULL;
+-    const char *filename=NULL;
+-    char* dirname=NULL;
+-    char* path=NULL;
+-    const char* name= gaim_normalize(account, fullname);
+-    dirname=g_build_filename(gaim_user_dir(), &quot;icons&quot;, &quot;gaym&quot;, name, NULL);
+-    if(dirname) 
+-    {
+-	gdir=g_dir_open(dirname, 0 , &amp;err);
+-	if(gdir)
+-	{
+-	    filename=g_dir_read_name(gdir); //don't free filename: owned by glib.
+-	    if(filename)
+-	    {	
+-		path=g_build_filename(dirname,filename,NULL);
+-		if(path)
+-		    pixbuf=gdk_pixbuf_new_from_file(path, &amp;err);
+-		    g_free(path);
+-	    }
+-	    g_free(gdir);
+-	}
+-	g_free(dirname);
++
++GdkPixbuf *lookup_cached_thumbnail(GaimAccount * account,
++                                   const char *fullname)
++{
++    GDir *gdir = NULL;
++    GError *err = NULL;
++    GdkPixbuf *pixbuf = NULL;
++    const char *filename = NULL;
++    char *dirname = NULL;
++    char *path = NULL;
++    const char *name = gaim_normalize(account, fullname);
++    dirname =
++        g_build_filename(gaim_user_dir(), &quot;icons&quot;, &quot;gaym&quot;, name, NULL);
++    if (dirname) {
++        gdir = g_dir_open(dirname, 0, &amp;err);
++        if (gdir) {
++            filename = g_dir_read_name(gdir);   // don't free filename:
++                                                // owned by glib.
++            if (filename) {
++                path = g_build_filename(dirname, filename, NULL);
++                if (path)
++                    pixbuf = gdk_pixbuf_new_from_file(path, &amp;err);
++                g_free(path);
++            }
++            g_free(gdir);
++        }
++        g_free(dirname);
+     }
+     return pixbuf;
+ }
+@@ -125,11 +128,11 @@
+ 
+     GaymTooltipType type = data-&gt;type;
+     GaimAccount *account = data-&gt;account;
+-    GaimPluginProtocolInfo *prpl_info= 
+-	GAIM_PLUGIN_PROTOCOL_INFO(
+-		gaim_find_prpl(gaim_account_get_protocol_id(account)));
+-    
++    GaimPluginProtocolInfo *prpl_info =
++        GAIM_PLUGIN_PROTOCOL_INFO(gaim_find_prpl
++                                  (gaim_account_get_protocol_id(account)));
+ 
++
+     timeout = (guint *) g_hash_table_lookup(popup_timeouts, tv);
+     /* we check to see if we're still supposed to be moving, now that gtk
+        events have happened, and the mouse might not still be in the buddy 
+@@ -159,10 +162,10 @@
+         name = gtk_label_get_text(GTK_LABEL(tv));
+     } else
+         return FALSE;
+-    
+-    	
+ 
+ 
++
++
+     GaimBuddy *gb = g_new0(GaimBuddy, 1);
+     gb-&gt;name = g_strdup(name);
+     gb-&gt;account = account;
+@@ -170,10 +173,10 @@
+     g_free(gb-&gt;name);
+     g_free(gb);
+ 
+-    if (!tooltiptext) 
++    if (!tooltiptext)
+         return FALSE;
+ 
+-    
++
+     g_return_val_if_fail(tooltiptext != NULL, FALSE);
+ 
+     tipwindow = g_hash_table_lookup(popups, tv);
+@@ -219,11 +222,12 @@
+     w = PANGO_PIXELS(w) + 8;
+     h = PANGO_PIXELS(h) + 8;
+ 
+-    /* For the width, set it to the text width, plus 13 for 4 pixels on each side and 5 between icon/text.
+-     * For height, the greater of the text height and the icon height, plus 8 (4 for each buffer on top and bottom).
+-     */
++    /* For the width, set it to the text width, plus 13 for 4 pixels on
++       each side and 5 between icon/text. For height, the greater of the
++       text height and the icon height, plus 8 (4 for each buffer on top
++       and bottom). */
+     w = w + gdk_pixbuf_get_width(pdata-&gt;pixbuf) + 4;
+-    h = MAX(h, gdk_pixbuf_get_height(pdata-&gt;pixbuf)+8);
++    h = MAX(h, gdk_pixbuf_get_height(pdata-&gt;pixbuf) + 8);
+ 
+ #if GTK_CHECK_VERSION(2,2,0)
+     if (w &gt; mon_size.width)
+@@ -325,15 +329,15 @@
+ static void tab_leave_cb(GtkWidget * event, GdkEventCrossing * e,
+                          gpointer conv)
+ {
+-    
++
+     GaimConversation *c = (GaimConversation *) conv;
+-   
++
+     GaimGtkConversation *gtkconv = GAIM_GTK_CONVERSATION(c);
+     // Prevent clicks from demolishing popup.
+     if (e-&gt;mode != GDK_CROSSING_NORMAL)
+         return;
+     GtkWidget *tab = gtkconv-&gt;tab_label;
+-  
++
+     guint *timeout = g_hash_table_lookup(popup_timeouts, tab);
+     g_hash_table_remove(popups, tab);
+ 
+@@ -345,14 +349,14 @@
+ }
+ 
+ 
+-static gboolean tab_entry_cb(GtkWidget *event,
++static gboolean tab_entry_cb(GtkWidget * event,
+                              GdkEventCrossing * crossing, gpointer conv)
+ {
+ 
+     guint *timeout;
+     guint delay;
+     GaimConversation *c = (GaimConversation *) conv;
+-    GaimAccount *account = gaim_conversation_get_account(c); 
++    GaimAccount *account = gaim_conversation_get_account(c);
+     GaimGtkConversation *gtkconv = GAIM_GTK_CONVERSATION(c);
+ 
+     GtkWidget *tab = gtkconv-&gt;tab_label;
+@@ -407,21 +411,23 @@
+     GaimGtkConversation *gtkconv = GAIM_GTK_CONVERSATION(c);
+     GtkWidget *event = gtk_event_box_new();
+     GtkWidget *hbox = gtk_hbox_new(FALSE, 6);
+-    
++
+     gtk_widget_ref(gtkconv-&gt;icon);
+     gtk_container_remove(GTK_CONTAINER(gtkconv-&gt;tabby),
+                          GTK_WIDGET(gtkconv-&gt;icon));
+-    gtk_box_pack_start(GTK_BOX(hbox), GTK_WIDGET(gtkconv-&gt;icon), FALSE, FALSE, 0);
++    gtk_box_pack_start(GTK_BOX(hbox), GTK_WIDGET(gtkconv-&gt;icon), FALSE,
++                       FALSE, 0);
+     gtk_widget_ref(gtkconv-&gt;icon);
+     gtk_widget_unref(gtkconv-&gt;icon);
+ 
+     gtk_widget_ref(gtkconv-&gt;tab_label);
+     gtk_container_remove(GTK_CONTAINER(gtkconv-&gt;tabby),
+                          GTK_WIDGET(gtkconv-&gt;tab_label));
+-    gtk_box_pack_start(GTK_BOX(hbox), GTK_WIDGET(gtkconv-&gt;tab_label), TRUE, TRUE, 0);
++    gtk_box_pack_start(GTK_BOX(hbox), GTK_WIDGET(gtkconv-&gt;tab_label), TRUE,
++                       TRUE, 0);
+     gtk_widget_unref(gtkconv-&gt;tab_label);
+-    
+-        
++
++
+     gtk_widget_add_events(event,
+                           GDK_ENTER_NOTIFY_MASK | GDK_LEAVE_NOTIFY_MASK);
+     g_signal_connect(G_OBJECT(event), &quot;enter-notify-event&quot;,
+@@ -434,8 +440,7 @@
+     gtk_widget_show(GTK_WIDGET(event));
+     gtk_widget_show(GTK_WIDGET(hbox));
+     gtk_event_box_set_visible_window(GTK_EVENT_BOX(event), FALSE);
+-    gtk_container_add(GTK_CONTAINER(event),
+-                      GTK_WIDGET(hbox));
++    gtk_container_add(GTK_CONTAINER(event), GTK_WIDGET(hbox));
+     g_hash_table_insert(popup_timeouts, gtkconv-&gt;tab_label,
+                         g_new0(guint, 1));
+ }
+
+Modified: qrc/trunk/gaym-extras/src/chaticon.c
+===================================================================
+--- qrc/trunk/gaym-extras/src/chaticon.c	2005-07-30 22:17:19 UTC (rev 258)
++++ qrc/trunk/gaym-extras/src/chaticon.c	2005-07-30 22:19:23 UTC (rev 259)
+@@ -1,11 +1,11 @@
+ #include &quot;gaym-extras.h&quot;
+ GHashTable *icons;
+ void get_icon_scale_size(GdkPixbuf * icon, GaimBuddyIconSpec * spec,
+-                    int *width, int *height)
++                         int *width, int *height)
+ {
+     *width = gdk_pixbuf_get_width(icon);
+     *height = gdk_pixbuf_get_height(icon);
+-    gaim_debug_misc(&quot;popups&quot;,&quot;current: w: %i, h: %i\n&quot;, *width,*height);
++    gaim_debug_misc(&quot;popups&quot;, &quot;current: w: %i, h: %i\n&quot;, *width, *height);
+     /* this should eventually get smarter about preserving the aspect
+        ratio when scaling, but gimmie a break, I just woke up */
+     if (spec &amp;&amp; spec-&gt;scale_rules &amp; GAIM_ICON_SCALE_DISPLAY) {
+@@ -25,18 +25,17 @@
+         *width = 100;
+     if (*height &gt; 100)
+         *height = 100;
+-    gaim_debug_misc(&quot;popups&quot;,&quot;scaled: w: %i, h: %i\n&quot;, *width,*height);
++    gaim_debug_misc(&quot;popups&quot;, &quot;scaled: w: %i, h: %i\n&quot;, *width, *height);
+ }
+ 
+-void gaym_update_thumbnail(GaimConversation * conv, GdkPixbuf* pixbuf) 
++void gaym_update_thumbnail(GaimConversation * conv, GdkPixbuf * pixbuf)
+ {
+     GaimGtkConversation *gtkconv;
+ 
+     GdkPixbuf *scale;
+-    GdkPixmap *pm=NULL;
+-    GdkBitmap *bm=NULL;
+-    int scale_width=0, 
+-	scale_height=0;
++    GdkPixmap *pm = NULL;
++    GdkBitmap *bm = NULL;
++    int scale_width = 0, scale_height = 0;
+ 
+ 
+     GaimAccount *account;
+@@ -68,13 +67,14 @@
+     get_icon_scale_size(pixbuf,
+                         prpl_info ? &amp;prpl_info-&gt;icon_spec : NULL,
+                         &amp;scale_width, &amp;scale_height);
+-    //double aspect=(double)gdk_pixbuf_get_width(pixbuf)/(double)gdk_pixbuf_get_height(pixbuf); 
++    // double
++    // aspect=(double)gdk_pixbuf_get_width(pixbuf)/(double)gdk_pixbuf_get_height(pixbuf); 
++    // 
+ 
+     scale =
+         gdk_pixbuf_scale_simple(pixbuf,
+                                 scale_width,
+-                                scale_height,
+-                                GDK_INTERP_BILINEAR);
++                                scale_height, GDK_INTERP_BILINEAR);
+ 
+     gdk_pixbuf_render_pixmap_and_mask(scale, &amp;pm, &amp;bm, 100);
+     g_object_unref(G_OBJECT(scale));
+@@ -82,17 +82,16 @@
+ 
+     icon_data-&gt;event = gtk_event_box_new();
+     gtk_container_add(GTK_CONTAINER(icon_data-&gt;frame), icon_data-&gt;event);
+-    gtk_widget_set_size_request(GTK_WIDGET(icon_data-&gt;frame), 57,
+-                                77);
++    gtk_widget_set_size_request(GTK_WIDGET(icon_data-&gt;frame), 57, 77);
+ 
+-    //g_signal_connect(G_OBJECT(icon_data-&gt;event), &quot;button-press-event&quot;,
+-    //G_CALLBACK(icon_menu), conv);
++    // g_signal_connect(G_OBJECT(icon_data-&gt;event), &quot;button-press-event&quot;,
++    // G_CALLBACK(icon_menu), conv);
+     gtk_widget_show(icon_data-&gt;event);
+     icon_data-&gt;icon = gtk_image_new_from_pixmap(pm, bm);
+     gtk_container_add(GTK_CONTAINER(icon_data-&gt;event), icon_data-&gt;icon);
+     gtk_widget_show(icon_data-&gt;icon);
+ 
+-    if(pm)
++    if (pm)
+         g_object_unref(G_OBJECT(pm));
+ 
+     if (bm)
+@@ -111,8 +110,8 @@
+     GaimConversation *c = (GaimConversation *) conv;
+ 
+     GtkTreeIter iter;
+-    GtkTreeModel *model=NULL;
+-    GdkPixbuf *pixbuf=NULL;
++    GtkTreeModel *model = NULL;
++    GdkPixbuf *pixbuf = NULL;
+     gchar *name;
+ 
+     if (!gtk_tree_selection_get_selected(selection, &amp;model, &amp;iter))
+@@ -128,11 +127,11 @@
+ 
+     gtk_widget_grab_focus(GTK_WIDGET(model)-&gt;parent);
+ 
+-    pixbuf=lookup_cached_thumbnail(c-&gt;account, name);
+- 
+-    if(pixbuf)
+-	gaym_update_thumbnail(c, pixbuf);
+-    
++    pixbuf = lookup_cached_thumbnail(c-&gt;account, name);
++
++    if (pixbuf)
++        gaym_update_thumbnail(c, pixbuf);
++
+     g_object_unref(pixbuf);
+     return;
+ 
+@@ -169,9 +168,8 @@
+     icon_data-&gt;show_icon = TRUE;
+     icon_data-&gt;icon_container = gtk_vbox_new(FALSE, 0);
+ 
+-    gtk_widget_set_size_request(GTK_WIDGET(icon_data-&gt;icon_container),
+-                                57,77);//prpl_info-&gt;icon_spec.max_width,
+-                                //prpl_info-&gt;icon_spec.max_height);
++    gtk_widget_set_size_request(GTK_WIDGET(icon_data-&gt;icon_container), 57, 77); // prpl_info-&gt;icon_spec.max_width,
++    // prpl_info-&gt;icon_spec.max_height);
+ 
+ 
+     icon_data-&gt;frame = gtk_frame_new(NULL);
+
+Modified: qrc/trunk/gaym-extras/src/chatsort.c
+===================================================================
+--- qrc/trunk/gaym-extras/src/chatsort.c	2005-07-30 22:17:19 UTC (rev 258)
++++ qrc/trunk/gaym-extras/src/chatsort.c	2005-07-30 22:19:23 UTC (rev 259)
+@@ -53,7 +53,7 @@
+ 
+ static gint
+ sort_chat_users_by_pic(GtkTreeModel * model, GtkTreeIter * a,
+-                            GtkTreeIter * b, gpointer userdata)
++                       GtkTreeIter * b, gpointer userdata)
+ {
+     GaimConvChatBuddyFlags f1 = 0, f2 = 0;
+     gint flag_mask = 0x000F;
+@@ -84,60 +84,62 @@
+ }
+ 
+ 
+-static struct gaym_sort_orders
+-{
+-	const char* icon;
+-	void* sort_funcion;
+-	const char* tooltip;
+-} const order[] =
+-    
+-{ 
+-	{GAYM_STOCK_ENTRY, sort_chat_users_by_entry, _(&quot;Current sorting by entry&quot;) },
+-	{GAYM_STOCK_ALPHA, sort_chat_users_by_alpha, _(&quot;Current sorting by alpha&quot;) },
+-	{GAYM_STOCK_PIC, sort_chat_users_by_pic, _(&quot;Current sorting by pic&quot;) }
++static struct gaym_sort_orders {
++    const char *icon;
++    void *sort_funcion;
++    const char *tooltip;
++} const order[] = {
++    {GAYM_STOCK_ENTRY, sort_chat_users_by_entry,
++     _(&quot;Current sorting by entry&quot;)},
++    {GAYM_STOCK_ALPHA, sort_chat_users_by_alpha,
++     _(&quot;Current sorting by alpha&quot;)},
++    {GAYM_STOCK_PIC, sort_chat_users_by_pic, _(&quot;Current sorting by pic&quot;)}
+ };
+ 
+-   
++
+ void change_sort_order(GtkWidget * button, void *data)
+ {
+-   
+-    static int current=0;
+-    current=(current+1)%G_N_ELEMENTS(order);
++
++    static int current = 0;
++    current = (current + 1) % G_N_ELEMENTS(order);
+     GaimGtkConversation *gtkconv = (GaimGtkConversation *) data;
+     GaimGtkChatPane *gtkchat = gtkconv-&gt;u.chat;
+-    GtkTreeModel *model = gtk_tree_view_get_model(GTK_TREE_VIEW(gtkchat-&gt;list));
+-    
+-    GtkBox* buttonbox = GTK_BOX(button-&gt;parent);
++    GtkTreeModel *model =
++        gtk_tree_view_get_model(GTK_TREE_VIEW(gtkchat-&gt;list));
++
++    GtkBox *buttonbox = GTK_BOX(button-&gt;parent);
+     gtk_widget_destroy(button);
+-    button = GTK_WIDGET(gaim_gtkconv_button_new(order[current].icon, 
+-						NULL,//_(&quot;E&quot;), 
+-						order[current].tooltip, 
+-						gtkconv-&gt;tooltips, 
+-						change_sort_order, 
+-						gtkconv));
++    button = GTK_WIDGET(gaim_gtkconv_button_new(order[current].icon, NULL,      // _(&quot;E&quot;), 
++                                                                                // 
++                                                order[current].tooltip,
++                                                gtkconv-&gt;tooltips,
++                                                change_sort_order,
++                                                gtkconv));
+     gtk_box_pack_end(buttonbox, button, FALSE, FALSE, 0);
+     gtk_widget_show(button);
+     gtk_tree_sortable_set_sort_func(GTK_TREE_SORTABLE(model),
+-                                        CHAT_USERS_NAME_COLUMN,
+-                                        order[current].sort_funcion, NULL,
+-                                        NULL);
++                                    CHAT_USERS_NAME_COLUMN,
++                                    order[current].sort_funcion, NULL,
++                                    NULL);
+ 
+ 
+ 
+ }
++
+ void add_chat_sort_functions(GaimConversation * c)
+ {
+ 
+     GaimGtkConversation *gtkconv = GAIM_GTK_CONVERSATION(c);
+ 
+     GtkBox *iconbox = (GtkBox *) gtkconv-&gt;info-&gt;parent;
+-    //    GtkWidget *button = gtk_button_new_with_label(&quot;E&quot;);
+-    GtkWidget *button = gaim_gtkconv_button_new(GAYM_STOCK_ENTRY, 
+-						NULL,//_(&quot;E&quot;), 
+-						_(&quot;Currently sorting by entry&quot;), 
+-						gtkconv-&gt;tooltips, 
+-						change_sort_order, 
+-						gtkconv);
++    // GtkWidget *button = gtk_button_new_with_label(&quot;E&quot;);
++    GtkWidget *button = gaim_gtkconv_button_new(GAYM_STOCK_ENTRY,
++                                                NULL,   // _(&quot;E&quot;), 
++                                                _
++                                                (&quot;Currently sorting by entry&quot;),
++                                                gtkconv-&gt;tooltips,
++                                                change_sort_order,
++                                                gtkconv);
+     gtk_box_pack_end(iconbox, button, FALSE, FALSE, 0);
+     gtk_widget_show(button);
+ 
+
+Modified: qrc/trunk/gaym-extras/src/gaym-extras.c
+===================================================================
+--- qrc/trunk/gaym-extras/src/gaym-extras.c	2005-07-30 22:17:19 UTC (rev 258)
++++ qrc/trunk/gaym-extras/src/gaym-extras.c	2005-07-30 22:19:23 UTC (rev 259)
+@@ -5,8 +5,8 @@
+ // Adds motion handlers to IM tab labels.
+ static void redo_im_window(GaimConversation * c)
+ {
+-    if (!g_strrstr(gaim_account_get_protocol_id(c-&gt;account),&quot;prpl-gaym&quot;))
+-	    return;
++    if (!g_strrstr(gaim_account_get_protocol_id(c-&gt;account), &quot;prpl-gaym&quot;))
++        return;
+     if (c &amp;&amp; c-&gt;type == GAIM_CONV_IM)
+         add_im_popup_stuff(c);
+ }
+@@ -14,78 +14,77 @@
+ 
+ static void update_info_cb(GaimAccount * account, char *name)
+ {
+-    if (!g_strrstr(gaim_account_get_protocol_id(account),&quot;prpl-gaym&quot;))
+-	    return;
++    if (!g_strrstr(gaim_account_get_protocol_id(account), &quot;prpl-gaym&quot;))
++        return;
+     gaim_debug_misc(&quot;gaym-extras&quot;, &quot;info update\n&quot;);
+ }
+ 
+ static void redochatwindow(GaimConversation * c)
+ {
+-    if (!g_strrstr(gaim_account_get_protocol_id(c-&gt;account),&quot;prpl-gaym&quot;))
+-	    return;
++    if (!g_strrstr(gaim_account_get_protocol_id(c-&gt;account), &quot;prpl-gaym&quot;))
++        return;
+     add_chat_sort_functions(c);
+     add_chat_popup_stuff(c);
+     add_chat_icon_stuff(c);
+ }
+-static gchar *
+-find_file(const char *dir, const char *base)
++static gchar *find_file(const char *dir, const char *base)
+ {
+-	char *filename;
++    char *filename;
+ 
+-	if (base == NULL)
+-		return NULL;
++    if (base == NULL)
++        return NULL;
+ 
+-	if (!strcmp(dir, &quot;gaim&quot;))
+-		filename = g_build_filename(GAIM_DATADIR, &quot;pixmaps&quot;, &quot;gaim&quot;, base, NULL);
+-	else
+-	{
+-		filename = g_build_filename(GAIM_DATADIR, &quot;pixmaps&quot;, &quot;gaim&quot;, dir,
+-									base, NULL);
+-	}
++    if (!strcmp(dir, &quot;gaim&quot;))
++        filename =
++            g_build_filename(GAIM_DATADIR, &quot;pixmaps&quot;, &quot;gaim&quot;, base, NULL);
++    else {
++        filename = g_build_filename(GAIM_DATADIR, &quot;pixmaps&quot;, &quot;gaim&quot;, dir,
++                                    base, NULL);
++    }
+ 
+-	if (!g_file_test(filename, G_FILE_TEST_EXISTS))
+-	{
+-		g_critical(&quot;Unable to load stock pixmap %s\n&quot;, filename);
++    if (!g_file_test(filename, G_FILE_TEST_EXISTS)) {
++        g_critical(&quot;Unable to load stock pixmap %s\n&quot;, filename);
+ 
+-		g_free(filename);
++        g_free(filename);
+ 
+-		return NULL;
+-	}
++        return NULL;
++    }
+ 
+-	return filename;
++    return filename;
+ 
+ }
+-void extras_register_stock() {
+-    
+-    static gboolean stock_is_init=FALSE;
+-    GtkIconFactory* icon_factory=NULL;
++
++void extras_register_stock()
++{
++
++    static gboolean stock_is_init = FALSE;
++    GtkIconFactory *icon_factory = NULL;
+     int i;
+-    if(stock_is_init)
+-	return;
+-    stock_is_init=TRUE;
+-    icon_factory=gtk_icon_factory_new();
++    if (stock_is_init)
++        return;
++    stock_is_init = TRUE;
++    icon_factory = gtk_icon_factory_new();
+ 
+     gtk_icon_factory_add_default(icon_factory);
+ 
+-    for (i=0 ; i &lt; G_N_ELEMENTS(stock_icons); i++)
+-    {
+-	GdkPixbuf *pixbuf;
+-	GtkIconSet *iconset;
+-	gchar *filename;
+-	filename = find_file(stock_icons[i].dir, stock_icons[i].filename);
+-	if (filename==NULL)
+-	    continue;
++    for (i = 0; i &lt; G_N_ELEMENTS(stock_icons); i++) {
++        GdkPixbuf *pixbuf;
++        GtkIconSet *iconset;
++        gchar *filename;
++        filename = find_file(stock_icons[i].dir, stock_icons[i].filename);
++        if (filename == NULL)
++            continue;
+ 
+-	pixbuf = gdk_pixbuf_new_from_file(filename, NULL);
+-	g_free(filename);
+-	iconset = gtk_icon_set_new_from_pixbuf(pixbuf);
+-	
+-	g_object_unref(pixbuf);
+-	gtk_icon_factory_add(icon_factory, stock_icons[i].name, iconset);
+-	gtk_icon_set_unref(iconset);
++        pixbuf = gdk_pixbuf_new_from_file(filename, NULL);
++        g_free(filename);
++        iconset = gtk_icon_set_new_from_pixbuf(pixbuf);
++
++        g_object_unref(pixbuf);
++        gtk_icon_factory_add(icon_factory, stock_icons[i].name, iconset);
++        gtk_icon_set_unref(iconset);
+     }
+-	
+-	
++
++
+ }
+ static gboolean plugin_load(GaimPlugin * plugin)
+ {
+
+Modified: qrc/trunk/gaym-extras/src/gaym-extras.h
+===================================================================
+--- qrc/trunk/gaym-extras/src/gaym-extras.h	2005-07-30 22:17:19 UTC (rev 258)
++++ qrc/trunk/gaym-extras/src/gaym-extras.h	2005-07-30 22:19:23 UTC (rev 259)
+@@ -32,7 +32,7 @@
+ 
+ struct paint_data {
+     char *tooltiptext;
+-    GdkPixbuf* pixbuf;
++    GdkPixbuf *pixbuf;
+ };
+ 
+ // Additional UI info for a conversation.
+@@ -58,32 +58,32 @@
+ struct timeout_cb_data {
+     GaymTooltipType type;
+     GtkWidget *tv;
+-    GaimAccount* account;
++    GaimAccount *account;
+ };
+ 
+ 
+-GdkPixbuf* lookup_cached_thumbnail(GaimAccount* account, const char*fullname);
+-void get_icon_scale_size(GdkPixbuf* icon, GaimBuddyIconSpec * spec,int *width, int *height);
++GdkPixbuf *lookup_cached_thumbnail(GaimAccount * account,
++                                   const char *fullname);
++void get_icon_scale_size(GdkPixbuf * icon, GaimBuddyIconSpec * spec,
++                         int *width, int *height);
+ void clean_popup_stuff(GaimConversation * c);
+-void add_chat_icon_stuff(GaimConversation *c);
+-void add_chat_popup_stuff(GaimConversation *c);
+-void add_chat_sort_functions(GaimConversation *c);
+-void add_im_popup_stuff(GaimConversation* c);
++void add_chat_icon_stuff(GaimConversation * c);
++void add_chat_popup_stuff(GaimConversation * c);
++void add_chat_sort_functions(GaimConversation * c);
++void add_im_popup_stuff(GaimConversation * c);
+ void init_chat_icons();
+ void init_popups();
+ 
+ 
+-static struct StockIcon
+-{
+-	const char *name;
+-	const char *dir;
+-	const char *filename;
++static struct StockIcon {
++    const char *name;
++    const char *dir;
++    const char *filename;
+ 
+-} const stock_icons[] = 
+-{
+-	    { GAYM_STOCK_ALPHA,	    &quot;gaym&quot;,	&quot;alpha.png&quot; },    
+-	    { GAYM_STOCK_ENTRY,	    &quot;gaym&quot;,	&quot;entry.png&quot; },    
+-	    { GAYM_STOCK_PIC,	    &quot;gaym&quot;,	&quot;pic.png&quot; }
++} const stock_icons[] = {
++    {GAYM_STOCK_ALPHA, &quot;gaym&quot;, &quot;alpha.png&quot;},
++    {GAYM_STOCK_ENTRY, &quot;gaym&quot;, &quot;entry.png&quot;},
++    {GAYM_STOCK_PIC, &quot;gaym&quot;, &quot;pic.png&quot;}
+ };
+ 
+-#endif //GAYM_EXTRAS_H
++#endif                          // GAYM_EXTRAS_H
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000188.html">[Qrc-svn] r258 - in qrc/trunk: . gaym-extras nsis
+</A></li>
+	<LI>Next message: <A HREF="000190.html">[Qrc-svn] r260 - in qrc/trunk: gaym/src gaym-extras/src nsis
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#189">[ date ]</a>
+              <a href="thread.html#189">[ thread ]</a>
+              <a href="subject.html#189">[ subject ]</a>
+              <a href="author.html#189">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

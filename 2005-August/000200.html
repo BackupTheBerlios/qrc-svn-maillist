@@ -1,0 +1,672 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r270 - in qrc/trunk: gaym/src gaym-extras/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-August/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r270%20-%20in%20qrc/trunk%3A%20gaym/src%20gaym-extras/src&In-Reply-To=%3C200508030724.j737OSAt014412%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000199.html">
+   <LINK REL="Next"  HREF="000201.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r270 - in qrc/trunk: gaym/src gaym-extras/src</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r270%20-%20in%20qrc/trunk%3A%20gaym/src%20gaym-extras/src&In-Reply-To=%3C200508030724.j737OSAt014412%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r270 - in qrc/trunk: gaym/src gaym-extras/src">jblebrun at berlios.de
+       </A><BR>
+    <I>Wed Aug  3 09:24:28 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000199.html">[Qrc-svn] r269 - qrc/trunk
+</A></li>
+        <LI>Next message: <A HREF="000201.html">[Qrc-svn] r271 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#200">[ date ]</a>
+              <a href="thread.html#200">[ thread ]</a>
+              <a href="subject.html#200">[ subject ]</a>
+              <a href="author.html#200">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-08-03 09:24:01 +0200 (Wed, 03 Aug 2005)
+New Revision: 270
+
+Modified:
+   qrc/trunk/gaym-extras/src/chaticon.c
+   qrc/trunk/gaym-extras/src/chatsort.c
+   qrc/trunk/gaym-extras/src/gaym-extras.c
+   qrc/trunk/gaym-extras/src/gaym-extras.h
+   qrc/trunk/gaym-extras/src/roombrowse.c
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/gaym.h
+   qrc/trunk/gaym/src/gayminfo.c
+   qrc/trunk/gaym/src/gayminfo.h
+   qrc/trunk/gaym/src/msgs.c
+Log:
+*Further updates and bugfixes
+*Roombrowser will update thumbnails on demand now.
+*Popup thumbnails are probably mostly broken now, but will be fixed soon.
+*No more HTTP GET storms on channel joins.
+
+
+msgs.c:
+    *Stop loading of every single thumbnail on channel entrance.
+    *Done by adding a gboolean parameter to gaym_buddy_status to indicate whether or not to fetch thumbnail.
+
+gayminfo.c:
+    *Bugfix: emits correct signal for info updates now
+    *Check in channel member table for buddies too, before deciding to fetch
+
+gayminfo.h:
+    *Add gboolean fetch_thumbnail parameter to dec.
+
+gaym.c:
+    *Add get-info-quietly signal
+    *Add handler for the signal gaym_get_info_quietly
+    *Like get info, without the popup.
+
+roombrowse.c:
+    *Implement handler for info-updated callback
+    *based on changed signal of gtk_tree_selection
+    *If a user has no thumbnail, show gaym icon
+    *Make prefix and sync columns only show up in debug
+
+gaym-extras.c/h:
+    *Move DATADIR define to header instead of .c file
+    
+
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-08-02 06:47:23 UTC (rev 269)
++++ qrc/trunk/gaym/src/gaym.c	2005-08-03 07:24:01 UTC (rev 270)
+@@ -235,9 +235,11 @@
+         return NULL;
+     }
+ 
+-    struct gaym_buddy *ib =
+-        g_hash_table_lookup(gaym-&gt;channel_members,
+-                            gaim_normalize(gaym-&gt;account, buddy-&gt;name));
++    struct gaym_buddy *ib = g_hash_table_lookup(gaym-&gt;channel_members,
++                                                gaim_normalize(gaym-&gt;
++                                                               account,
++                                                               buddy-&gt;
++                                                               name));
+     if (!ib)
+         ib = g_hash_table_lookup(gaym-&gt;buddies,
+                                  gaim_normalize(gaym-&gt;account,
+@@ -768,6 +770,15 @@
+     return 1;
+ }
+ 
++static void gaym_get_info_quietly(GaimConnection * gc, const char *who)
++{
++    gaim_debug_misc(&quot;gaym&quot;, &quot;request info quietly\n&quot;);
++    struct gaym_conn *gaym = gc-&gt;proto_data;
++    const char *args[1];
++    args[0] = who;
++
++    gaym_cmd_whois(gaym, &quot;whois&quot;, NULL, args);
++}
+ static void gaym_get_info(GaimConnection * gc, const char *who)
+ {
+     struct gaym_conn *gaym = gc-&gt;proto_data;
+@@ -1672,12 +1683,24 @@
+                                         GAIM_SUBTYPE_ACCOUNT),
+                          gaim_value_new(GAIM_TYPE_POINTER,
+                                         GAIM_TYPE_CHAR));
++    gaim_signal_register(gaim_accounts_get_handle(),
++                         &quot;request-info-quietly&quot;,
++                         gaim_marshal_VOID__POINTER_POINTER, NULL, 2,
++                         gaim_value_new(GAIM_TYPE_SUBTYPE,
++                                        GAIM_SUBTYPE_ACCOUNT),
++                         gaim_value_new(GAIM_TYPE_POINTER,
++                                        GAIM_TYPE_CHAR));
++
+     gaim_signal_connect(gaim_accounts_get_handle(), &quot;request-namelist&quot;,
+                         plugin, GAIM_CALLBACK(gaym_get_room_namelist),
+                         NULL);
++    gaim_signal_connect(gaim_accounts_get_handle(), &quot;request-info-quietly&quot;,
++                        plugin, GAIM_CALLBACK(gaym_get_info_quietly),
++                        NULL);
+ 
+ 
+ 
++
+     gaim_prefs_add_none(&quot;/plugins/prpl/gaym&quot;);
+     gaim_prefs_add_int(&quot;/plugins/prpl/gaym/chat_room_instances&quot;, 4);
+     gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/show_join&quot;, TRUE);
+
+Modified: qrc/trunk/gaym/src/gaym.h
+===================================================================
+--- qrc/trunk/gaym/src/gaym.h	2005-08-02 06:47:23 UTC (rev 269)
++++ qrc/trunk/gaym/src/gaym.h	2005-08-03 07:24:01 UTC (rev 270)
+@@ -245,7 +245,8 @@
+     GSList *members;            // List of GaymBuddies;
+     int num_rooms;
+     GSList *current;            // Pointer to gaymbuddy to be updated next 
+-                                // (during names pass)
++                                // 
++    // (during names pass)
+ } GaymNamelist;
+ void gaym_dccsend_send_file(GaimConnection * gc, const char *who,
+                             const char *file);
+
+Modified: qrc/trunk/gaym/src/gayminfo.c
+===================================================================
+--- qrc/trunk/gaym/src/gayminfo.c	2005-08-02 06:47:23 UTC (rev 269)
++++ qrc/trunk/gaym/src/gayminfo.c	2005-08-03 07:24:01 UTC (rev 270)
+@@ -167,7 +167,7 @@
+     }
+     if (GAIM_CONNECTION_IS_VALID(d-&gt;gc) &amp;&amp; len) {
+         gaim_signal_emit(gaim_accounts_get_handle(), &quot;info-updated&quot;,
+-                         d-&gt;gc, NULL, d-&gt;who);
++                         d-&gt;gc, d-&gt;who);
+         if (gaim_find_conversation_with_account(d-&gt;who, d-&gt;gc-&gt;account)) {
+             // gaim_buddy_icons_set_for_user(gaim_connection_get_account
+             // (d-&gt;gc), d-&gt;who,
+@@ -183,7 +183,8 @@
+ }
+ 
+ void gaym_buddy_status(struct gaym_conn *gaym, char *name,
+-                       gboolean online, char *info)
++                       gboolean online, char *info,
++                       gboolean fetch_thumbnail)
+ {
+     char *bio = NULL;
+     char *thumbnail = NULL;
+@@ -225,10 +226,12 @@
+     }
+ 
+     struct gaym_buddy *ib = g_hash_table_lookup(gaym-&gt;buddies, name);
++    if (!ib)
++        ib = g_hash_table_lookup(gaym-&gt;channel_members, name);
+ 
+     char *normalized = g_strdup(gaim_normalize(gaym-&gt;account, name));
+ 
+-    if (thumbnail) {
++    if (thumbnail &amp;&amp; fetch_thumbnail) {
+         gboolean do_fetch = 1;
+         GError *err = NULL;
+         if (!ib || gaim_utf8_strcasecmp(thumbnail, ib-&gt;thumbnail)) {
+@@ -258,13 +261,6 @@
+                 g_dir_close(gdir);
+             }
+             if (do_fetch) {
+-
+-                gaim_debug_misc(&quot;gaym&quot;,
+-                                &quot;********************************************\n&quot;);
+-                gaim_debug_misc(&quot;gaym&quot;,
+-                                &quot;*****************FETCH**********************\n&quot;);
+-                gaim_debug_misc(&quot;gaym&quot;,
+-                                &quot;********************************************\n&quot;);
+                 char *hashurl = NULL;
+                 hashurl =
+                     g_hash_table_lookup(gaym-&gt;confighash,
+
+Modified: qrc/trunk/gaym/src/gayminfo.h
+===================================================================
+--- qrc/trunk/gaym/src/gayminfo.h	2005-08-02 06:47:23 UTC (rev 269)
++++ qrc/trunk/gaym/src/gayminfo.h	2005-08-03 07:24:01 UTC (rev 270)
+@@ -89,9 +89,11 @@
+  * @param name The buddy name
+  * @param online Is the buddy on line.
+  * @param info The extra IRC info string about the buddy, if any.
++ * @param fetch_thumbnail Whether or not to trigger a url fetch of thumbnail photo.
+  */
+ void gaym_buddy_status(struct gaym_conn *gaym, char *name,
+-                       gboolean online, char *info);
++                       gboolean online, char *info,
++                       gboolean fetch_thumbnail);
+ 
+ 
+ void gaym_update_channel_member(struct gaym_conn *gaym, const char *nick,
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-08-02 06:47:23 UTC (rev 269)
++++ qrc/trunk/gaym/src/msgs.c	2005-08-03 07:24:01 UTC (rev 270)
+@@ -209,7 +209,7 @@
+ 
+     gcom_nick_to_gaym(args[1]);
+ 
+-    gaym_buddy_status(gaym, args[1], FALSE, NULL);
++    gaym_buddy_status(gaym, args[1], FALSE, NULL, FALSE);
+ 
+     char *normalized = g_strdup(gaim_normalize(gaym-&gt;account, args[1]));
+ 
+@@ -247,7 +247,7 @@
+ 
+     gcom_nick_to_gaym(args[1]);
+ 
+-    gaym_buddy_status(gaym, args[1], TRUE, args[5]);
++    gaym_buddy_status(gaym, args[1], TRUE, args[5], TRUE);
+ 
+     char *normalized = g_strdup(gaim_normalize(gaym-&gt;account, args[1]));
+ 
+@@ -257,6 +257,7 @@
+     // during conversation-created.
+     gaym_update_channel_member(gaym, normalized, args[5]);
+     gaym_unreference_channel_member(gaym, normalized);
++    gaim_debug_misc(&quot;gaym&quot;, &quot;signalling info update for %s\n&quot;, args[1]);
+     gaim_signal_emit(gaim_accounts_get_handle(), &quot;info-updated&quot;,
+                      gaym-&gt;account, args[1]);
+ 
+@@ -785,7 +786,7 @@
+     gint *entry = g_hash_table_lookup(gaym-&gt;entry_order, args[0]);
+     g_return_if_fail(entry != NULL);
+ 
+-    gaym_buddy_status(gaym, nick, TRUE, args[1]);
++    gaym_buddy_status(gaym, nick, TRUE, args[1], TRUE);
+ 
+ 
+     gboolean gaym_botfilter_permit =
+@@ -1183,7 +1184,7 @@
+     /* XXX this should have an API, I shouldn't grab this directly */
+     g_slist_foreach(gc-&gt;buddy_chats, (GFunc) gaym_chat_remove_buddy, data);
+ 
+-    gaym_buddy_status(gaym, data[0], FALSE, NULL);
++    gaym_buddy_status(gaym, data[0], FALSE, NULL, FALSE);
+ 
+     g_free(data[0]);
+ 
+@@ -1262,8 +1263,8 @@
+         }
+     }
+ 
+-
+     // Use the who msgs cross-referenced with the NAMES list to figure out 
++    // 
+     // who is who. Resolve conflicts.
+ 
+ }
+@@ -1465,7 +1466,7 @@
+         gaym_botfilter_check(gc, nick, bio, FALSE);
+     g_free(bio);
+ 
+-    gaym_buddy_status(gaym, nick, TRUE, extra);
++    gaym_buddy_status(gaym, nick, TRUE, extra, FALSE);
+ 
+     if (convo == NULL) {
+         gaim_debug(GAIM_DEBUG_ERROR, &quot;gaym&quot;, &quot;690 for %s failed\n&quot;,
+
+Modified: qrc/trunk/gaym-extras/src/chaticon.c
+===================================================================
+--- qrc/trunk/gaym-extras/src/chaticon.c	2005-08-02 06:47:23 UTC (rev 269)
++++ qrc/trunk/gaym-extras/src/chaticon.c	2005-08-03 07:24:01 UTC (rev 270)
+@@ -44,6 +44,7 @@
+     // aspect=(double)gdk_pixbuf_get_width(pixbuf)/(double)gdk_pixbuf_get_height(pixbuf); 
+     // 
+     // 
++    // 
+ 
+     scale =
+         gdk_pixbuf_scale_simple(pixbuf,
+@@ -194,10 +195,10 @@
+         g_print(&quot;Row %d: (%s)(%s)\n&quot;, row_count, str_data, name);
+ 
+         if (!strcmp(str_data, name)) {
+-            GdkPixbuf *pixbuf =
+-                lookup_cached_thumbnail(conv-&gt;account,
+-                                        gaim_normalize(conv-&gt;account,
+-                                                       name));
++            GdkPixbuf *pixbuf = lookup_cached_thumbnail(conv-&gt;account,
++                                                        gaim_normalize
++                                                        (conv-&gt;account,
++                                                         name));
+             gaim_debug_misc(&quot;chaticon&quot;, &quot;Got pixbuf: %x\n&quot;);
+             GtkTreePath *path = gtk_tree_model_get_path(list_store, &amp;iter);
+             gtk_list_store_set(GTK_LIST_STORE(list_store), &amp;iter, 0,
+
+Modified: qrc/trunk/gaym-extras/src/chatsort.c
+===================================================================
+--- qrc/trunk/gaym-extras/src/chatsort.c	2005-08-02 06:47:23 UTC (rev 269)
++++ qrc/trunk/gaym-extras/src/chatsort.c	2005-08-03 07:24:01 UTC (rev 270)
+@@ -112,6 +112,7 @@
+     button = GTK_WIDGET(gaim_gtkconv_button_new(order[current].icon, NULL,      // _(&quot;E&quot;), 
+                                                                                 // 
+                                                 // 
++                                                // 
+                                                 order[current].tooltip,
+                                                 gtkconv-&gt;tooltips,
+                                                 change_sort_order,
+
+Modified: qrc/trunk/gaym-extras/src/gaym-extras.c
+===================================================================
+--- qrc/trunk/gaym-extras/src/gaym-extras.c	2005-08-02 06:47:23 UTC (rev 269)
++++ qrc/trunk/gaym-extras/src/gaym-extras.c	2005-08-03 07:24:01 UTC (rev 270)
+@@ -1,12 +1,7 @@
+-/* Show icons in chat room windows */
+ 
+-// Messy.
+ #include &quot;gaym-extras.h&quot;
+-#ifdef _WIN32
+-#include &quot;win32/win32dep.h&quot;
+-#else
+-#define DATADIR GAIM_DATADIR
+-#endif
++/* Show icons in chat room windows */
++
+ void get_icon_scale_size(GdkPixbuf * icon, GaimBuddyIconSpec * spec,
+                          int *width, int *height)
+ {
+
+Modified: qrc/trunk/gaym-extras/src/gaym-extras.h
+===================================================================
+--- qrc/trunk/gaym-extras/src/gaym-extras.h	2005-08-02 06:47:23 UTC (rev 269)
++++ qrc/trunk/gaym-extras/src/gaym-extras.h	2005-08-03 07:24:01 UTC (rev 270)
+@@ -22,6 +22,12 @@
+ #define GAYM_STOCK_ENTRY &quot;entry&quot;
+ #define GAYM_STOCK_PIC &quot;pic&quot;
+ 
++// Messy.
++#ifdef _WIN32
++#include &quot;win32/win32dep.h&quot;
++#else
++#define DATADIR GAIM_DATADIR
++#endif
+ 
+ struct fetch_thumbnail_data {
+     const char *who;
+
+Modified: qrc/trunk/gaym-extras/src/roombrowse.c
+===================================================================
+--- qrc/trunk/gaym-extras/src/roombrowse.c	2005-08-02 06:47:23 UTC (rev 269)
++++ qrc/trunk/gaym-extras/src/roombrowse.c	2005-08-03 07:24:01 UTC (rev 270)
+@@ -59,6 +59,80 @@
+     GaimConnection *gc;
+ } RoomBrowseGui;
+ 
++
++void update_photos(const char *room, const RoomBrowseGui * browser,
++                   const char *name)
++{
++
++    GaimPlugin *prpl = NULL;
++    GaimPluginProtocolInfo *prpl_info = NULL;
++    prpl =
++        gaim_find_prpl(gaim_account_get_protocol_id(browser-&gt;gc-&gt;account));
++    if (prpl)
++        prpl_info = GAIM_PLUGIN_PROTOCOL_INFO(prpl);
++
++    int scale_width = 0, scale_height = 0;
++    gboolean valid;
++    GtkTreeIter iter;
++    int row_count = 0;
++    GtkTreeModel *list_store =
++        gtk_tree_view_get_model(GTK_TREE_VIEW(browser-&gt;list));
++    /* Get the first iter in the list */
++    valid = gtk_tree_model_get_iter_first(list_store, &amp;iter);
++
++    while (valid) {
++        /* Walk through the list, reading each row */
++        gchar *str_data;
++
++        /* Make sure you terminate calls to gtk_tree_model_get() with a
++           '-1' value */
++        gtk_tree_model_get(list_store, &amp;iter, COLUMN_NAME, &amp;str_data, -1);
++
++
++        if (!strcmp(str_data, name)) {
++            gaim_debug_misc(&quot;roombrowse&quot;, &quot;Update user %s in %s\n&quot;, name,
++                            room);
++            GdkPixbuf *pixbuf =
++                lookup_cached_thumbnail(browser-&gt;gc-&gt;account,
++                                        gaim_normalize(browser-&gt;gc-&gt;
++                                                       account,
++                                                       name));
++            gaim_debug_misc(&quot;chaticon&quot;, &quot;Got pixbuf: %x\n&quot;, pixbuf);
++            get_icon_scale_size(pixbuf,
++                                prpl_info ? &amp;prpl_info-&gt;icon_spec : NULL,
++                                &amp;scale_width, &amp;scale_height);
++
++            GdkPixbuf *scale = gdk_pixbuf_scale_simple(pixbuf,
++                                                       scale_width,
++                                                       scale_height,
++                                                       GDK_INTERP_BILINEAR);
++
++            GtkTreePath *path = gtk_tree_model_get_path(list_store, &amp;iter);
++            gtk_list_store_set(GTK_LIST_STORE(list_store), &amp;iter,
++                               COLUMN_PHOTO, scale, -1);
++
++            gtk_tree_model_row_changed(list_store, path, &amp;iter);
++            // g_free(pixbuf);
++            break;
++        }
++        row_count++;
++        valid = gtk_tree_model_iter_next(list_store, &amp;iter);
++        g_free(str_data);
++    }
++
++
++}
++
++void roombrowse_update_list_row(GaimConnection * gc, const char *who)
++{
++
++    gaim_debug_misc(&quot;roombrowse&quot;,
++                    &quot;in callback for info-updated signal, with who=%s\n&quot;,
++                    who);
++    g_hash_table_foreach(browsers, (GHFunc) update_photos, (char *) who);
++
++}
++
+ void roombrowse_add_info(gpointer data, RoomBrowseGui * browser)
+ {
+     /* Add a new row to the model */
+@@ -83,33 +157,54 @@
+     g_string_erase(info, 0, 1);
+     char *infoc = g_string_free(info, FALSE);
+     gtk_list_store_append(GTK_LIST_STORE(browser-&gt;model), &amp;browser-&gt;iter);
++    GdkPixbuf *pixbuf = NULL;
+     if (member-&gt;thumbnail) {
+ 
+-        GdkPixbuf *pixbuf = lookup_cached_thumbnail(browser-&gt;gc-&gt;account,
+-                                                    gaim_normalize
+-                                                    (browser-&gt;gc-&gt;account,
+-                                                     member-&gt;name));
++        pixbuf = lookup_cached_thumbnail(browser-&gt;gc-&gt;account,
++                                         gaim_normalize
++                                         (browser-&gt;gc-&gt;account,
++                                          member-&gt;name));
+ 
+         if (browser-&gt;gc)
+             prpl_info = GAIM_PLUGIN_PROTOCOL_INFO(browser-&gt;gc-&gt;prpl);
+-        get_icon_scale_size(pixbuf,
+-                            prpl_info ? &amp;prpl_info-&gt;icon_spec : NULL,
+-                            &amp;scale_width, &amp;scale_height);
+ 
+-        GdkPixbuf *scale = gdk_pixbuf_scale_simple(pixbuf,
+-                                                   scale_width,
+-                                                   scale_height,
+-                                                   GDK_INTERP_BILINEAR);
+-        g_object_unref(pixbuf);
+-        gtk_list_store_set(GTK_LIST_STORE(browser-&gt;model), &amp;browser-&gt;iter,
+-                           COLUMN_PHOTO, scale, -1);
+ 
++    } else {
++        GaimPlugin *prpl = NULL;
++        GaimPluginProtocolInfo *prpl_info = NULL;
++        prpl =
++            gaim_find_prpl(gaim_account_get_protocol_id
++                           (browser-&gt;gc-&gt;account));
++        if (prpl)
++            prpl_info = GAIM_PLUGIN_PROTOCOL_INFO(prpl);
++        if (prpl_info &amp;&amp; prpl_info-&gt;list_icon) {
++            const char *protoname =
++                prpl_info-&gt;list_icon(browser-&gt;gc-&gt;account, NULL);
++
++            char *image = g_strdup_printf(&quot;%s.png&quot;, protoname);
++            char *filename =
++                g_build_filename(DATADIR, &quot;pixmaps&quot;, &quot;gaim&quot;, &quot;status&quot;,
++                                 &quot;default&quot;, image, NULL);
++
++            pixbuf = gdk_pixbuf_new_from_file(filename, NULL);
++        }
+     }
++    get_icon_scale_size(pixbuf,
++                        prpl_info ? &amp;prpl_info-&gt;icon_spec : NULL,
++                        &amp;scale_width, &amp;scale_height);
++
++    GdkPixbuf *scale = gdk_pixbuf_scale_simple(pixbuf,
++                                               scale_width,
++                                               scale_height,
++                                               GDK_INTERP_BILINEAR);
++    g_object_unref(pixbuf);
++
+     gtk_list_store_set(GTK_LIST_STORE(browser-&gt;model), &amp;browser-&gt;iter,
+-                       COLUMN_SYNC, sync,
+-                       COLUMN_NAME, member-&gt;name,
+-                       COLUMN_PREFIX, member-&gt;prefix,
+-                       COLUMN_INFO, infoc, -1);
++                       COLUMN_PHOTO, scale,
++#if DEBUG
++                       COLUMN_SYNC, sync, COLUMN_PREFIX, member-&gt;prefix,
++#endif
++                       COLUMN_NAME, member-&gt;name, COLUMN_INFO, infoc, -1);
+ 
+ 
+ }
+@@ -133,7 +228,7 @@
+ 
+ }
+ 
+-gboolean update_list(GtkWidget * button, gpointer data)
++static gboolean update_list(GtkWidget * button, gpointer data)
+ {
+ 
+     gaim_debug_misc(&quot;roombrowse&quot;, &quot;Doing list update!\n&quot;);
+@@ -268,7 +363,29 @@
+ 
+     return TRUE;
+ }
++static void changed_cb(GtkTreeSelection * selection, gpointer gc)
++{
+ 
++    g_return_if_fail(selection != NULL);
++
++    gaim_debug_misc(&quot;roombrowse&quot;, &quot;Changed_cb\n&quot;);
++    GtkTreeIter iter;
++    GtkTreeModel *model = NULL;
++    gchar *name;
++    if (!gtk_tree_selection_get_selected(selection, &amp;model, &amp;iter))
++        return;
++
++    gtk_tree_model_get(model, &amp;iter, COLUMN_NAME, &amp;name, -1);
++
++    gaim_debug_misc(&quot;roombrowse&quot;,
++                    &quot;emit request-info-quietly signal for %s\n&quot;, name);
++    gaim_signal_emit(gaim_accounts_get_handle(), &quot;request-info-quietly&quot;,
++                     gc, name);
++
++    return;
++
++}
++
+ // Right out of gtkconv.c
+ static gint
+ click_cb(GtkWidget * widget, GdkEventButton * event,
+@@ -312,7 +429,6 @@
+         gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL,
+                        event-&gt;button, event-&gt;time);
+     }
+-
+     g_free(who);
+     gtk_tree_path_free(path);
+ 
+@@ -373,21 +489,14 @@
+                                                  COLUMN_PHOTO, NULL);
+     gtk_tree_view_append_column(GTK_TREE_VIEW(browser-&gt;list), col);
+ 
+-    rend = gtk_cell_renderer_text_new();
+-    gtk_cell_renderer_set_fixed_size(rend, -1, 80);
+-    col =
+-        gtk_tree_view_column_new_with_attributes(&quot;?&quot;, rend, &quot;text&quot;,
+-                                                 COLUMN_SYNC, NULL);
+-    gtk_tree_view_append_column(GTK_TREE_VIEW(browser-&gt;list), col);
+ 
+-
+     rend = gtk_cell_renderer_text_new();
+     gtk_cell_renderer_set_fixed_size(rend, -1, 80);
+     col =
+         gtk_tree_view_column_new_with_attributes(&quot;Name&quot;, rend, &quot;text&quot;,
+                                                  COLUMN_NAME, NULL);
+     gtk_tree_view_append_column(GTK_TREE_VIEW(browser-&gt;list), col);
+-
++#if DEBUG
+     rend = gtk_cell_renderer_text_new();
+     gtk_cell_renderer_set_fixed_size(rend, -1, 80);
+     col =
+@@ -395,6 +504,13 @@
+                                                  COLUMN_PREFIX, NULL);
+     gtk_tree_view_append_column(GTK_TREE_VIEW(browser-&gt;list), col);
+ 
++    rend = gtk_cell_renderer_text_new();
++    gtk_cell_renderer_set_fixed_size(rend, -1, 80);
++    col =
++        gtk_tree_view_column_new_with_attributes(&quot;?&quot;, rend, &quot;text&quot;,
++                                                 COLUMN_SYNC, NULL);
++    gtk_tree_view_append_column(GTK_TREE_VIEW(browser-&gt;list), col);
++#endif
+ 
+     rend = gtk_cell_renderer_text_new();
+     gtk_cell_renderer_set_fixed_size(rend, -1, 80);
+@@ -408,7 +524,13 @@
+     g_signal_connect(G_OBJECT(browser-&gt;list), &quot;popup-menu&quot;,
+                      G_CALLBACK(chat_popup_menu_cb), browser);
+ 
++    GtkTreeSelection *select =
++        gtk_tree_view_get_selection(GTK_TREE_VIEW(browser-&gt;list));
+ 
++    gtk_tree_selection_set_mode(select, GTK_SELECTION_SINGLE);
++
++    g_signal_connect(G_OBJECT(select), &quot;changed&quot;,
++                     G_CALLBACK(changed_cb), gc);
+     gtk_container_add(GTK_CONTAINER(sw), browser-&gt;list);
+     gtk_widget_show(browser-&gt;list);
+ 
+@@ -470,6 +592,11 @@
+                         plugin, GAIM_CALLBACK(roombrowse_update_list),
+                         NULL);
+ 
++    gaim_signal_connect(gaim_accounts_get_handle(),
++                        &quot;info-updated&quot;,
++                        plugin, GAIM_CALLBACK(roombrowse_update_list_row),
++                        NULL);
++
+     browsers =
+         g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000199.html">[Qrc-svn] r269 - qrc/trunk
+</A></li>
+	<LI>Next message: <A HREF="000201.html">[Qrc-svn] r271 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#200">[ date ]</a>
+              <a href="thread.html#200">[ thread ]</a>
+              <a href="subject.html#200">[ subject ]</a>
+              <a href="author.html#200">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

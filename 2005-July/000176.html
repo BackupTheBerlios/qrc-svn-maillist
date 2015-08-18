@@ -1,0 +1,1236 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r246 - in qrc/trunk: gaym/src gaym-extras
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r246%20-%20in%20qrc/trunk%3A%20gaym/src%20gaym-extras&In-Reply-To=%3C200507260802.j6Q82RHT009832%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000175.html">
+   <LINK REL="Next"  HREF="000177.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r246 - in qrc/trunk: gaym/src gaym-extras</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r246%20-%20in%20qrc/trunk%3A%20gaym/src%20gaym-extras&In-Reply-To=%3C200507260802.j6Q82RHT009832%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r246 - in qrc/trunk: gaym/src gaym-extras">jblebrun at berlios.de
+       </A><BR>
+    <I>Tue Jul 26 10:02:27 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000175.html">[Qrc-svn] r245 - in qrc/trunk: gaym/src gaym-extras
+</A></li>
+        <LI>Next message: <A HREF="000177.html">[Qrc-svn] r247 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#176">[ date ]</a>
+              <a href="thread.html#176">[ thread ]</a>
+              <a href="subject.html#176">[ subject ]</a>
+              <a href="author.html#176">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-07-26 10:02:20 +0200 (Tue, 26 Jul 2005)
+New Revision: 246
+
+Modified:
+   qrc/trunk/gaym-extras/gaym-extras.c
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/gaym.h
+   qrc/trunk/gaym/src/gayminfo.h
+   qrc/trunk/gaym/src/gaympriv.c
+   qrc/trunk/gaym/src/helpers.c
+   qrc/trunk/gaym/src/msgs.c
+   qrc/trunk/gaym/src/parse.c
+   qrc/trunk/gaym/src/weblogin.c
+Log:
+*IM (pvt) window bio display is now a tooltip on the tab
+*Removed dependencies to two of the gaym headers in gaym-extra
+*Renamed hash_pw/pw_hash variables to chat_key
+*tooltiptext function gets rid of initial newline, and generates &quot;No info&quot; for profiles with no info.
+*buddy info lookup function returns info from channel members if nothing exists in buddy struct.
+*removed step2 of login: unnecessary
+*added some comments to try_cached_chat_key function in weblogin
+*added a msg handler for quit messages (will be needed for new login process)
+*removed unnecessary fields from struct fetch_thumbnail_data
+*Made typedef for cmd and msg function types. that mess was ugly (gaym.h)
+
+
+
+The bio/tooltip code still needs work. No guarantees. 
+I might've messed up something with login too. I think info is not being set anymore.
+
+
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-25 13:31:45 UTC (rev 245)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-26 08:02:20 UTC (rev 246)
+@@ -238,6 +238,9 @@
+     struct gaym_buddy *ib =
+         g_hash_table_lookup(gaym-&gt;buddies, buddy-&gt;name);
+ 
++    if (!ib)
++        ib = g_hash_table_lookup(gaym-&gt;channel_members, buddy-&gt;name);
++
+     if (!ib) {
+         return NULL;
+     }
+@@ -418,7 +421,7 @@
+     return defaults;
+ }
+ 
+-static void gaym_login_with_hash(GaimAccount * account)
++static void gaym_login_with_chat_key(GaimAccount * account)
+ {
+     GaimConnection *gc;
+     struct gaym_conn *gaym;
+@@ -517,11 +520,12 @@
+ 
+     /**
+      * Making a change to try cached password first.
+-     * gaym_try_cached_password(account, gaym_login_with_hash);
++     * gaym_try_cached_password(account, gaym_login_with_chat_key);
+      */
+-    gaym_get_hash_from_weblogin(account, gaym_login_with_hash);
++    gaym_get_chat_key_from_weblogin(account, gaym_login_with_chat_key);
+ }
+ 
++
+ static void gaym_get_configtxt_cb(gpointer proto_data,
+                                   const gchar * config_text, size_t len)
+ {
+@@ -537,7 +541,6 @@
+ 
+     return;
+ }
+-
+ static void gaym_login_cb(gpointer data, gint source,
+                           GaimInputCondition cond)
+ {
+@@ -551,6 +554,10 @@
+     char *login_name;
+ 
+     if (GAIM_CONNECTION_IS_VALID(gc)) {
++
++        gc-&gt;inpa =
++            gaim_input_add(source, GAIM_INPUT_READ, gaym_input_cb, gc);
++
+         GList *connections = gaim_connections_get_all();
+ 
+         if (source &lt; 0) {
+@@ -564,11 +571,11 @@
+         }
+ 
+         gaym-&gt;fd = source;
+-        gaim_debug_misc(&quot;gaym&quot;, &quot;In login_cb with pw_hash=%s\n&quot;,
+-                        gaym-&gt;hash_pw);
+-        if (gaym-&gt;hash_pw) {
++        gaim_debug_misc(&quot;gaym&quot;, &quot;In login_cb with chat_key=%s\n&quot;,
++                        gaym-&gt;chat_key);
++        if (gaym-&gt;chat_key) {
+ 
+-            buf = gaym_format(gaym, &quot;vv&quot;, &quot;PASS&quot;, gaym-&gt;hash_pw);
++            buf = gaym_format(gaym, &quot;vv&quot;, &quot;PASS&quot;, gaym-&gt;chat_key);
+             if (gaym_send(gaym, buf) &lt; 0) {
+                 gaim_connection_error(gc, &quot;Error sending password&quot;);
+                 return;
+@@ -622,10 +629,9 @@
+ 
+         const char *server = gaim_account_get_string(gc-&gt;account, &quot;server&quot;,
+                                                      IRC_DEFAULT_SERVER);
+-
+         char *url =
+             g_strdup_printf
+-            (&quot;<A HREF="http://%s/messenger/config.txt?%s">http://%s/messenger/config.txt?%s</A>&quot;, server, gaym-&gt;hash_pw);
++            (&quot;<A HREF="http://%s/messenger/config.txt?%s">http://%s/messenger/config.txt?%s</A>&quot;, server, gaym-&gt;chat_key);
+ 
+         char *user_agent = &quot;Mozilla/4.0&quot;;
+ 
+@@ -635,8 +641,7 @@
+ 
+         g_free(url);
+ 
+-        gc-&gt;inpa =
+-            gaim_input_add(gaym-&gt;fd, GAIM_INPUT_READ, gaym_input_cb, gc);
++
+     }
+ }
+ static void gaym_close(GaimConnection * gc)
+@@ -662,8 +667,8 @@
+     if (gaym-&gt;thumbnail)
+         g_free(gaym-&gt;thumbnail);
+ 
+-    if (gaym-&gt;hash_pw)
+-        g_free(gaym-&gt;hash_pw);
++    if (gaym-&gt;chat_key)
++        g_free(gaym-&gt;chat_key);
+ 
+     if (gaym-&gt;server_bioline)
+         g_free(gaym-&gt;server_bioline);
+@@ -852,7 +857,7 @@
+ }
+ 
+ GaymBuddy *gaym_get_channel_member_info(struct gaym_conn * gaym,
+-                                        gchar * name)
++                                        const gchar * name)
+ {
+     return g_hash_table_lookup(gaym-&gt;channel_members, name);
+ }
+@@ -1400,7 +1405,6 @@
+         GaimConnection *gc = gaim_conversation_get_gc(conv);
+         g_return_if_fail(gc != NULL);
+         struct gaym_conn *gaym = gc-&gt;proto_data;
+-
+         gaym_unreference_channel_member(gaym, conv-&gt;name);
+     }
+ }
+
+Modified: qrc/trunk/gaym/src/gaym.h
+===================================================================
+--- qrc/trunk/gaym/src/gaym.h	2005-07-25 13:31:45 UTC (rev 245)
++++ qrc/trunk/gaym/src/gaym.h	2005-07-26 08:02:20 UTC (rev 246)
+@@ -72,7 +72,7 @@
+     int inbufused;
+ 
+     char *thumbnail;
+-    char *hash_pw;
++    char *chat_key;
+     char *server_bioline;
+     char *server_stats;
+     char *roomlist_filter;
+@@ -129,7 +129,7 @@
+ gboolean gaym_unreference_channel_member(struct gaym_conn *gaym,
+                                          gchar * name);
+ GaymBuddy *gaym_get_channel_member_info(struct gaym_conn *gaym,
+-                                        gchar * name);
++                                        const gchar * name);
+ 
+ GaymBuddy *gaym_get_channel_member_reference(struct gaym_conn
+                                              *gaym, const char *name);
+@@ -149,151 +149,91 @@
+                       const char *to, const char *msg, int notice);
+ char *gaym_format(struct gaym_conn *gaym, const char *format, ...);
+ 
+-void gaym_msg_default(struct gaym_conn *gaym, const char *name,
+-                      const char *from, char **args);
+-void gaym_msg_away(struct gaym_conn *gaym, const char *name,
+-                   const char *from, char **args);
+-void gaym_msg_badmode(struct gaym_conn *gaym, const char *name,
+-                      const char *from, char **args);
+-void gaym_msg_banned(struct gaym_conn *gaym, const char *name,
+-                     const char *from, char **args);
+-void gaym_msg_chanmode(struct gaym_conn *gaym, const char *name,
+-                       const char *from, char **args);
+-void gaym_msg_endwhois(struct gaym_conn *gaym, const char *name,
+-                       const char *from, char **args);
+-void gaym_msg_endmotd(struct gaym_conn *gaym, const char *name,
+-                      const char *from, char **args);
+-void gaym_msg_invite(struct gaym_conn *gaym, const char *name,
+-                     const char *from, char **args);
+-void gaym_msg_inviteonly(struct gaym_conn *gaym, const char *name,
+-                         const char *from, char **args);
+-void gaym_msg_who(struct gaym_conn *gaym, const char *name,
+-                  const char *from, char **args);
+-void gaym_msg_chanfull(struct gaym_conn *gaym, const char *name,
+-                       const char *from, char **args);
+-void gaym_msg_join(struct gaym_conn *gaym, const char *name,
+-                   const char *from, char **args);
+-void gaym_msg_kick(struct gaym_conn *gaym, const char *name,
+-                   const char *from, char **args);
+-void gaym_msg_list(struct gaym_conn *gaym, const char *name,
+-                   const char *from, char **args);
+-void gaym_msg_mode(struct gaym_conn *gaym, const char *name,
+-                   const char *from, char **args);
+-void gaym_msg_motd(struct gaym_conn *gaym, const char *name,
+-                   const char *from, char **args);
+-void gaym_msg_names(struct gaym_conn *gaym, const char *name,
+-                    const char *from, char **args);
+-void gaym_msg_nick(struct gaym_conn *gaym, const char *name,
+-                   const char *from, char **args);
+-void gaym_msg_nickused(struct gaym_conn *gaym, const char *name,
+-                       const char *from, char **args);
+-void gaym_msg_nochan(struct gaym_conn *gaym, const char *name,
+-                     const char *from, char **args);
+-void gaym_msg_nonick_chan(struct gaym_conn *gaym, const char *name,
+-                          const char *from, char **args);
+-void gaym_msg_nonick(struct gaym_conn *gaym, const char *name,
+-                     const char *from, char **args);
+-void gaym_msg_no_such_nick(struct gaym_conn *gaym, const char *name,
+-                           const char *from, char **args);
+-void gaym_msg_nochangenick(struct gaym_conn *gaym, const char *name,
+-                           const char *from, char **args);
+-void gaym_msg_nosend(struct gaym_conn *gaym, const char *name,
+-                     const char *from, char **args);
+-void gaym_msg_notice(struct gaym_conn *gaym, const char *name,
+-                     const char *from, char **args);
+-void gaym_msg_notinchan(struct gaym_conn *gaym, const char *name,
+-                        const char *from, char **args);
+-void gaym_msg_notop(struct gaym_conn *gaym, const char *name,
+-                    const char *from, char **args);
+-void gaym_msg_part(struct gaym_conn *gaym, const char *name,
+-                   const char *from, char **args);
+-void gaym_msg_ping(struct gaym_conn *gaym, const char *name,
+-                   const char *from, char **args);
+-void gaym_msg_pong(struct gaym_conn *gaym, const char *name,
+-                   const char *from, char **args);
+-void gaym_msg_privmsg(struct gaym_conn *gaym, const char *name,
+-                      const char *from, char **args);
+-void gaym_msg_regonly(struct gaym_conn *gaym, const char *name,
+-                      const char *from, char **args);
+-void gaym_msg_quit(struct gaym_conn *gaym, const char *name,
+-                   const char *from, char **args);
+-void gaym_msg_topic(struct gaym_conn *gaym, const char *name,
+-                    const char *from, char **args);
+-void gaym_msg_trace(struct gaym_conn *gaym, const char *name,
+-                    const char *from, char **args);
+-void gaym_msg_unknown(struct gaym_conn *gaym, const char *name,
+-                      const char *from, char **args);
+-void gaym_msg_wallops(struct gaym_conn *gaym, const char *name,
+-                      const char *from, char **args);
+-void gaym_msg_whois(struct gaym_conn *gaym, const char *name,
+-                    const char *from, char **args);
++typedef void (msg_handler) (struct gaym_conn * gaym, const char *name,
++                            const char *from, char **args);
++msg_handler gaym_msg_away;
++msg_handler gaym_msg_default;
++msg_handler gaym_msg_away;
++msg_handler gaym_msg_badmode;
++msg_handler gaym_msg_banned;
++msg_handler gaym_msg_chanmode;
++msg_handler gaym_msg_endwhois;
++msg_handler gaym_msg_endmotd;
++msg_handler gaym_msg_invite;
++msg_handler gaym_msg_inviteonly;
++msg_handler gaym_msg_who;
++msg_handler gaym_msg_chanfull;
++msg_handler gaym_msg_join;
++msg_handler gaym_msg_kick;
++msg_handler gaym_msg_list;
++msg_handler gaym_msg_login_failed;
++msg_handler gaym_msg_mode;
++msg_handler gaym_msg_motd;
++msg_handler gaym_msg_names;
++msg_handler gaym_msg_nick;
++msg_handler gaym_msg_nickused;
++msg_handler gaym_msg_nochan;
++msg_handler gaym_msg_nonick_chan;
++msg_handler gaym_msg_nonick;
++msg_handler gaym_msg_no_such_nick;
++msg_handler gaym_msg_nochangenick;
++msg_handler gaym_msg_nosend;
++msg_handler gaym_msg_notice;
++msg_handler gaym_msg_notinchan;
++msg_handler gaym_msg_notop;
++msg_handler gaym_msg_part;
++msg_handler gaym_msg_ping;
++msg_handler gaym_msg_pong;
++msg_handler gaym_msg_privmsg;
++msg_handler gaym_msg_regonly;
++msg_handler gaym_msg_quit;
++msg_handler gaym_msg_topic;
++msg_handler gaym_msg_trace;
++msg_handler gaym_msg_unknown;
++msg_handler gaym_msg_wallops;
++msg_handler gaym_msg_whois;
++msg_handler gaym_msg_richnames_list;
++msg_handler gaym_msg_create_pay_only;
++msg_handler gaym_msg_pay_channel;
++msg_handler gaym_msg_toomany_channels;
++msg_handler gaym_msg_list_busy;
+ 
+ 
+-void gaym_msg_richnames_list(struct gaym_conn *gaym, const char *name,
+-                             const char *from, char **args);
+-void gaym_msg_create_pay_only(struct gaym_conn *gaym, const char *name,
+-                              const char *from, char **args);
+-void gaym_msg_pay_channel(struct gaym_conn *gaym, const char *name,
+-                          const char *from, char **args);
+-void gaym_msg_toomany_channels(struct gaym_conn *gaym, const char *name,
+-                               const char *from, char **args);
+-void gaym_msg_list_busy(struct gaym_conn *gaym, const char *name,
+-                        const char *from, char **args);
++void gaym_cmd_table_build(struct gaym_conn *gaym);
+ 
++typedef int (cmd_handler) (struct gaym_conn * gaym, const char *cmd,
++                           const char *target, const char **args);
+ 
+-void gaym_cmd_table_build(struct gaym_conn *gaym);
++cmd_handler gaym_cmd_default;
++cmd_handler gaym_cmd_away;
++cmd_handler gaym_cmd_ctcp_action;
++cmd_handler gaym_cmd_invite;
++cmd_handler gaym_cmd_join;
++cmd_handler gaym_cmd_kick;
++cmd_handler gaym_cmd_list;
++cmd_handler gaym_cmd_mode;
++cmd_handler gaym_cmd_names;
++cmd_handler gaym_cmd_nick;
++cmd_handler gaym_cmd_op;
++cmd_handler gaym_cmd_privmsg;
++cmd_handler gaym_cmd_part;
++cmd_handler gaym_cmd_ping;
++cmd_handler gaym_cmd_quit;
++cmd_handler gaym_cmd_quote;
++cmd_handler gaym_cmd_query;
++cmd_handler gaym_cmd_remove;
++cmd_handler gaym_cmd_topic;
++cmd_handler gaym_cmd_trace;
++cmd_handler gaym_cmd_wallops;
++cmd_handler gaym_cmd_whois;
+ 
+-int gaym_cmd_default(struct gaym_conn *gaym, const char *cmd,
+-                     const char *target, const char **args);
+-int gaym_cmd_away(struct gaym_conn *gaym, const char *cmd,
+-                  const char *target, const char **args);
+-int gaym_cmd_ctcp_action(struct gaym_conn *gaym, const char *cmd,
+-                         const char *target, const char **args);
+-int gaym_cmd_invite(struct gaym_conn *gaym, const char *cmd,
+-                    const char *target, const char **args);
+-int gaym_cmd_join(struct gaym_conn *gaym, const char *cmd,
+-                  const char *target, const char **args);
+-int gaym_cmd_kick(struct gaym_conn *gaym, const char *cmd,
+-                  const char *target, const char **args);
+-int gaym_cmd_list(struct gaym_conn *gaym, const char *cmd,
+-                  const char *target, const char **args);
+-int gaym_cmd_mode(struct gaym_conn *gaym, const char *cmd,
+-                  const char *target, const char **args);
+-int gaym_cmd_names(struct gaym_conn *gaym, const char *cmd,
+-                   const char *target, const char **args);
+-int gaym_cmd_nick(struct gaym_conn *gaym, const char *cmd,
+-                  const char *target, const char **args);
+-int gaym_cmd_op(struct gaym_conn *gaym, const char *cmd,
+-                const char *target, const char **args);
+-int gaym_cmd_privmsg(struct gaym_conn *gaym, const char *cmd,
+-                     const char *target, const char **args);
+-int gaym_cmd_part(struct gaym_conn *gaym, const char *cmd,
+-                  const char *target, const char **args);
+-int gaym_cmd_ping(struct gaym_conn *gaym, const char *cmd,
+-                  const char *target, const char **args);
+-int gaym_cmd_quit(struct gaym_conn *gaym, const char *cmd,
+-                  const char *target, const char **args);
+-int gaym_cmd_quote(struct gaym_conn *gaym, const char *cmd,
+-                   const char *target, const char **args);
+-int gaym_cmd_query(struct gaym_conn *gaym, const char *cmd,
+-                   const char *target, const char **args);
+-int gaym_cmd_remove(struct gaym_conn *gaym, const char *cmd,
+-                    const char *target, const char **args);
+-int gaym_cmd_topic(struct gaym_conn *gaym, const char *cmd,
+-                   const char *target, const char **args);
+-int gaym_cmd_trace(struct gaym_conn *gaym, const char *cmd,
+-                   const char *target, const char **args);
+-int gaym_cmd_wallops(struct gaym_conn *gaym, const char *cmd,
+-                     const char *target, const char **args);
+-int gaym_cmd_whois(struct gaym_conn *gaym, const char *cmd,
+-                   const char *target, const char **args);
+ 
+ void gaym_dccsend_send_file(GaimConnection * gc, const char *who,
+                             const char *file);
+ void gaym_dccsend_recv(struct gaym_conn *gaym, const char *from,
+                        const char *msg);
+-void gaym_get_hash_from_weblogin(GaimAccount * account,
+-                                 void (*callback) (GaimAccount *));
++void gaym_get_chat_key_from_weblogin(GaimAccount * account,
++                                     void (*callback) (GaimAccount *));
+ 
+ void gaim_session_fetch(const char *url, gboolean full,
+                         const char *user_agent, gboolean http11,
+
+Modified: qrc/trunk/gaym/src/gayminfo.h
+===================================================================
+--- qrc/trunk/gaym/src/gayminfo.h	2005-07-25 13:31:45 UTC (rev 245)
++++ qrc/trunk/gaym/src/gayminfo.h	2005-07-26 08:02:20 UTC (rev 246)
+@@ -37,8 +37,8 @@
+     char *who;
+     char *bio;
+     char *stats;
+-    const char *pic_data;
+-    gint pic_data_len;
++    // const char *pic_data;
++    // gint pic_data_len;
+ };
+ void gaym_fetch_thumbnail_cb(void *user_data, const char *pic_data,
+                              size_t len);
+
+Modified: qrc/trunk/gaym/src/gaympriv.c
+===================================================================
+--- qrc/trunk/gaym/src/gaympriv.c	2005-07-25 13:31:45 UTC (rev 245)
++++ qrc/trunk/gaym/src/gaympriv.c	2005-07-26 08:02:20 UTC (rev 246)
+@@ -204,7 +204,7 @@
+ 
+     char *url =
+         g_strdup_printf(&quot;%s?name=%s&amp;key=%s&amp;list=ignore&amp;op=%s&quot;, hashurl,
+-                        name, gaym-&gt;hash_pw, action);
++                        name, gaym-&gt;chat_key, action);
+ 
+     char *user_agent = &quot;Mozilla/4.0&quot;;
+ 
+
+Modified: qrc/trunk/gaym/src/helpers.c
+===================================================================
+--- qrc/trunk/gaym/src/helpers.c	2005-07-25 13:31:45 UTC (rev 245)
++++ qrc/trunk/gaym/src/helpers.c	2005-07-26 08:02:20 UTC (rev 246)
+@@ -479,9 +479,11 @@
+     }
+ 
+     if (tooltip-&gt;len == 0) {
+-        return g_string_free(tooltip, TRUE);
++        g_string_append_printf(tooltip, _(&quot; No info.&quot;));
+     }
+ 
++    g_string_erase(tooltip, 0, 1);
++
+     return g_string_free(tooltip, FALSE);
+ }
+ 
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-07-25 13:31:45 UTC (rev 245)
++++ qrc/trunk/gaym/src/msgs.c	2005-07-26 08:02:20 UTC (rev 246)
+@@ -297,7 +297,7 @@
+         g_return_if_fail(hashurl != NULL);
+ 
+         char *infourl = g_strdup_printf(&quot;%s?pw=%s&amp;name=%s&quot;, hashurl,
+-                                        gaym-&gt;hash_pw, args[1]);
++                                        gaym-&gt;chat_key, args[1]);
+         if (infourl) {
+             gaim_url_fetch(infourl, FALSE,
+                            &quot;Mozilla/4.0 (compatible; MSIE 5.0)&quot;, FALSE,
+@@ -308,6 +308,26 @@
+     g_free(normalized);
+ }
+ 
++void gaym_msg_login_failed(struct gaym_conn *gaym, const char *name,
++                           const char *from, char **args)
++{
++
++
++
++    gaym_cmd_quit(gaym, &quot;quit&quot;, NULL, NULL);
++
++    // if (gc-&gt;inpa)
++    // gaim_input_remove(gc-&gt;inpa);
++
++    // g_free(gaym-&gt;inbuf);
++    // gaim_debug_misc(&quot;gaym&quot;, &quot;Login failed. closing fd %i\n&quot;, gaym-&gt;fd);
++    // close(gaym-&gt;fd);
++    // gaim_debug_misc(&quot;gaym&quot;, &quot;Get chatkey from weblogin\n&quot;);
++    // gaym_get_hash_from_weblogin(gaym-&gt;account,
++    // gaym_login_with_chat_key);
++
++}
++
+ void gaym_msg_list(struct gaym_conn *gaym, const char *name,
+                    const char *from, char **args)
+ {
+@@ -504,15 +524,19 @@
+ /**
+  * Change this to WELCOME
+  */
++
+ void gaym_msg_endmotd(struct gaym_conn *gaym, const char *name,
+                       const char *from, char **args)
+ {
+     GaimConnection *gc;
+ 
++    gaim_debug_misc(&quot;gaym&quot;, &quot;Got motd\n&quot;);
++
+     gc = gaim_account_get_connection(gaym-&gt;account);
+-    if (!gc)
++    if (!gc) {
++        gaim_debug_misc(&quot;gaym&quot;, &quot;!gc ???\n&quot;);
+         return;
+-
++    }
+     gaim_connection_set_state(gc, GAIM_CONNECTED);
+     serv_finish_login(gc);
+ 
+
+Modified: qrc/trunk/gaym/src/parse.c
+===================================================================
+--- qrc/trunk/gaym/src/parse.c	2005-07-25 13:31:45 UTC (rev 245)
++++ qrc/trunk/gaym/src/parse.c	2005-07-26 08:02:20 UTC (rev 246)
+@@ -94,6 +94,8 @@
+     {
+     &quot;471&quot;, &quot;nc:&quot;, gaym_msg_chanfull},   /* Channel Full */
+     {
++    &quot;668&quot;, &quot;n:&quot;, gaym_msg_login_failed},        /* Invalid Authentication */
++    {
+     &quot;690&quot;, &quot;ncnt:&quot;, gaym_msg_richnames_list},   /* Gay.com's RPL for names 
+                                                    list */
+     {
+
+Modified: qrc/trunk/gaym/src/weblogin.c
+===================================================================
+--- qrc/trunk/gaym/src/weblogin.c	2005-07-25 13:31:45 UTC (rev 245)
++++ qrc/trunk/gaym/src/weblogin.c	2005-07-26 08:02:20 UTC (rev 246)
+@@ -269,6 +269,7 @@
+ // 
+ // 
+ // 
++// 
+ // this
+ // structure, as well.
+ static void
+@@ -307,6 +308,7 @@
+                        // 
+                        // 
+                        // 
++                       // 
+                        // (see 
+                        // above)
+                        (gfud-&gt;full ? &quot;&quot; : &quot;/&quot;),
+@@ -324,6 +326,7 @@
+                        // 
+                        // 
+                        // 
++                       // 
+                        // See 
+                        // above
+                        (gfud-&gt;full ? &quot;&quot; : &quot;/&quot;),
+@@ -507,7 +510,7 @@
+     struct gaym_conn *gaym = session-&gt;gaym;
+     // Get hash from text
+     if (session &amp;&amp; GAIM_CONNECTION_IS_VALID(session-&gt;account-&gt;gc)) {
+-        // char *pw_hash;
++        // char *chat_key;
+         char *bio;
+         char *thumbnail;
+         char *temp = NULL;
+@@ -518,7 +521,7 @@
+ 
+ 
+         gaym-&gt;server_stats = NULL;
+-        gaym-&gt;hash_pw = NULL;
++        gaym-&gt;chat_key = NULL;
+         gaym-&gt;server_bioline = NULL;
+         gaym-&gt;thumbnail = NULL;
+ 
+@@ -531,7 +534,7 @@
+         }
+         if (!
+             (temp &amp;&amp; temp2 &amp;&amp; temp != temp2
+-             &amp;&amp; (gaym-&gt;hash_pw =
++             &amp;&amp; (gaym-&gt;chat_key =
+                  g_strndup(temp, (temp2 - temp) * sizeof(char))))) {
+             gaim_connection_error((session-&gt;account-&gt;gc),
+                                   _
+@@ -540,8 +543,8 @@
+         }
+ 
+         gaim_debug_misc(&quot;weblogin&quot;,
+-                        &quot;Got hash, temp=%x, temp2=%x, gaym-&gt;hash_pw=%x\n&quot;,
+-                        temp, temp2, gaym-&gt;hash_pw);
++                        &quot;Got hash, temp=%x, temp2=%x, gaym-&gt;chat_key=%x\n&quot;,
++                        temp, temp2, gaym-&gt;chat_key);
+         // Next, loook for bio
+         match = &quot;param name=\&quot;bio\&quot; value=\&quot;&quot;;
+         temp = strstr(text, match);
+@@ -695,8 +698,8 @@
+     }
+ }
+ void
+-gaym_get_hash_from_weblogin(GaimAccount * account,
+-                            void (*callback) (GaimAccount * account))
++gaym_get_chat_key_from_weblogin(GaimAccount * account,
++                                void (*callback) (GaimAccount * account))
+ {
+ 
+     struct gaym_conn *gaym = account-&gt;gc-&gt;proto_data;
+@@ -723,15 +726,22 @@
+             (((GaimUrlSession *) session)-&gt;account-&gt;gc)) {
+             // The first step is to establish the initial sesion
+             // We connect to index.html, and get a few cookie values.
+-            char *url = &quot;<A HREF="http://www.gay.com/index.html">http://www.gay.com/index.html</A>&quot;;
+-            char *buf = g_strdup_printf(_(&quot;Signon: %s&quot;),
+-                                        ((GaimUrlSession *) session)-&gt;
+-                                        account-&gt;username);
+-            gaim_connection_update_progress(((GaimUrlSession *) session)-&gt;
+-                                            account-&gt;gc, buf, 2, 6);
+-            ((GaimUrlSession *) session)-&gt;hasFormData = FALSE;
++            char *url =
++                g_strdup_printf
++                (&quot;<A HREF="http://www.gay.com/misc/dologin.html?__login_haveForm=1&amp;__login_save=1&amp;__login_member=%s&amp;redir=%%2Findex.html&amp;__login_basepage=%%2Fmisc%%2Fdologin.html&amp;__login_password=%s">http://www.gay.com/misc/dologin.html?__login_haveForm=1&amp;__login_save=1&amp;__login_member=%s&amp;redir=%%2Findex.html&amp;__login_basepage=%%2Fmisc%%2Fdologin.html&amp;__login_password=%s</A>&quot;,
++                 session-&gt;username, session-&gt;password);
++
++            session-&gt;hasFormData = TRUE;
+             gaim_session_fetch(url, FALSE, NULL, FALSE,
+-                               gaym_weblogin_step2, session, session);
++                               gaym_weblogin_step3, session, session);
++
++            /* char *url = &quot;<A HREF="http://www.gay.com/index.html">http://www.gay.com/index.html</A>&quot;; char *buf =
++               g_strdup_printf(_(&quot;Signon: %s&quot;), ((GaimUrlSession *)
++               session)-&gt; account-&gt;username);
++               gaim_connection_update_progress(((GaimUrlSession *)
++               session)-&gt; account-&gt;gc, buf, 2, 6); session-&gt;hasFormData =
++               FALSE; gaim_session_fetch(url, FALSE, NULL, FALSE,
++               gaym_weblogin_step3, session, session); */
+         } else {
+             gaim_debug_misc(&quot;gaym&quot;, &quot;cancelled before step1\n&quot;);
+             gaim_debug_misc(&quot;gaym&quot;, &quot;gaym-&gt;sessoin: %x\n&quot;, session);
+@@ -746,11 +756,29 @@
+ {
+ 
+     const char *pw;
+-    pw = gaim_account_get_string(account, &quot;password&quot;, NULL);
+-    if (pw == NULL)
+-        gaym_get_hash_from_weblogin(account, callback);
++    pw = gaim_account_get_string(account, &quot;chat_key&quot;, NULL);
++    if (pw == NULL) {
++        gaym_get_chat_key_from_weblogin(account, callback);
++        return;
++    }
++    // All in one shot:
++    // 1. Login to the irc server &lt;--- blocks serv_login
++    // 2. grab the applet &lt;--- blocks serv_login
++    // 3. spamlist update &lt;--- does not block serv_login
++    // 4. get config.txt &lt;--- does not block serv_login
++    // 
++    // Note: if the chat key happens to be invalid, 2 and 4 will fail.
+ 
++    // 1
++    // callback(gaym-&gt;account);
+ 
++    // 2
++
++    // 3
++
++
++    // 4
++
+ }
+ 
+ /**
+
+Modified: qrc/trunk/gaym-extras/gaym-extras.c
+===================================================================
+--- qrc/trunk/gaym-extras/gaym-extras.c	2005-07-25 13:31:45 UTC (rev 245)
++++ qrc/trunk/gaym-extras/gaym-extras.c	2005-07-26 08:02:20 UTC (rev 246)
+@@ -11,24 +11,32 @@
+ #include &quot;util.h&quot;
+ #include &quot;version.h&quot;
+ #include &quot;buddyicon.h&quot;
++#include &quot;prpl.h&quot;
+ 
+ #include &quot;gtkconv.h&quot;
+ #include &quot;gtkimhtml.h&quot;
+ #include &quot;gtkplugin.h&quot;
+ 
+ #include &quot;../gaym/src/gaym.h&quot;
+-#include &quot;../gaym/src/gayminfo.h&quot;
+-#include &quot;../gaym/src/helpers.h&quot;
+-
++struct fetch_thumbnail_data {
++    char *who;
++    const char *pic_data;
++    gint pic_data_len;
++};
+ #define CHATSORT_PLUGIN_ID &quot;gtk-chaticon&quot;
+ 
++
+ GHashTable *icons;
+ GHashTable *pending_updates;
+ GHashTable *im_window_bios;
++
++// Consider combining into one popup hash...
+ GHashTable *popup_rects;
+ GHashTable *popup_timeouts;
+ GHashTable *popups;
+ 
++// Additional UI info for a conversation.
++// We may be able to clean this up, some.
+ typedef struct _GaymChatIcon {
+ 
+     GaimConversation *conv;
+@@ -84,25 +92,21 @@
+ sort_chat_users_by_alpha(GtkTreeModel * model, GtkTreeIter * a,
+                          GtkTreeIter * b, gpointer userdata)
+ {
+-    char *user1 = NULL, *user2 = NULL, *luser1 = NULL, *luser2 = NULL;
++    char *user1 = NULL, *user2 = NULL;
+     gint ret = 0;
+ 
+     gtk_tree_model_get(model, a, CHAT_USERS_NAME_COLUMN, &amp;user1, -1);
+     gtk_tree_model_get(model, b, CHAT_USERS_NAME_COLUMN, &amp;user2, -1);
+ 
+-    luser1 = g_utf8_strdown(user1, -1);
+-    luser2 = g_utf8_strdown(user2, -1);
+-    if (luser1 == NULL || luser2 == NULL) {
+-        if (!(luser1 == NULL &amp;&amp; luser2 == NULL))
+-            ret = (luser1 == NULL) ? -1 : 1;
++    if (user1 == NULL || user2 == NULL) {
++        if (!(user1 == NULL &amp;&amp; user2 == NULL))
++            ret = (user1 == NULL) ? -1 : 1;
+     } else {
+-        ret = g_utf8_collate(luser1, luser2);
++        ret = g_utf8_collate(user1, user2);
+     }
+ 
+     g_free(user1);
+     g_free(user2);
+-    g_free(luser1);
+-    g_free(luser2);
+     return ret;
+ }
+ 
+@@ -113,7 +117,7 @@
+ {
+     GaimConvChatBuddyFlags f1 = 0, f2 = 0;
+     gint flag_mask = 0x000F;
+-    char *user1 = NULL, *user2 = NULL, *luser1 = NULL, *luser2 = NULL;
++    char *user1 = NULL, *user2 = NULL;
+     gint ret = 0;
+ 
+     gtk_tree_model_get(model, a, CHAT_USERS_NAME_COLUMN, &amp;user1,
+@@ -124,22 +128,18 @@
+     f1 = f1 &amp; flag_mask;
+     f2 = f2 &amp; flag_mask;
+ 
+-    luser1 = g_utf8_strdown(user1, -1);
+-    luser2 = g_utf8_strdown(user2, -1);
+-    if (luser1 == NULL || luser2 == NULL) {
+-        if (!(luser1 == NULL &amp;&amp; luser2 == NULL))
+-            ret = (luser1 == NULL) ? -1 : 1;
++    if (user1 == NULL || user2 == NULL) {
++        if (!(user1 == NULL &amp;&amp; user2 == NULL))
++            ret = (user1 == NULL) ? -1 : 1;
+     } else if (f1 != f2) {
+-        /* sort more important lusers first */
++        /* sort more important users first */
+         ret = (f1 &gt; f2) ? -1 : 1;
+     } else {
+-        ret = g_utf8_collate(luser1, luser2);
++        ret = g_utf8_collate(user1, user2);
+     }
+ 
+     g_free(user1);
+     g_free(user2);
+-    g_free(luser1);
+-    g_free(luser2);
+     return ret;
+ }
+ 
+@@ -210,7 +210,7 @@
+         *height = 100;
+ }
+ 
+-void gaym_gtkconv_update_thumbnail(GaimConversation * conv, struct gaym_fetch_thumbnail_data
++void gaym_gtkconv_update_thumbnail(GaimConversation * conv, struct fetch_thumbnail_data
+                                    *thumbnail_data)
+ {
+     GaimGtkConversation *gtkconv;
+@@ -230,7 +230,6 @@
+ 
+     GaimAccount *account;
+     GaimPluginProtocolInfo *prpl_info = NULL;
+-
+     g_return_if_fail(conv != NULL);
+     g_return_if_fail(GAIM_IS_GTK_CONVERSATION(conv));
+     g_return_if_fail(gaim_conversation_get_type(conv) == GAIM_CONV_CHAT);
+@@ -360,8 +359,7 @@
+     GaimConversation *c = (GaimConversation *) conversation;
+     char *name_needing_update = (char *) name;
+ 
+-    struct gaym_fetch_thumbnail_data *d =
+-        (struct gaym_fetch_thumbnail_data *) data;
++    struct fetch_thumbnail_data *d = (struct fetch_thumbnail_data *) data;
+ 
+ 
+     g_return_val_if_fail(name_needing_update != NULL, FALSE);
+@@ -377,7 +375,7 @@
+ {
+     if (!user_data)
+         return;
+-    struct gaym_fetch_thumbnail_data *d = user_data;
++    struct fetch_thumbnail_data *d = user_data;
+     if (!pic_data) {
+         return;
+     }
+@@ -404,6 +402,7 @@
+     GaimConversation *c = (GaimConversation *) conv;
+     GaymBuddy *cm;
+     struct gaym_conn *gaym = c-&gt;account-&gt;gc-&gt;proto_data;
++
+     GtkTreeIter iter;
+     GtkTreeModel *model;
+     gchar *name;
+@@ -421,16 +420,15 @@
+ 
+     // Get thumbnail URL.
+     cm = gaym_get_channel_member_info(gaym, name);
++    // thumbnail = ui_info-&gt;get_user_thumbnail_url(gaym, name);
+ 
+-
+     // Fetch thumbnail.
+ 
+-    struct gaym_fetch_thumbnail_data *data;
++    struct fetch_thumbnail_data *data;
+     char *hashurl = g_hash_table_lookup(gaym-&gt;confighash,
+                                         &quot;mini-profile-panel.thumbnail-prefix&quot;);
+     g_return_if_fail(hashurl != NULL);
+-    data = g_new0(struct gaym_fetch_thumbnail_data, 1);
+-    data-&gt;gc = gaim_account_get_connection(gaym-&gt;account);
++    data = g_new0(struct fetch_thumbnail_data, 1);
+     data-&gt;who = g_strdup(name);
+     char *url = g_strdup_printf(&quot;%s%s&quot;, hashurl, cm-&gt;thumbnail);
+     gaim_url_fetch(url, FALSE, &quot;Mozilla/4.0&quot;, FALSE,
+@@ -441,11 +439,19 @@
+ 
+ }
+ 
+-static void clean_im_bio(GaimConversation * c)
++static void clean_popup_stuff(GaimConversation * c)
+ {
+ 
+-    g_return_if_fail(c-&gt;type == GAIM_CONV_IM);
+-    g_hash_table_remove(im_window_bios, c-&gt;name);
++    GaimGtkConversation *gtkconv = GAIM_GTK_CONVERSATION(c);
++    if (c-&gt;type == GAIM_CONV_IM) {
++        g_hash_table_remove(popup_timeouts, gtkconv-&gt;tab_label);
++        g_hash_table_remove(popups, gtkconv-&gt;tab_label);
++    } else if (c-&gt;type == GAIM_CONV_CHAT) {
++        GaimGtkChatPane *gtkchat = gtkconv-&gt;u.chat;
++        g_hash_table_remove(popup_timeouts, gtkchat-&gt;list);
++        g_hash_table_remove(popup_rects, gtkchat-&gt;list);
++        g_hash_table_remove(popups, gtkchat-&gt;list);
++    }
+ 
+ }
+ 
+@@ -458,37 +464,30 @@
+         gaim_find_conversation_with_account(name, account);
+ 
+     g_return_if_fail(c != NULL);
+-
+     g_return_if_fail(c-&gt;type == GAIM_CONV_IM);
+ 
+     GaimGtkConversation *gtkconv = GAIM_GTK_CONVERSATION(c);
+-    struct gaym_conn *gaym = account-&gt;gc-&gt;proto_data;
+-    GaymBuddy *cm = gaym_get_channel_member_info(gaym, c-&gt;name);
++    // struct gaym_conn *gaym = account-&gt;gc-&gt;proto_data;
+ 
+-    g_return_if_fail(cm != NULL);
+-
+     GtkBox *vbox_big = GTK_BOX(gtkconv-&gt;lower_hbox-&gt;parent);
+ 
+     GtkWidget *bio_area = g_hash_table_lookup(im_window_bios, c-&gt;name);
+     if (!bio_area) {
+-        bio_area = gtk_label_new(_(&quot; &quot;));
++        bio_area = gtk_label_new(_(&quot;Temporarily disabled.&quot;));
+         g_hash_table_insert(im_window_bios, c, bio_area);
+         gtk_box_pack_start(vbox_big, bio_area, TRUE, TRUE, 0);
+-        gtk_widget_show(bio_area);
++        // gtk_widget_show(bio_area);
+     }
+ 
+-    char *buf;
+-    buf =
+-        g_strconcat(1 ? &quot;Age: &quot; : &quot;&quot;,
+-                    cm-&gt;age ? cm-&gt;age : &quot;?&quot;,
+-                    1 ? &quot;\nLocation: &quot; : &quot;&quot;,
+-                    cm-&gt;location ? cm-&gt;location : &quot;?&quot;,
+-                    cm-&gt;bio ? &quot;\nInfo: &quot; : &quot;&quot;, cm-&gt;bio ? cm-&gt;bio : &quot;&quot;);
++    /* char* age = ui_info-&gt;get_user_age(gaym, name); char* location =
++       ui_info-&gt;get_user_location(gaym, name); char* bio =
++       ui_info-&gt;get_user_bio(gaym, name); char *buf; buf = g_strconcat(1 ? 
++       &quot;Age: &quot; : &quot;&quot;, cm-&gt;age ? cm-&gt;age : &quot;?&quot;, 1 ? &quot;\nLocation: &quot; : &quot;&quot;,
++       cm-&gt;location ? cm-&gt;location : &quot;?&quot;, cm-&gt;bio ? &quot;\nInfo: &quot; : &quot;&quot;,
++       cm-&gt;bio ? cm-&gt;bio : &quot;&quot;);
+ 
+-    gtk_label_set_text(GTK_LABEL(bio_area), buf);
+-    gtk_label_set_line_wrap(GTK_LABEL(bio_area), TRUE);
+-    g_free(buf);
+-
++       gtk_label_set_text(GTK_LABEL(bio_area), buf);
++       gtk_label_set_line_wrap(GTK_LABEL(bio_area), TRUE); g_free(buf); */
+ }
+ static void namelist_leave_cb(GtkWidget * tv, GdkEventCrossing * e,
+                               gpointer n)
+@@ -540,17 +539,20 @@
+     return;
+ }
+ 
++typedef enum {
++    TOOLTIP_CHAT,
++    TOOLTIP_IM,
++} GaymTooltipType;
++
+ struct timeout_cb_data {
++    GaymTooltipType type;
+     GtkWidget *tv;
+     struct gaym_conn *gaym;
+ };
+ 
+-static gboolean namelist_tooltip_timeout(struct timeout_cb_data *data)
++static gboolean tooltip_timeout(struct timeout_cb_data *data)
+ {
+-    GtkTreePath *path;
+-    GtkTreeIter iter;
+-    GtkTreeModel *model;
+-    gchar *name;
++    const gchar *name;
+     int scr_w, scr_h, w, h, x, y;
+ #if GTK_CHECK_VERSION(2,2,0)
+     int mon_num;
+@@ -560,23 +562,17 @@
+     gboolean tooltip_top = FALSE;
+     char *tooltiptext = NULL;
+     GdkRectangle mon_size;
+-    GdkRectangle *rect;
+     guint *timeout;
+     GtkWidget *tipwindow;
+     GtkWidget *tv = data-&gt;tv;
++    GaymTooltipType type = data-&gt;type;
+     struct gaym_conn *gaym = data-&gt;gaym;
+-    g_free(data);
+-    rect = g_hash_table_lookup(popup_rects, tv);
++    GaimPluginProtocolInfo *prpl_info =
++        GAIM_PLUGIN_PROTOCOL_INFO(gaim_find_prpl
++                                  (gaim_account_get_protocol_id
++                                   (gaym-&gt;account)));
++
+     timeout = (guint *) g_hash_table_lookup(popup_timeouts, tv);
+-    if (!gtk_tree_view_get_path_at_pos
+-        (GTK_TREE_VIEW(tv), rect-&gt;x, rect-&gt;y, &amp;path, NULL, NULL, NULL))
+-        return FALSE;
+-    model = gtk_tree_view_get_model(GTK_TREE_VIEW(tv));
+-    gtk_tree_model_get_iter(model, &amp;iter, path);
+-    gtk_tree_model_get(model, &amp;iter, CHAT_USERS_NAME_COLUMN, &amp;name, -1);
+-
+-
+-
+     while (gtk_events_pending())
+         gtk_main_iteration();
+ 
+@@ -584,28 +580,49 @@
+        events have happened, and the mouse might not still be in the buddy 
+        list */
+     if (!(*timeout)) {
+-        gtk_tree_path_free(path);
+         return FALSE;
+     }
+-    /* 
+-       gtk_tree_view_get_cell_area(GTK_TREE_VIEW(tv), path, NULL,
+-       &amp;gtkblist-&gt;contact_rect);
+-       gdk_drawable_get_size(GDK_DRAWABLE(tv-&gt;window),
+-       &amp;(gtkblist-&gt;contact_rect.width), NULL); gtk_tree_path_down (path);
+-       while (gtk_tree_model_get_iter(GTK_TREE_MODEL(gtkblist-&gt;treemodel), 
+-       &amp;i, path)) { GdkRectangle rect;
+-       gtk_tree_view_get_cell_area(GTK_TREE_VIEW(tv), path, NULL, &amp;rect);
+-       gtkblist-&gt;contact_rect.height += rect.height;
+-       gtk_tree_path_next(path);
+ 
+-       } */
++    if (type == TOOLTIP_CHAT) {
++        GtkTreePath *path;
++        GtkTreeIter iter;
++        GtkTreeModel *model;
++        GdkRectangle *rect;
+ 
+-    gtk_tree_path_free(path);
++        rect = g_hash_table_lookup(popup_rects, tv);
++        if (!gtk_tree_view_get_path_at_pos
++            (GTK_TREE_VIEW(tv), rect-&gt;x, rect-&gt;y, &amp;path, NULL, NULL, NULL))
++            return FALSE;
++        model = gtk_tree_view_get_model(GTK_TREE_VIEW(tv));
++        gtk_tree_model_get_iter(model, &amp;iter, path);
++        gtk_tree_model_get(model, &amp;iter, CHAT_USERS_NAME_COLUMN, &amp;name,
++                           -1);
++        gtk_tree_path_free(path);
++    } else if (type == TOOLTIP_IM) {
++        name = gtk_label_get_text(GTK_LABEL(tv));
++    } else
++        return FALSE;
+ 
++
+     GaymBuddy *cm = gaym_get_channel_member_info(gaym, name);
++    if (!cm) {
++        guint *timeout = g_hash_table_lookup(popup_timeouts, tv);
++        if (timeout) {
++            int delay =
++                gaim_prefs_get_int(&quot;/gaim/gtk/blist/tooltip_delay&quot;);
++            g_timeout_add(delay, (GSourceFunc) tooltip_timeout, data);
++        }
++        return FALSE;
++    }
++    g_free(data);
+ 
+-    tooltiptext = build_tooltip_text(cm);
+ 
++    GaimBuddy *gb = g_new0(GaimBuddy, 1);
++    gb-&gt;name = cm-&gt;name;
++    gb-&gt;account = gaym-&gt;account;
++
++    tooltiptext = prpl_info-&gt;tooltip_text(gb);
++    g_free(gb);
+     g_return_val_if_fail(tooltiptext != NULL, FALSE);
+ 
+     tipwindow = g_hash_table_lookup(popups, tv);
+@@ -736,9 +753,9 @@
+         g_new0(struct timeout_cb_data, 1);
+     timeout_data-&gt;tv = tv;
+     timeout_data-&gt;gaym = gaym;
++    timeout_data-&gt;type = TOOLTIP_CHAT;
+     *timeout =
+-        g_timeout_add(delay, (GSourceFunc) namelist_tooltip_timeout,
+-                      timeout_data);
++        g_timeout_add(delay, (GSourceFunc) tooltip_timeout, timeout_data);
+ 
+     gtk_tree_view_get_cell_area(GTK_TREE_VIEW(tv), path, NULL, rect);
+ 
+@@ -749,9 +766,107 @@
+ 
+     return TRUE;
+ }
++
++static void tab_leave_cb(GtkWidget * event, GdkEventCrossing * e,
++                         gpointer n)
++{
++    GtkWidget *tab = gtk_bin_get_child(GTK_BIN(event));
++    gaim_debug_misc(&quot;im_bio&quot;, &quot;tab exit\n&quot;);
++    guint *timeout = g_hash_table_lookup(popup_timeouts, tab);
++    g_hash_table_remove(popups, tab);
++
++
++    if (timeout &amp;&amp; *timeout) {
++        g_source_remove(*timeout);
++        *timeout = 0;
++    }
++}
++
++
++static gboolean tab_entry_cb(GtkWidget * event,
++                             GdkEventCrossing * crossing, gpointer conv)
++{
++
++    guint *timeout;
++    guint delay;
++    gaim_debug_misc(&quot;im_bio&quot;, &quot;tab entry\n&quot;);
++    GaimConversation *c = (GaimConversation *) conv;
++    struct gaym_conn *gaym = c-&gt;account-&gt;gc-&gt;proto_data;
++
++    GtkWidget *tab = gtk_bin_get_child(GTK_BIN(event));
++    timeout = g_hash_table_lookup(popup_timeouts, tab);
++
++    delay = gaim_prefs_get_int(&quot;/gaim/gtk/blist/tooltip_delay&quot;);
++
++    if (delay == 0)
++        return FALSE;
++
++    if (timeout &amp;&amp; *timeout)
++        return FALSE;
++
++    // g_hash_table_remove(popups, tab);
++    // g_source_remove(*timeout);
++
++
++
++    struct timeout_cb_data *timeout_data =
++        g_new0(struct timeout_cb_data, 1);
++    timeout_data-&gt;tv = tab;
++    timeout_data-&gt;gaym = gaym;
++    timeout_data-&gt;type = TOOLTIP_IM;
++    *timeout =
++        g_timeout_add(delay, (GSourceFunc) tooltip_timeout, timeout_data);
++
++    return TRUE;
++}
++static void redo_im_window(GaimConversation * c)
++{
++
++    if (c &amp;&amp; c-&gt;type == GAIM_CONV_IM) {
++        GaimGtkConversation *gtkconv = GAIM_GTK_CONVERSATION(c);
++        GtkWidget *event = gtk_event_box_new();
++
++        gaim_debug_misc(&quot;im_bio&quot;, &quot;remove tab_label\n&quot;);
++        gtk_widget_ref(gtkconv-&gt;tab_label);
++        gtk_container_remove(GTK_CONTAINER(gtkconv-&gt;tabby),
++                             GTK_WIDGET(gtkconv-&gt;tab_label));
++        // gtk_container_remove(GTK_CONTAINER(gtkconv-&gt;tabby),
++        // gtkconv-&gt;icon);
++        // gtk_container_remove(GTK_CONTAINER(gtkconv-&gt;tabby),
++        // gtkconv-&gt;close);
++        gtk_widget_add_events(event,
++                              GDK_ENTER_NOTIFY_MASK |
++                              GDK_LEAVE_NOTIFY_MASK);
++        g_signal_connect(G_OBJECT(event), &quot;enter-notify-event&quot;,
++                         G_CALLBACK(tab_entry_cb), c);
++
++        g_signal_connect(G_OBJECT(event),
++                         &quot;leave-notify-event&quot;,
++                         G_CALLBACK(tab_leave_cb), c);
++        gaim_debug_misc(&quot;im_bio&quot;, &quot;put event in tabby\n&quot;);
++        gtk_box_pack_start(GTK_BOX(gtkconv-&gt;tabby), GTK_WIDGET(event),
++                           TRUE, TRUE, 0);
++        gaim_debug_misc(&quot;im_bio&quot;, &quot;show event\n&quot;);
++        gtk_widget_show(GTK_WIDGET(event));
++        gaim_debug_misc(&quot;im_bio&quot;, &quot;put label in event\n&quot;);
++        gtk_container_add(GTK_CONTAINER(event),
++                          GTK_WIDGET(gtkconv-&gt;tab_label));
++        gtk_widget_unref(gtkconv-&gt;tab_label);
++        gaim_debug_misc(&quot;im_bio&quot;, &quot;show label\n&quot;);
++        gtk_widget_show(GTK_WIDGET(gtkconv-&gt;tab_label));
++
++        // gaim_debug_misc(&quot;im_bio&quot;,&quot;Tried to add events: tab_label text
++        // is %s\n&quot;,gtk_label_get_text(GTK_LABEL(gtkconv-&gt;tab_label)));
++        g_hash_table_insert(popup_timeouts, gtkconv-&gt;tab_label,
++                            g_new0(guint, 1));
++    }
++
++}
++
+ static void redochatwindow(GaimConversation * c)
+ {
+ 
++
+     GtkTreeModel *oldls;
+ 
+     GaimGtkConversation *gtkconv = GAIM_GTK_CONVERSATION(c);
+@@ -850,11 +965,14 @@
+                               (GDestroyNotify) gtk_widget_destroy);
+     gaim_signal_connect(gaim_conversations_get_handle(), &quot;chat-joined&quot;,
+                         plugin, GAIM_CALLBACK(redochatwindow), NULL);
++    gaim_signal_connect(gaim_conversations_get_handle(),
++                        &quot;conversation-created&quot;, plugin,
++                        GAIM_CALLBACK(redo_im_window), NULL);
+     gaim_signal_connect(gaim_accounts_get_handle(), &quot;info-updated&quot;, plugin,
+                         GAIM_CALLBACK(update_im_bio), NULL);
+     gaim_signal_connect(gaim_conversations_get_handle(),
+                         &quot;deleting-conversation&quot;, plugin,
+-                        GAIM_CALLBACK(clean_im_bio), NULL);
++                        GAIM_CALLBACK(clean_popup_stuff), NULL);
+ 
+     return TRUE;
+ }
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000175.html">[Qrc-svn] r245 - in qrc/trunk: gaym/src gaym-extras
+</A></li>
+	<LI>Next message: <A HREF="000177.html">[Qrc-svn] r247 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#176">[ date ]</a>
+              <a href="thread.html#176">[ thread ]</a>
+              <a href="subject.html#176">[ subject ]</a>
+              <a href="author.html#176">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

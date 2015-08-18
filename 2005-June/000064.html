@@ -1,0 +1,141 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r131 - trunk/bot-challenger
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r131%20-%20trunk/bot-challenger&In-Reply-To=%3C200506301502.j5UF2WAm022515%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000062.html">
+   <LINK REL="Next"  HREF="000063.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r131 - trunk/bot-challenger</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r131%20-%20trunk/bot-challenger&In-Reply-To=%3C200506301502.j5UF2WAm022515%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r131 - trunk/bot-challenger">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Thu Jun 30 17:02:32 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000062.html">[Qrc-svn] r130 - trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000063.html">[Qrc-svn] r132 - trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#64">[ date ]</a>
+              <a href="thread.html#64">[ thread ]</a>
+              <a href="subject.html#64">[ subject ]</a>
+              <a href="author.html#64">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-30 17:02:31 +0200 (Thu, 30 Jun 2005)
+New Revision: 131
+
+Modified:
+   trunk/bot-challenger/bot-challenger.c
+Log:
+Fixed problem where bot-challenger does not cooperate with Gaim's away
+mechanisms.
+
+
+Modified: trunk/bot-challenger/bot-challenger.c
+===================================================================
+--- trunk/bot-challenger/bot-challenger.c	2005-06-29 00:44:01 UTC (rev 130)
++++ trunk/bot-challenger/bot-challenger.c	2005-06-30 15:02:31 UTC (rev 131)
+@@ -145,31 +145,25 @@
+     }
+ }
+ 
+-/**
+- * Send an IM to the recipient (thanks to the gaim-otr plugin)
+- */
+-void inject_message(GaimAccount * account, const char *recipient,
+-                    const char *message)
++void send_auto_reply(GaimAccount * account, const char *recipient,
++                     const char *message)
+ {
+-    GaimConnection *connection;
++    int i = 0;
++    GaimConnection *gc = NULL;
++    GaimPluginProtocolInfo *prpl_info = NULL;
+ 
+-    connection = gaim_account_get_connection(account);
++    gc = gaim_account_get_connection(account);
+ 
+-    if (!connection) {
+-        const char *protocol = gaim_account_get_protocol_id(account);
+-        const char *accountname = gaim_account_get_username(account);
+-        GaimPlugin *p = gaim_find_prpl(protocol);
++    if (gc != NULL &amp;&amp; gc-&gt;prpl != NULL) {
++        prpl_info = GAIM_PLUGIN_PROTOCOL_INFO(gc-&gt;prpl);
++    }
+ 
+-        gaim_debug_error(&quot;bot-challenger&quot;,
+-                         &quot;You are not currently connected to &quot;
+-                         &quot;account %s (%s).&quot;, accountname, (p
+-                                                           &amp;&amp; p-&gt;info-&gt;
+-                                                           name) ? p-&gt;
+-                         info-&gt;name : &quot;Unknown&quot;);
+-
+-        return;
++    if (prpl_info &amp;&amp; prpl_info-&gt;send_im) {
++        i = prpl_info-&gt;send_im(gc, recipient, message,
++                               GAIM_CONV_IM_AUTO_RESP);
+     }
+-    serv_send_im(connection, recipient, message, 0);
++
++    return;
+ }
+ 
+ /**
+@@ -268,7 +262,7 @@
+             g_strdup_printf(_
+                             (&quot;Bot Challenger engaged:  you are now being ignored!  Your message will be delivered if you can correctly answer the following question within %i minutes:  %s&quot;),
+                             BOT_MAX_MINUTES, question);
+-        inject_message(account, *sender, botmsg);
++        send_auto_reply(account, *sender, botmsg);
+ 
+         g_free(now);
+         g_free(botmsg);
+@@ -283,7 +277,7 @@
+             botmsg =
+                 _
+                 (&quot;Bot Challenger accepted your answer and delivered your original message.  You may now speak freely.&quot;);
+-            inject_message(account, *sender, botmsg);
++            send_auto_reply(account, *sender, botmsg);
+ 
+             if (gaim_prefs_get_bool
+                 (&quot;/plugins/core/bot/challenger/auto_add_permit&quot;)) {
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000062.html">[Qrc-svn] r130 - trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000063.html">[Qrc-svn] r132 - trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#64">[ date ]</a>
+              <a href="thread.html#64">[ thread ]</a>
+              <a href="subject.html#64">[ subject ]</a>
+              <a href="author.html#64">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

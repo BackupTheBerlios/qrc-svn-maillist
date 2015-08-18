@@ -1,0 +1,79 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r302 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2007-August/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r302%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200708090105.l7915nab018147%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r302 - qrc/trunk/gaym/src</H1>
+    <B>jblebrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r302%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200708090105.l7915nab018147%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r302 - qrc/trunk/gaym/src">jblebrun at mail.berlios.de
+       </A><BR>
+    <I>Thu Aug  9 03:06:08 CEST 2007</I>
+    <P><UL>
+        
+        
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#232">[ date ]</a>
+              <a href="thread.html#232">[ thread ]</a>
+              <a href="subject.html#232">[ subject ]</a>
+              <a href="author.html#232">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2007-08-09 03:05:47 +0200 (Thu, 09 Aug 2007)
+New Revision: 302
+
+Modified:
+   qrc/trunk/gaym/src/gaym.c
+Log:
+Fixed a null pointer issue with away msgs
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2007-07-15 06:27:10 UTC (rev 301)
++++ qrc/trunk/gaym/src/gaym.c	2007-08-09 01:05:47 UTC (rev 302)
+@@ -768,6 +768,7 @@
+     if (flags &amp; PURPLE_MESSAGE_AUTO_RESP) {
+         automsg = g_strdup_printf(&quot;&lt;AUTO-REPLY&gt; %s&quot;, stripped_msg);
+         g_free(stripped_msg);
++        stripped_msg=NULL;
+         args[1] = automsg;
+ 
+     } else {
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#232">[ date ]</a>
+              <a href="thread.html#232">[ thread ]</a>
+              <a href="subject.html#232">[ subject ]</a>
+              <a href="author.html#232">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

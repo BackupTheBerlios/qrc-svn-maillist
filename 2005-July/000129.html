@@ -1,0 +1,158 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r198 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r198%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507131512.j6DFC93s011871%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000128.html">
+   <LINK REL="Next"  HREF="000130.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r198 - qrc/trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r198%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507131512.j6DFC93s011871%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r198 - qrc/trunk/gaym/src">deckrider at berlios.de
+       </A><BR>
+    <I>Wed Jul 13 17:12:09 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000128.html">[Qrc-svn] r197 - qrc/trunk
+</A></li>
+        <LI>Next message: <A HREF="000130.html">[Qrc-svn] r199 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#129">[ date ]</a>
+              <a href="thread.html#129">[ thread ]</a>
+              <a href="subject.html#129">[ subject ]</a>
+              <a href="author.html#129">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-13 17:12:08 +0200 (Wed, 13 Jul 2005)
+New Revision: 198
+
+Modified:
+   qrc/trunk/gaym/src/helpers.c
+   qrc/trunk/gaym/src/helpers.h
+Log:
+Add gaym_properties_new() helper function to be used with java properties
+files.
+
+
+Modified: qrc/trunk/gaym/src/helpers.c
+===================================================================
+--- qrc/trunk/gaym/src/helpers.c	2005-07-12 15:23:13 UTC (rev 197)
++++ qrc/trunk/gaym/src/helpers.c	2005-07-13 15:12:08 UTC (rev 198)
+@@ -203,6 +203,52 @@
+     return retval;
+ }
+ 
++GHashTable *gaym_properties_new(const gchar * str)
++{
++    gchar *tmpstr = NULL;
++    gchar **tmparr = NULL;
++    gchar **proparr = NULL;
++    int i = 0;
++
++    GHashTable *props =
++        g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
++
++    tmpstr = ascii2native(str);
++
++    tmparr = g_strsplit(tmpstr, &quot;\\\n&quot;, -1);
++
++    g_free(tmpstr);
++
++    tmpstr = g_strjoinv(NULL, tmparr);
++
++    g_strfreev(tmparr);
++
++    tmparr = g_strsplit(tmpstr, &quot;\n&quot;, -1);
++
++    for (i = 0; tmparr[i] != NULL; i++) {
++        /* do nothing if this is a blank line */
++        if (strlen(g_strstrip(tmparr[i])) == 0) {
++            continue;
++        }
++        /* do nothing if this is a comment line */
++        if (tmparr[i][0] == '#') {
++            continue;
++        }
++        /* this must be a property=value string */
++        proparr = g_strsplit(tmparr[i], &quot;=&quot;, 2);
++        if (proparr[0] &amp;&amp; strlen(g_strstrip(proparr[0])) &gt; 0
++            &amp;&amp; proparr[1] &amp;&amp; strlen(g_strstrip(proparr[1])) &gt; 0) {
++            g_hash_table_insert(props, g_strdup(proparr[0]),
++                                g_strdup(proparr[1]));
++            g_strfreev(proparr);
++        }
++    }
++
++    g_strfreev(tmparr);
++
++    return props;
++}
++
+ /**
+  * vim:tabstop=4:shiftwidth=4:expandtab:
+  */
+
+Modified: qrc/trunk/gaym/src/helpers.h
+===================================================================
+--- qrc/trunk/gaym/src/helpers.h	2005-07-12 15:23:13 UTC (rev 197)
++++ qrc/trunk/gaym/src/helpers.h	2005-07-13 15:12:08 UTC (rev 198)
+@@ -78,6 +78,21 @@
+  */
+ gboolean gaym_nick_check(const char *nick);
+ 
++/**
++ * Build a GHashTable from a string that contains the contents of java
++ * properties file.
++ *
++ * This is built with g_hash_table_new_full() so when finished with
++ * the GHashTable, use only g_hash_table_destroy() to clean up.
++ *
++ * To retrieve a property, use g_hash_table_lookup().
++ *
++ * @param str The contents of the java properties file
++ *
++ * @return The GHashTable containing the properties
++ */
++GHashTable *gaym_properties_new(const char *str);
++
+ #endif                          /* _GAIM_GAYM_HELPERS_H_ */
+ 
+ /**
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000128.html">[Qrc-svn] r197 - qrc/trunk
+</A></li>
+	<LI>Next message: <A HREF="000130.html">[Qrc-svn] r199 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#129">[ date ]</a>
+              <a href="thread.html#129">[ thread ]</a>
+              <a href="subject.html#129">[ subject ]</a>
+              <a href="author.html#129">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

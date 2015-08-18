@@ -1,0 +1,265 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r281 - in qrc/trunk: gaym/src gaym-extras/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-August/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r281%20-%20in%20qrc/trunk%3A%20gaym/src%20gaym-extras/src&In-Reply-To=%3C200508290604.j7T64YIG032475%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000210.html">
+   <LINK REL="Next"  HREF="000212.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r281 - in qrc/trunk: gaym/src gaym-extras/src</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r281%20-%20in%20qrc/trunk%3A%20gaym/src%20gaym-extras/src&In-Reply-To=%3C200508290604.j7T64YIG032475%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r281 - in qrc/trunk: gaym/src gaym-extras/src">jblebrun at berlios.de
+       </A><BR>
+    <I>Mon Aug 29 08:04:34 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000210.html">[Qrc-svn] r280 - qrc/trunk/gaym-extras/src
+</A></li>
+        <LI>Next message: <A HREF="000212.html">[Qrc-svn] r282 - qrc/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#211">[ date ]</a>
+              <a href="thread.html#211">[ thread ]</a>
+              <a href="subject.html#211">[ subject ]</a>
+              <a href="author.html#211">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-08-29 08:04:33 +0200 (Mon, 29 Aug 2005)
+New Revision: 281
+
+Modified:
+   qrc/trunk/gaym-extras/src/roombrowse.c
+   qrc/trunk/gaym/src/msgs.c
+Log:
+Major change to roombrowser so it appears in tabbed windows.
+
+
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-08-29 03:24:34 UTC (rev 280)
++++ qrc/trunk/gaym/src/msgs.c	2005-08-29 06:04:33 UTC (rev 281)
+@@ -277,9 +277,9 @@
+     // during conversation-created.
+     gaym_update_channel_member(gaym, normalized, args[5]);
+     gaym_unreference_channel_member(gaym, normalized);
+-    gaim_debug_misc(&quot;gaym&quot;, &quot;signalling info update for %s\n&quot;, args[1]);
++    gaim_debug_misc(&quot;gaym&quot;, &quot;signalling info update for %s\n&quot;, normalized);
+     gaim_signal_emit(gaim_accounts_get_handle(), &quot;info-updated&quot;,
+-                     gaym-&gt;account, args[1]);
++                     gaym-&gt;account, normalized);
+ 
+     if (g_hash_table_lookup(gaym-&gt;info_window_needed, normalized)) {
+ 
+
+Modified: qrc/trunk/gaym-extras/src/roombrowse.c
+===================================================================
+--- qrc/trunk/gaym-extras/src/roombrowse.c	2005-08-29 03:24:34 UTC (rev 280)
++++ qrc/trunk/gaym-extras/src/roombrowse.c	2005-08-29 06:04:33 UTC (rev 281)
+@@ -27,6 +27,7 @@
+ 
+ 
+ static GHashTable *browsers = NULL;
++static GHashTable *browser_channels = NULL;
+ 
+ 
+ enum {
+@@ -58,6 +59,7 @@
+     GtkWidget *label;
+     GtkTreeIter iter;
+     GaimConnection *gc;
++    char* channel;
+ } RoomBrowseGui;
+ 
+ 
+@@ -84,13 +86,12 @@
+     while (valid) {
+         /* Walk through the list, reading each row */
+         gchar *str_data;
+-
+         /* Make sure you terminate calls to gtk_tree_model_get() with a
+            '-1' value */
+         gtk_tree_model_get(list_store, &amp;iter, COLUMN_NAME, &amp;str_data, -1);
+ 
+-
+-        if (!strcmp(str_data, name)) {
++	
++        if (!strcmp(name, gaim_normalize(browser-&gt;gc-&gt;account, str_data))) {
+             GdkPixbuf *pixbuf =
+                 lookup_cached_thumbnail(browser-&gt;gc-&gt;account,
+                                         gaim_normalize(browser-&gt;gc-&gt;
+@@ -112,6 +113,7 @@
+                                COLUMN_PHOTO, scale, -1);
+ 
+             gtk_tree_model_row_changed(list_store, path, &amp;iter);
++	    gaim_debug_misc(&quot;roombrowse&quot;,&quot;Signaled row change for %s\n&quot;,name);
+             // g_free(pixbuf);
+             break;
+         }
+@@ -126,6 +128,7 @@
+ void roombrowse_update_list_row(GaimConnection * gc, const char *who)
+ {
+ 
++    gaim_debug_misc(&quot;roombrowse&quot;,&quot;Info update: %s\n&quot;,who);
+     g_hash_table_foreach(browsers, (GHFunc) update_photos, (char *) who);
+ 
+ }
+@@ -450,37 +453,22 @@
+     g_free(name);
+     return FALSE;
+ }
+-static void roombrowse_menu_cb(GaimBlistNode * node, gpointer data)
+-{
+-    RoomBrowseGui *browser = g_new0(RoomBrowseGui, 1);
+-    GaimConnection *gc = (GaimConnection *) data;
+-    browser-&gt;window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+-
+-    browser-&gt;gc = gc;
+-    // GaimAccount *account = ((GaimChat *) node)-&gt;account;
+-    // if (!win)
+-    // win = gaim_conv_window_new();
+-    GaimChat *chat = ((GaimChat *) node);
+-
+-    const char *room = gaim_chat_get_name(chat);
+-    const char *channel = g_hash_table_lookup(chat-&gt;components, &quot;channel&quot;);
+-    gaim_debug_misc(&quot;roombrowse&quot;, &quot;chat name: %s\n&quot;, room);
+-    gaim_debug_misc(&quot;roombrowse&quot;, &quot;channel name: %s\n&quot;, channel);
+-    gtk_window_set_title(GTK_WINDOW(browser-&gt;window), room);
++static void roombrowse_fix_conv(GaimConversation* conv) {
++  
++    GtkWidget* pane;
++    g_return_if_fail(conv != NULL);
++    if(!g_str_has_prefix(conv-&gt;name, &quot;BROWSE:&quot;))
++	    return;
++    GaimGtkConversation* gtkconv=GAIM_GTK_CONVERSATION(conv);
++    gaim_signal_emit(gaim_conversations_get_handle(),  &quot;conversation-destroyed&quot;, conv);
++    conv-&gt;type=GAIM_CONV_MISC;
++    gchar* channel = g_hash_table_lookup(browser_channels, conv-&gt;name);
++    RoomBrowseGui* browser=g_hash_table_lookup(browsers, channel); 
++    gtk_container_foreach(GTK_CONTAINER(gtkconv-&gt;tab_cont), (GtkCallback)(gtk_widget_hide), NULL);
+     
+-    g_signal_connect(browser-&gt;window, &quot;delete-event&quot;, G_CALLBACK(browser_window_destroyed), g_strdup(channel));
+-    GtkWidget *vbox = gtk_vbox_new(FALSE, 6);
+-    gtk_container_add(GTK_CONTAINER(browser-&gt;window), vbox);
+-    gtk_widget_show(vbox);
+-
+-    browser-&gt;label = gtk_label_new(room);
+-    gtk_box_pack_start(GTK_BOX(vbox), browser-&gt;label, FALSE, FALSE, 0);
+-    gtk_widget_show(browser-&gt;label);
+     GtkWidget *sw = gtk_scrolled_window_new(NULL, NULL);
+-    gtk_box_pack_start(GTK_BOX(vbox), sw, TRUE, TRUE, 0);
+-    gtk_widget_set_size_request(GTK_WIDGET(sw), 400, 600);
++	gtk_box_pack_start(GTK_BOX(gtkconv-&gt;tab_cont), sw, TRUE, TRUE, 0);
+     gtk_widget_show(sw);
+-
+     GtkListStore *ls = gtk_list_store_new(N_COLUMNS,
+                                           GDK_TYPE_PIXBUF,
+                                           G_TYPE_STRING,
+@@ -552,26 +540,48 @@
+     gtk_tree_selection_set_mode(select, GTK_SELECTION_SINGLE);
+ 
+     g_signal_connect(G_OBJECT(select), &quot;changed&quot;,
+-                     G_CALLBACK(changed_cb), gc);
++                     G_CALLBACK(changed_cb), browser-&gt;gc);
+     gtk_container_add(GTK_CONTAINER(sw), browser-&gt;list);
+     gtk_widget_show(browser-&gt;list);
+ 
+ 
+     browser-&gt;button = gtk_button_new_with_label(&quot;Update&quot;);
+     struct update_cb_data *udata = g_new0(struct update_cb_data, 1);
+-    udata-&gt;gc = gc;
+-    udata-&gt;room = channel;
++    udata-&gt;gc = browser-&gt;gc;
++    udata-&gt;room = browser-&gt;channel;
+ 
+     g_signal_connect(browser-&gt;button, &quot;clicked&quot;, G_CALLBACK(update_list),
+                      udata);
+-    gtk_box_pack_start(GTK_BOX(vbox), browser-&gt;button, FALSE, FALSE, 0);
++    gtk_box_pack_start(GTK_BOX(gtkconv-&gt;tab_cont), browser-&gt;button, FALSE, FALSE, 0);
+     gtk_widget_show(browser-&gt;button);
+ 
+-    gtk_widget_show(browser-&gt;window);
+ 
+-    g_hash_table_insert(browsers, g_strdup(channel), browser);
+     update_list(browser-&gt;button, udata);
++
+ }
++static void roombrowse_menu_cb(GaimBlistNode * node, gpointer data)
++{
++    RoomBrowseGui *browser = g_new0(RoomBrowseGui, 1);
++    GaimConnection *gc = (GaimConnection *) data;
++	    
++    // GaimAccount *account = ((GaimChat *) node)-&gt;account;
++    GaimChat *chat = ((GaimChat *) node);
++    const char *channel = g_hash_table_lookup(chat-&gt;components, &quot;channel&quot;);
++    const char *room = gaim_chat_get_name(chat);
++    const char *tempname;
++    gaim_debug_misc(&quot;roombrowse&quot;, &quot;chat name: %s\n&quot;, room);
++    gaim_debug_misc(&quot;roombrowse&quot;, &quot;channel name: %s\n&quot;, channel);
++   
++    browser-&gt;channel=g_strdup(channel);
++    browser-&gt;gc=gc;
++    tempname=g_strdup_printf(&quot;BROWSE:%s&quot;,room);
++    g_hash_table_insert(browsers, g_strdup(channel), browser);
++    g_hash_table_insert(browser_channels, g_strdup(tempname), g_strdup(channel));
++    GaimConversation* conv = gaim_conversation_new(GAIM_CONV_CHAT, gc-&gt;account, tempname); 
++    gaim_debug_misc(&quot;roombrowse&quot;,&quot;New conv: %x\n&quot;,conv);
++        return;
++
++    }
+ static void roombrowse_menu_create(GaimBlistNode * node, GList ** menu)
+ {
+ 
+@@ -615,8 +625,15 @@
+                         plugin, GAIM_CALLBACK(roombrowse_update_list_row),
+                         NULL);
+ 
++    gaim_signal_connect(gaim_conversations_get_handle(),
++			&quot;conversation-created&quot;,
++			plugin,
++			GAIM_CALLBACK(roombrowse_fix_conv),
++			NULL);
+     browsers =
+         g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+ 
++    browser_channels =
++        g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+     return;
+ }
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000210.html">[Qrc-svn] r280 - qrc/trunk/gaym-extras/src
+</A></li>
+	<LI>Next message: <A HREF="000212.html">[Qrc-svn] r282 - qrc/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#211">[ date ]</a>
+              <a href="thread.html#211">[ thread ]</a>
+              <a href="subject.html#211">[ subject ]</a>
+              <a href="author.html#211">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

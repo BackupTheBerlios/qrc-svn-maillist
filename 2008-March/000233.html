@@ -1,0 +1,117 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r303 - qrc/trunk
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2008-March/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r303%20-%20qrc/trunk&In-Reply-To=%3C200803191847.m2JIlgjJ032753%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="000234.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r303 - qrc/trunk</H1>
+    <B>jblebrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r303%20-%20qrc/trunk&In-Reply-To=%3C200803191847.m2JIlgjJ032753%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r303 - qrc/trunk">jblebrun at mail.berlios.de
+       </A><BR>
+    <I>Wed Mar 19 19:49:28 CET 2008</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="000234.html">[Qrc-svn] r304 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#233">[ date ]</a>
+              <a href="thread.html#233">[ thread ]</a>
+              <a href="subject.html#233">[ subject ]</a>
+              <a href="author.html#233">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2008-03-19 19:47:42 +0100 (Wed, 19 Mar 2008)
+New Revision: 303
+
+Removed:
+   qrc/trunk/bot-challenger/
+Modified:
+   qrc/trunk/configure.ac
+Log:
+Removed bot challenger, get bot-sentry, a standalone plugin
+
+Modified: qrc/trunk/configure.ac
+===================================================================
+--- qrc/trunk/configure.ac	2007-08-09 01:05:47 UTC (rev 302)
++++ qrc/trunk/configure.ac	2008-03-19 18:47:42 UTC (rev 303)
+@@ -39,10 +39,6 @@
+ 
+ 
+ 	
+-AC_ARG_ENABLE([bot-challenger],
+-	[AS_HELP_STRING(--enable-bot-challenger,build the bot-challenger plugin @&lt;:@default=no@:&gt;@)],,
+-	[enable_bot_challenger=&quot;no&quot;])
+-
+ AC_ARG_ENABLE([gaym],
+ 	[AS_HELP_STRING(--enable-gaym,build the gaym plugin @&lt;:@default=yes@:&gt;@)],,
+ 	[enable_gaym=&quot;yes&quot;])
+@@ -51,14 +47,10 @@
+ 	[AS_HELP_STRING(--enable-gaym-extras,build the gaym-extras plugin @&lt;:@default=no@:&gt;@)],,
+ 	[enable_gaym_extras=&quot;no&quot;])
+ 
+-AM_CONDITIONAL([COND_BOT_CHALLENGER], [test &quot;$enable_bot_challenger&quot; = &quot;no&quot;])
+ AM_CONDITIONAL([COND_DISPLAY_OPTIONS], [test &quot;$enable_display_options&quot; = &quot;yes&quot;])
+ AM_CONDITIONAL([COND_GAYM], [test &quot;$enable_gaym&quot; = &quot;yes&quot;])
+ AM_CONDITIONAL([COND_GAYM_EXTRAS], [test &quot;$enable_gaym_extras&quot; = &quot;yes&quot;])
+ 
+-if test &quot;$enable_bot_challenger&quot; != &quot;yes&quot; ; then
+-	enable_bot_challenger=&quot;no&quot;
+-fi
+ 
+ if test &quot;$enable_display_options&quot; != &quot;yes&quot; ; then
+ 	enable_display_options=&quot;no&quot;
+@@ -138,7 +130,6 @@
+ 
+ 
+ AC_CONFIG_FILES([Makefile
+-                 bot-challenger/Makefile
+                  gaym/Makefile
+                  gaym/pixmaps/Makefile
+                  gaym/pixmaps/16/Makefile
+@@ -155,7 +146,6 @@
+ echo
+ echo $PACKAGE $VERSION
+ echo
+-echo Build bot-challenger plugin...... : $enable_bot_challenger
+ echo Build gaym plugin................ : $enable_gaym
+ echo Build gaym-extras plugin......... : $enable_gaym_extras
+ echo
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="000234.html">[Qrc-svn] r304 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#233">[ date ]</a>
+              <a href="thread.html#233">[ thread ]</a>
+              <a href="subject.html#233">[ subject ]</a>
+              <a href="author.html#233">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

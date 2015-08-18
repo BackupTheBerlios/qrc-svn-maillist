@@ -1,0 +1,751 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r229 - in qrc/trunk: . gaym-extras
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r229%20-%20in%20qrc/trunk%3A%20.%20gaym-extras&In-Reply-To=%3C200507231736.j6NHajRh009172%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000158.html">
+   <LINK REL="Next"  HREF="000160.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r229 - in qrc/trunk: . gaym-extras</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r229%20-%20in%20qrc/trunk%3A%20.%20gaym-extras&In-Reply-To=%3C200507231736.j6NHajRh009172%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r229 - in qrc/trunk: . gaym-extras">jblebrun at berlios.de
+       </A><BR>
+    <I>Sat Jul 23 19:36:45 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000158.html">[Qrc-svn] r228 - in qrc/trunk: . gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000160.html">[Qrc-svn] r230 - qrc/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#159">[ date ]</a>
+              <a href="thread.html#159">[ thread ]</a>
+              <a href="subject.html#159">[ subject ]</a>
+              <a href="author.html#159">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-07-23 19:36:35 +0200 (Sat, 23 Jul 2005)
+New Revision: 229
+
+Added:
+   qrc/trunk/gaym-extras/
+   qrc/trunk/gaym-extras/chatsort.c
+   qrc/trunk/gaym-extras/gaym-extras.c
+   qrc/trunk/gaym-extras/roombrowse.c
+Removed:
+   qrc/trunk/chaticon/
+   qrc/trunk/roombrowse/
+Log:
+Combining all gtk-specific plugins into one plugin, for simplicity.
+The current planned functionalities for this plugin are:
+
+1. The ability to show icons and bios in the chat room.
+2. A new kind of conversation window that previews a room.
+3. The ability to change sort criteria.
+
+
+
+
+Added: qrc/trunk/gaym-extras/chatsort.c
+===================================================================
+--- qrc/trunk/gaym-extras/chatsort.c	2005-07-23 16:33:58 UTC (rev 228)
++++ qrc/trunk/gaym-extras/chatsort.c	2005-07-23 17:36:35 UTC (rev 229)
+@@ -0,0 +1,88 @@
++/* Attempt to sort chat users by entry order, instead of alpha */
++#include &quot;internal.h&quot;
++#include &quot;gtkgaim.h&quot;
++
++#include &quot;conversation.h&quot;
++#include &quot;debug.h&quot;
++#include &quot;log.h&quot;
++#include &quot;prefs.h&quot;
++#include &quot;signals.h&quot;
++#include &quot;util.h&quot;
++#include &quot;version.h&quot;
++
++#include &quot;gtkconv.h&quot;
++#include &quot;gtkimhtml.h&quot;
++#include &quot;gtkplugin.h&quot;
++
++#define CHATSORT_PLUGIN_ID &quot;gtk-chatsort&quot;
++
++
++//A dummy sort function... don't sort at all!
++static gint sort_chat_users(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer userdata) {
++return 1;
++}
++
++//This gets called BEFORE a chatlist is populated... just creates a new type of chat window.
++static void redochatwindow(GaimConversation *c) {
++
++	GtkTreeModel *oldls;
++	GtkTreeSelection *select;
++	GtkTreeIter iter;
++
++	//Get a handle to the chat pane for the conversation
++	GaimGtkConversation* gtkconv = GAIM_GTK_CONVERSATION(c);
++	GaimGtkChatPane* gtkchat = gtkconv-&gt;u.chat;
++
++	
++	oldls = gtk_tree_view_get_model(GTK_TREE_VIEW(gtkchat-&gt;list));
++	select = gtk_tree_view_get_selection(GTK_TREE_VIEW(gtkchat-&gt;list));
++
++	//This is a dummy &quot;root&quot; item. If it's not here,
++	//then the first name entered into the list gets &quot;stucK&quot; at the
++	//top. This is a hack.
++	gtk_list_store_append(GTK_LIST_STORE(oldls), &amp;iter);
++	gtk_list_store_set(GTK_LIST_STORE(oldls), &amp;iter, CHAT_USERS_NAME_COLUMN, &quot; &quot;, -1);
++        gtk_tree_sortable_set_sort_func(GTK_TREE_SORTABLE(oldls), CHAT_USERS_NAME_COLUMN, sort_chat_users, NULL, NULL);
++	
++}
++
++static gboolean plugin_load(GaimPlugin *plugin)
++{
++	gaim_signal_connect(gaim_conversations_get_handle(),
++						&quot;chat-joined&quot;,
++						plugin, GAIM_CALLBACK(redochatwindow), NULL);
++	
++	return TRUE;
++}
++
++static GaimPluginInfo info =
++{
++	GAIM_PLUGIN_MAGIC,
++	GAIM_MAJOR_VERSION,
++	GAIM_MINOR_VERSION,
++	GAIM_PLUGIN_STANDARD,
++	GAIM_GTK_PLUGIN_TYPE,
++	0,
++	NULL,
++	GAIM_PRIORITY_DEFAULT,
++	CHATSORT_PLUGIN_ID,
++	N_(&quot;Chatroom Sort options&quot;),
++	VERSION,
++	N_(&quot;Changes the sorting options of chatroom lists.&quot;),
++	N_(&quot;When a new conversation is opened this plugin will insert the last conversation into the current conversation.&quot;),
++	&quot;Jason LeBrun &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">gaim at jasonlebrun.info</A>&quot;,
++	GAIM_WEBSITE,
++	plugin_load,
++	NULL,
++	NULL,
++	NULL,
++	NULL,
++	NULL
++};
++
++static void
++init_plugin(GaimPlugin *plugin)
++{
++}
++
++GAIM_INIT_PLUGIN(history, init_plugin, info)
+
+Added: qrc/trunk/gaym-extras/gaym-extras.c
+===================================================================
+--- qrc/trunk/gaym-extras/gaym-extras.c	2005-07-23 16:33:58 UTC (rev 228)
++++ qrc/trunk/gaym-extras/gaym-extras.c	2005-07-23 17:36:35 UTC (rev 229)
+@@ -0,0 +1,106 @@
++/* Show icons in chat room windows */
++
++#include &quot;internal.h&quot;
++#include &quot;gtkgaim.h&quot;
++
++#include &quot;conversation.h&quot;
++#include &quot;debug.h&quot;
++#include &quot;log.h&quot;
++#include &quot;prefs.h&quot;
++#include &quot;signals.h&quot;
++#include &quot;util.h&quot;
++#include &quot;version.h&quot;
++
++#include &quot;gtkconv.h&quot;
++#include &quot;gtkimhtml.h&quot;
++#include &quot;gtkplugin.h&quot;
++
++#define CHATSORT_PLUGIN_ID &quot;gtk-chaticon&quot;
++
++GHashTable* icons;
++GHashTable* icon_spots;
++static void clear_icon() {
++
++}
++static void changed_cb(GtkTreeSelection* selection, gpointer data){
++
++	GaimConversation* c = (GaimConversation*)data;
++	GtkTreeIter iter;
++	GtkTreeModel* model;
++	gchar* name;
++	GaimConversation *temp;
++	gtk_tree_selection_get_selected(selection, &amp;model, &amp;iter);
++	gtk_tree_model_get(model,&amp;iter,CHAT_USERS_NAME_COLUMN, &amp;name, -1);
++
++	gaim_debug_misc(&quot;chatsort&quot;,&quot;Click: %s\n&quot;,name);
++	gtk_button_set_label(g_hash_table_lookup(icon_spots, c), name);
++	//Look in local icon cache here.
++	//If the icon isn't here, get it from gaym
++	//Update the widget
++}
++//This gets called BEFORE a chatlist is populated... just creates a new type of chat window.
++static void redochatwindow(GaimConversation *c) {
++
++	GtkTreeModel *oldls;
++	
++	//Get a handle to the chat pane for the conversation
++	GaimGtkConversation* gtkconv = GAIM_GTK_CONVERSATION(c);
++	GaimGtkChatPane* gtkchat = gtkconv-&gt;u.chat;
++	GtkTreeSelection* select = gtk_tree_view_get_selection(GTK_TREE_VIEW(gtkchat-&gt;list));
++	gtk_tree_selection_set_mode(select, GTK_SELECTION_SINGLE);
++
++	oldls = gtk_tree_view_get_model(GTK_TREE_VIEW(gtkchat-&gt;list));	
++	GtkBox* vbox = GTK_BOX(gtkchat-&gt;list-&gt;parent-&gt;parent);
++	GtkWidget* button = gtk_button_new_with_label(&quot;A Button&quot;);
++	g_signal_connect(G_OBJECT(select), &quot;changed&quot;, G_CALLBACK(changed_cb), c);
++
++	gtk_box_pack_end(vbox, GTK_WIDGET(button), FALSE, FALSE, 0);
++	gtk_widget_show(button);
++	g_hash_table_insert(icon_spots, c, button);
++	
++
++}
++
++
++static gboolean plugin_load(GaimPlugin *plugin)
++{
++	icons=g_hash_table_new(g_direct_hash, g_direct_equal);
++	icon_spots=g_hash_table_new(g_direct_hash, g_direct_equal);
++	
++	gaim_signal_connect(gaim_conversations_get_handle(), &quot;chat-joined&quot;, plugin, GAIM_CALLBACK(redochatwindow), NULL);
++	gaim_signal_connect(gaim_conversations_get_handle(), &quot;chat-buddy-left&quot;, plugin, GAIM_CALLBACK(clear_icon), NULL);
++
++	return TRUE;
++}
++
++static GaimPluginInfo info =
++{
++	GAIM_PLUGIN_MAGIC,
++	GAIM_MAJOR_VERSION,
++	GAIM_MINOR_VERSION,
++	GAIM_PLUGIN_STANDARD,
++	GAIM_GTK_PLUGIN_TYPE,
++	0,
++	NULL,
++	GAIM_PRIORITY_DEFAULT,
++	CHATSORT_PLUGIN_ID,
++	N_(&quot;Chatroom Icons&quot;),
++	VERSION,
++	N_(&quot;Shows user thumbnails below the names list in a chatroom.&quot;),
++	N_(&quot;Shows user thumbnails below the names list in a chatroom.&quot;),
++	&quot;Jason LeBrun &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">gaim at jasonlebrun.info</A>&quot;,
++	GAIM_WEBSITE,
++	plugin_load,
++	NULL,
++	NULL,
++	NULL,
++	NULL,
++	NULL
++};
++
++static void
++init_plugin(GaimPlugin *plugin)
++{
++}
++
++GAIM_INIT_PLUGIN(history, init_plugin, info)
+
+Added: qrc/trunk/gaym-extras/roombrowse.c
+===================================================================
+--- qrc/trunk/gaym-extras/roombrowse.c	2005-07-23 16:33:58 UTC (rev 228)
++++ qrc/trunk/gaym-extras/roombrowse.c	2005-07-23 17:36:35 UTC (rev 229)
+@@ -0,0 +1,455 @@
++/* Puts last 4k of log in new conversations a la Everybuddy (and then
++ * stolen by Trillian &quot;Pro&quot;) */
++
++#include &quot;internal.h&quot;
++#include &quot;gtkgaim.h&quot;
++
++#include &quot;conversation.h&quot;
++#include &quot;debug.h&quot;
++#include &quot;log.h&quot;
++#include &quot;prefs.h&quot;
++#include &quot;signals.h&quot;
++#include &quot;util.h&quot;
++#include &quot;version.h&quot;
++#include &quot;prpl.h&quot;
++
++#include &quot;gtkconv.h&quot;
++#include &quot;gtkimhtml.h&quot;
++#include &quot;gtkplugin.h&quot;
++#include &quot;gtkdialogs.h&quot;
++#include &quot;gtkutils.h&quot;
++#include &quot;gtkblist.h&quot;
++#include &quot;gtkimhtmltoolbar.h&quot;
++#include &lt;gdk/gdkkeysyms.h&gt;
++
++#define CHATSORT_PLUGIN_ID &quot;gtk-chatsort&quot;
++#define CHATSORT_USERS_COLUMNS 4
++#define CHATSORT_USERS_ENTRY_COLUMN 3
++
++/**
++ * Unused variables:
++ *
++ * static GList *browsers = NULL;
++ */
++
++struct RoomBrowseInfo {
++
++	GaimAccount *account;
++	GaimConnection *gc;
++};
++	
++static GtkWidget *
++setup_roombrowse_pane(GaimConversation *conv)
++{
++	GaimGtkConversation *gtkconv;
++	GaimGtkChatPane *gtkchat;
++	GaimConnection *gc;
++	GtkWidget *vpaned, *hpaned;
++	GtkWidget *vbox;
++
++	/**
++	 * Unused variables:
++	 *
++	 * GaimPluginProtocolInfo *prpl_info = NULL;
++	 * GtkWidget *hbox;
++	 * GtkWidget *lbox, *bbox;
++	 * GtkWidget *label;
++	 * GtkWidget *list;
++	 * GtkWidget *button;
++	 * GtkWidget *sw;
++	 * GtkListStore *ls;
++	 * GtkCellRenderer *rend;
++	 * GtkTreeViewColumn *col;
++	 * GList *focus_chain = NULL;
++	 */
++
++	gtkconv = GAIM_GTK_CONVERSATION(conv);
++	gtkchat = gtkconv-&gt;u.chat;
++	gc      = gaim_conversation_get_gc(conv);
++
++	/* Setup the outer pane. */
++	vpaned = gtk_vpaned_new();
++	gtk_widget_show(vpaned);
++	/* Setup the top part of the pane. */
++	vbox = gtk_vbox_new(FALSE, 6);
++	gtk_paned_pack1(GTK_PANED(vpaned), vbox, TRUE, TRUE);
++	gtk_widget_show(vbox);
++
++	/* Setup the horizontal pane. */
++	hpaned = gtk_hpaned_new();
++	gtk_box_pack_start(GTK_BOX(vbox), hpaned, TRUE, TRUE, 0);
++	gtk_widget_show(hpaned);
++
++	/* Setup the scrolled window to put gtkimhtml in. */
++	gtkconv-&gt;sw = gtk_scrolled_window_new(NULL, NULL);
++	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(gtkconv-&gt;sw),
++								   GTK_POLICY_AUTOMATIC, GTK_POLICY_ALWAYS);
++	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(gtkconv-&gt;sw),
++										GTK_SHADOW_IN);
++	gtk_paned_pack1(GTK_PANED(hpaned), gtkconv-&gt;sw, TRUE, TRUE);
++
++	gtk_widget_set_size_request(gtkconv-&gt;sw,
++			gaim_prefs_get_int(&quot;/gaim/gtk/conversations/chat/default_width&quot;),
++			gaim_prefs_get_int(&quot;/gaim/gtk/conversations/chat/default_height&quot;));
++
++//	g_signal_connect(G_OBJECT(gtkconv-&gt;sw), &quot;size-allocate&quot;,
++//					 G_CALLBACK(size_allocate_cb), conv);
++
++	gtk_widget_show(gtkconv-&gt;sw);
++
++	return vpaned;
++}
++
++static gint
++close_conv_cb(GtkWidget *w, gpointer d)
++{
++        GaimConversation *conv = (GaimConversation *)d;
++	
++        gaim_conversation_destroy(conv);
++
++        return TRUE;
++}
++GdkPixbuf* get_tab_icon(GaimConversation *conv, gboolean small_icon)
++{
++        GaimAccount *account = NULL;
++        const char *name = NULL;
++        GdkPixbuf *status = NULL;
++
++        g_return_val_if_fail( conv != NULL, NULL);
++
++        account = gaim_conversation_get_account(conv);
++        name = gaim_conversation_get_name(conv);
++
++        g_return_val_if_fail( account != NULL, NULL);
++        g_return_val_if_fail( name != NULL, NULL);
++
++
++        if (gaim_conversation_get_type(conv) == GAIM_CONV_IM) {
++                GaimBuddy *b = gaim_find_buddy(account, name);
++                if (b != NULL) {
++                        status = gaim_gtk_blist_get_status_icon((GaimBlistNode*)b,
++                                (small_icon ? GAIM_STATUS_ICON_SMALL : GAIM_STATUS_ICON_LARGE));
++                }
++        }
++
++        if (!status) {
++                GdkPixbuf *pixbuf;
++                pixbuf = create_prpl_icon(account);
++
++                if (small_icon &amp;&amp; pixbuf != NULL)
++                {
++                        status = gdk_pixbuf_scale_simple(pixbuf, 15, 15,
++                                        GDK_INTERP_BILINEAR);
++                        g_object_unref(pixbuf);
++                }
++                else
++                        status = pixbuf;
++        }
++ return status;
++}
++
++/**
++ * Unused function
++ */
++#if 0
++static void
++update_tab_icon(GaimConversation *conv)
++{
++        GaimGtkConversation *gtkconv;
++        GaimConvWindow *win = gaim_conversation_get_window(conv);
++        GaimAccount *account;
++        const char *name;
++        GdkPixbuf *status = NULL;
++
++        g_return_if_fail(conv != NULL);
++
++        gtkconv = GAIM_GTK_CONVERSATION(conv);
++        name = gaim_conversation_get_name(conv);
++        account = gaim_conversation_get_account(conv);
++
++        status = get_tab_icon(conv, TRUE);
++
++        g_return_if_fail(status != NULL);
++
++        gtk_image_set_from_pixbuf(GTK_IMAGE(gtkconv-&gt;icon), status);
++        gtk_image_set_from_pixbuf(GTK_IMAGE(gtkconv-&gt;menu_icon), status);
++
++        if (status != NULL)
++                g_object_unref(status);
++
++        if (gaim_conv_window_get_active_conversation(win) == conv &amp;&amp;
++                gtkconv-&gt;u.im-&gt;anim == NULL)
++        {
++                status = get_tab_icon(conv, FALSE);
++
++                gtk_window_set_icon(GTK_WINDOW(GAIM_GTK_WINDOW(win)-&gt;window), status);
++
++                if (status != NULL)
++                        g_object_unref(status);
++        }
++}
++#endif
++
++/* Courtesy of Galeon! */
++static void
++tab_close_button_state_changed_cb(GtkWidget *widget, GtkStateType prev_state)
++{
++        if (GTK_WIDGET_STATE(widget) == GTK_STATE_ACTIVE)
++                gtk_widget_set_state(widget, GTK_STATE_NORMAL);
++}
++
++static void
++roombrowse_gtk_add_conversation(GaimConvWindow *win, GaimConversation *conv)
++{
++	GaimGtkWindow *gtkwin;
++	GaimGtkConversation *gtkconv, *focus_gtkconv;
++	GaimConversation *focus_conv;
++	GtkWidget *pane = NULL;
++	GtkWidget *tab_cont;
++	GtkWidget *tabby, *menu_tabby;
++	GtkWidget *close_image;
++	gboolean new_ui;
++	GaimConversationType conv_type;
++	const char *name;
++
++	name      = gaim_conversation_get_name(conv);
++	conv_type = gaim_conversation_get_type(conv);
++	gtkwin    = GAIM_GTK_WINDOW(win);
++
++	if (conv-&gt;ui_data != NULL) {
++		gtkconv = (GaimGtkConversation *)conv-&gt;ui_data;
++
++		tab_cont = gtkconv-&gt;tab_cont;
++
++		new_ui = FALSE;
++	}
++	else {
++		gtkconv = g_malloc0(sizeof(GaimGtkConversation));
++		conv-&gt;ui_data = gtkconv;
++
++		/* Setup some initial variables. */
++		gtkconv-&gt;sg       = gtk_size_group_new(GTK_SIZE_GROUP_BOTH);
++		gtkconv-&gt;tooltips = gtk_tooltips_new();
++
++	gaim_debug_misc(&quot;roombrowse&quot;,&quot;setting up pane\n&quot;);	
++		pane = setup_roombrowse_pane(conv);
++		
++	gaim_debug_misc(&quot;roombrowse&quot;,&quot;set up pane\n&quot;);	
++
++		if (pane == NULL) {
++			g_free(gtkconv);
++			conv-&gt;ui_data = NULL;
++
++			return;
++		}
++
++		
++		
++		/* Setup the container for the tab. */
++		gtkconv-&gt;tab_cont = tab_cont = gtk_vbox_new(FALSE, 6);
++		gtk_container_set_border_width(GTK_CONTAINER(tab_cont), 6);
++		gtk_container_add(GTK_CONTAINER(tab_cont), pane);
++		gtk_widget_show(pane);
++
++		new_ui = TRUE;
++
++		gtkconv-&gt;make_sound = FALSE;
++		gtkconv-&gt;show_formatting_toolbar = FALSE;
++		gtkconv-&gt;show_timestamps = FALSE;
++		
++		g_signal_connect_swapped(G_OBJECT(pane), &quot;focus&quot;,
++					 G_CALLBACK(gtk_widget_grab_focus),
++					 gtkconv-&gt;entry);
++	}
++
++	gaim_debug_misc(&quot;roombrowse&quot;,&quot;Setting up tabs\n&quot;);
++	gtkconv-&gt;tabby = tabby = gtk_hbox_new(FALSE, 6);
++        gtkconv-&gt;menu_tabby = menu_tabby = gtk_hbox_new(FALSE, 6);
++	gtkconv-&gt;entry = gtk_imhtml_new(NULL, NULL);
++		gtkconv-&gt;toolbar = gtk_imhtmltoolbar_new();
++
++	gaim_debug_misc(&quot;roombrowse&quot;,&quot;Setting up close button\n&quot;);
++	/* Close button. */
++	gtkconv-&gt;close = gtk_button_new();
++	gtk_widget_set_size_request(GTK_WIDGET(gtkconv-&gt;close), 16, 16);
++	gtk_button_set_relief(GTK_BUTTON(gtkconv-&gt;close), GTK_RELIEF_NONE);
++	close_image = gtk_image_new_from_stock(GTK_STOCK_CLOSE, GTK_ICON_SIZE_MENU);
++	gtk_widget_show(close_image);
++	gtk_container_add(GTK_CONTAINER(gtkconv-&gt;close), close_image);
++	gtk_tooltips_set_tip(gtkconv-&gt;tooltips, gtkconv-&gt;close,
++			     _(&quot;Close conversation&quot;), NULL);
++
++	g_signal_connect(G_OBJECT(gtkconv-&gt;close), &quot;clicked&quot;,
++		 G_CALLBACK(close_conv_cb), conv);
++
++	/*
++	* I love Galeon. They have a fix for that stupid annoying visible
++	* border bug. I love you guys! -- ChipX86
++	*/
++	g_signal_connect(G_OBJECT(gtkconv-&gt;close), &quot;state_changed&quot;,
++			 G_CALLBACK(tab_close_button_state_changed_cb), NULL);
++
++	/* Status icon. */
++	gtkconv-&gt;icon = gtk_image_new();
++	gtkconv-&gt;menu_icon = gtk_image_new();
++//	update_tab_icon(conv);
++
++	/* Tab label. */
++	gtkconv-&gt;tab_label = gtk_label_new(gaim_conversation_get_title(conv));
++	gtkconv-&gt;menu_label = gtk_label_new(gaim_conversation_get_title(conv));
++#if 0
++	gtk_misc_set_alignment(GTK_MISC(gtkconv-&gt;tab_label), 0.00, 0.5);
++	gtk_misc_set_padding(GTK_MISC(gtkconv-&gt;tab_label), 4, 0);
++#endif
++
++	gaim_debug_misc(&quot;roombrowse&quot;,&quot;Packing\n&quot;);
++	/* Pack it all together. */
++	gtk_box_pack_start(GTK_BOX(tabby), gtkconv-&gt;icon, FALSE, FALSE, 0);
++	gtk_box_pack_start(GTK_BOX(menu_tabby), gtkconv-&gt;menu_icon,
++			   FALSE, FALSE, 0);
++
++	gtk_widget_show_all(gtkconv-&gt;icon);
++	gtk_widget_show_all(gtkconv-&gt;menu_icon);
++
++	gtk_box_pack_start(GTK_BOX(tabby), gtkconv-&gt;tab_label, TRUE, TRUE, 0);
++	gtk_box_pack_start(GTK_BOX(menu_tabby), gtkconv-&gt;menu_label, TRUE, TRUE, 0);
++	gtk_widget_show(gtkconv-&gt;tab_label);
++	gtk_widget_show(gtkconv-&gt;menu_label);
++	gtk_misc_set_alignment(GTK_MISC(gtkconv-&gt;menu_label), 0, 0);
++
++	gtk_box_pack_start(GTK_BOX(tabby), gtkconv-&gt;close, FALSE, FALSE, 0);
++	if (gaim_prefs_get_bool(&quot;/gaim/gtk/conversations/close_on_tabs&quot;))
++		gtk_widget_show(gtkconv-&gt;close);
++
++	gtk_widget_show(tabby);
++	gtk_widget_show(menu_tabby);
++
++	if (gaim_conversation_get_type(conv) == GAIM_CONV_IM)
++		gaim_gtkconv_update_buddy_icon(conv);
++
++	gaim_debug_misc(&quot;roombrowse&quot;,&quot;Adding to notebook\n&quot;);
++	gaim_debug_misc(&quot;roombrowse&quot;,&quot;gtkwin-&gt;notebook=%x\n&quot;,gtkwin-&gt;notebook);
++	gaim_debug_misc(&quot;roombrowse&quot;,&quot;gtkwin=%x\n&quot;,gtkwin);
++	gaim_debug_misc(&quot;roombrowse&quot;,&quot;tabby=%x\n&quot;,tabby);
++	gaim_debug_misc(&quot;roombrowse&quot;,&quot;menu_tabby=%x\n&quot;,menu_tabby);
++	gaim_debug_misc(&quot;roombrowse&quot;,&quot;tab_cont=%x\n&quot;,tab_cont);
++
++	/* Add this pane to the conversation's notebook. */
++	int n=	gtk_notebook_get_n_pages(GTK_NOTEBOOK(gtkwin-&gt;notebook));
++	gaim_debug_misc(&quot;roombrowse:&quot;,&quot;Notebook has %d pages\n&quot;,n);
++	gtk_notebook_append_page_menu(GTK_NOTEBOOK(gtkwin-&gt;notebook), tab_cont, tabby, menu_tabby);
++	gaim_debug_misc(&quot;roombrowse&quot;,&quot;Got through append_page_menu\n&quot;);
++	gtk_widget_show(tab_cont);
++	
++	if (gaim_conv_window_get_conversation_count(win) == 1) {
++		/* Er, bug in notebooks? Switch to the page manually. */
++		gtk_notebook_set_current_page(GTK_NOTEBOOK(gtkwin-&gt;notebook), 0);
++
++		gtk_notebook_set_show_tabs(GTK_NOTEBOOK(gtkwin-&gt;notebook),
++					   gaim_prefs_get_bool(&quot;/gaim/gtk/conversations/tabs&quot;));
++	}
++	else
++		gtk_notebook_set_show_tabs(GTK_NOTEBOOK(gtkwin-&gt;notebook), TRUE);
++	gaim_debug_misc(&quot;roombrowse&quot;,&quot;FOcus stuff\n&quot;);
++	focus_conv = g_list_nth_data(gaim_conv_window_get_conversations(win),
++				     gtk_notebook_get_current_page(GTK_NOTEBOOK(gtkwin-&gt;notebook)));
++	focus_gtkconv = GAIM_GTK_CONVERSATION(focus_conv);
++	gtk_widget_grab_focus(focus_gtkconv-&gt;entry);
++
++	if (!new_ui)
++		g_object_unref(gtkconv-&gt;tab_cont);
++}
++
++
++static void roombrowse_menu_cb(GaimBlistNode* node, gpointer data) {
++	GaimConvWindow *win=gaim_get_first_window_with_type(GAIM_CONV_MISC);
++	GaimConversation *conv=g_new0(GaimConversation, 1);
++
++	GaimAccount* account=((GaimChat*)node)-&gt;account;
++	if(!win)
++		win=gaim_conv_window_new();
++	GaimChat* chat = ((GaimChat*)node);
++	char *room= g_strdup(g_hash_table_lookup(chat-&gt;components,&quot;name&quot;));
++
++	
++	gaim_debug_misc(&quot;roombrowser&quot;,&quot;In cb with node=%x, account=%x\n&quot;,node,account);
++	conv=gaim_conversation_new(GAIM_CONV_MISC, account, room);
++	
++	gaim_conversation_set_logging(conv, FALSE);
++		
++	roombrowse_gtk_add_conversation(conv-&gt;window, conv);
++	gaim_conv_window_show(conv-&gt;window);
++
++	g_free(room);
++	
++}
++static void roombrowse_menu_create(GaimBlistNode *node, GList **menu)
++{
++  
++	char *label,*room;	
++  
++	struct gaym_conn *gaym;
++	GaimChat *chat=(GaimChat*)node;
++  
++	gaim_debug_misc(&quot;roombrowse&quot;,&quot;In callback\n&quot;);
++	if(node-&gt;type != GAIM_BLIST_CHAT_NODE)
++		return;
++  
++	gaym=chat-&gt;account-&gt;gc-&gt;proto_data;
++  
++	room=g_strdup(g_hash_table_lookup(chat-&gt;components,&quot;name&quot;));
++	gaim_debug_misc(&quot;roombrowse&quot;,&quot;Room name: %s\n&quot;,room);
++	if(!room)
++		return;
++  
++    
++		label = g_strdup_printf(&quot;Lurk in %s&quot;,room);
++		GaimBlistNodeAction* act=gaim_blist_node_action_new(label,
++				roombrowse_menu_cb,
++				chat-&gt;account);
++  
++		*menu=g_list_append(*menu,act);
++    //g_free(label);
++}
++static gboolean plugin_load(GaimPlugin *plugin)
++{
++	gaim_signal_connect(gaim_blist_get_handle(),
++						&quot;blist-node-extended-menu&quot;,
++						plugin, GAIM_CALLBACK(roombrowse_menu_create), NULL);
++
++	
++	gaim_debug_misc(&quot;roombrowse&quot;,&quot;Callback registered!\n&quot;);	
++	return TRUE;
++}
++
++static GaimPluginInfo info =
++{
++	GAIM_PLUGIN_MAGIC,
++	GAIM_MAJOR_VERSION,
++	GAIM_MINOR_VERSION,
++	GAIM_PLUGIN_STANDARD,
++	GAIM_GTK_PLUGIN_TYPE,
++	0,
++	NULL,
++	GAIM_PRIORITY_DEFAULT,
++	CHATSORT_PLUGIN_ID,
++	N_(&quot;Gay.Com Room Browser&quot;),
++	VERSION,
++	N_(&quot;Browse rooms in gay.com&quot;),
++	N_(&quot;Adds a right-click item to context menu.&quot;),
++	&quot;Jason LeBrun &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">gaim at jasonlebrun.info</A>&quot;,
++	GAIM_WEBSITE,
++	plugin_load,
++	NULL,
++	NULL,
++	NULL,
++	NULL,
++	NULL
++};
++
++static void
++init_plugin(GaimPlugin *plugin)
++{
++}
++
++GAIM_INIT_PLUGIN(history, init_plugin, info)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000158.html">[Qrc-svn] r228 - in qrc/trunk: . gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000160.html">[Qrc-svn] r230 - qrc/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#159">[ date ]</a>
+              <a href="thread.html#159">[ thread ]</a>
+              <a href="subject.html#159">[ subject ]</a>
+              <a href="author.html#159">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

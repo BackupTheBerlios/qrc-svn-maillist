@@ -1,0 +1,457 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r192 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r192%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507120454.j6C4sLi7014390%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000122.html">
+   <LINK REL="Next"  HREF="000124.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r192 - qrc/trunk/gaym/src</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r192%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507120454.j6C4sLi7014390%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r192 - qrc/trunk/gaym/src">jblebrun at berlios.de
+       </A><BR>
+    <I>Tue Jul 12 06:54:21 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000122.html">[Qrc-svn] r191 - qrc/trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000124.html">[Qrc-svn] r193 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#123">[ date ]</a>
+              <a href="thread.html#123">[ thread ]</a>
+              <a href="subject.html#123">[ subject ]</a>
+              <a href="author.html#123">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-07-12 06:53:53 +0200 (Tue, 12 Jul 2005)
+New Revision: 192
+
+Modified:
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/gaym.h
+   qrc/trunk/gaym/src/weblogin.c
+Log:
+*Keeps age/location stats from server in your bioline.
+*Strips HTML from away messages
+
+gaym.h:
+Add server_stats to gaym_conn struct.
+
+gaym.c: 
+Append stats to bioline when generating it.
+Strip HTML from away message
+
+weblogin.c:
+Added a function that doesn't do anything yet,
+but will be a part of the changed login process.
+
+
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-12 04:15:19 UTC (rev 191)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-12 04:53:53 UTC (rev 192)
+@@ -37,12 +37,12 @@
+ #include &quot;privacy.h&quot;
+ 
+ #include &quot;helpers.h&quot;
+-#include &quot;gayminfo.h&quot;
+ #include &quot;gaympriv.h&quot;
+ #include &quot;configtxt.h&quot;
+ #include &quot;botfilter.h&quot;
+ #include &quot;gaym.h&quot;
+ 
++char *gaym_mask_bio(const char *biostring);
+ static const char *gaym_blist_icon(GaimAccount * a, GaimBuddy * b);
+ static void gaym_blist_emblems(GaimBuddy * b, char **se, char **sw,
+                                char **nw, char **ne);
+@@ -202,22 +202,18 @@
+         (struct gaym_conn *) buddy-&gt;account-&gt;gc-&gt;proto_data;
+ 
+     if (!gaym) {
+-        return g_strdup(_(&quot;Offline&quot;));
++        return g_strdup(&quot;&quot;);
+     }
+ 
+     struct gaym_buddy *ib =
+         g_hash_table_lookup(gaym-&gt;buddies, buddy-&gt;name);
+ 
+     if (!ib) {
+-        return g_strdup(_(&quot;Offline&quot;));
++        return g_strdup(&quot;&quot;);
+     }
+ 
+-    if (!ib-&gt;online) {
+-        return g_strdup(_(&quot;Offline&quot;));
+-    }
+-
+     if (!ib-&gt;bio) {
+-        return NULL;
++        return g_strdup(&quot;&quot;);
+     }
+ 
+     status = g_markup_escape_text(ib-&gt;bio, strlen(ib-&gt;bio));
+@@ -227,56 +223,32 @@
+ 
+ static char *gaym_tooltip_text(GaimBuddy * buddy)
+ {
++    char *escaped, *tooltip;
++
+     struct gaym_conn *gaym =
+         (struct gaym_conn *) buddy-&gt;account-&gt;gc-&gt;proto_data;
+ 
+     if (!gaym) {
+-        return NULL;
++        return g_strdup(&quot;&quot;);
+     }
+ 
+     struct gaym_buddy *ib =
+         g_hash_table_lookup(gaym-&gt;buddies, buddy-&gt;name);
+ 
+     if (!ib) {
+-        return NULL;
++        return g_strdup(&quot;&quot;);
+     }
+ 
+-    char *escaped;
+-    GString *tooltip = g_string_new(&quot;&quot;);
+-
+-    if (ib-&gt;sex) {
+-        escaped = g_markup_escape_text(ib-&gt;sex, strlen(ib-&gt;sex));
+-        g_string_append_printf(tooltip, _(&quot;\n&lt;b&gt;%s:&lt;/b&gt; %s&quot;), _(&quot;Sex&quot;),
+-                               escaped);
+-        g_free(escaped);
++    if (!ib-&gt;bio) {
++        return g_strdup(&quot;&quot;);
+     }
+ 
+-    if (ib-&gt;age) {
+-        escaped = g_markup_escape_text(ib-&gt;age, strlen(ib-&gt;age));
+-        g_string_append_printf(tooltip, _(&quot;\n&lt;b&gt;%s:&lt;/b&gt; %s&quot;), _(&quot;Age&quot;),
+-                               escaped);
+-        g_free(escaped);
+-    }
++    escaped = g_markup_escape_text(ib-&gt;bio, strlen(ib-&gt;bio));
++    tooltip = g_strdup_printf(_(&quot;\n&lt;b&gt;%s:&lt;/b&gt; %s&quot;), _(&quot;Bio&quot;), escaped);
+ 
+-    if (ib-&gt;location) {
+-        escaped = g_markup_escape_text(ib-&gt;location, strlen(ib-&gt;location));
+-        g_string_append_printf(tooltip, _(&quot;\n&lt;b&gt;%s:&lt;/b&gt; %s&quot;),
+-                               _(&quot;Location&quot;), escaped);
+-        g_free(escaped);
+-    }
++    g_free(escaped);
+ 
+-    if (ib-&gt;bio) {
+-        escaped = g_markup_escape_text(ib-&gt;bio, strlen(ib-&gt;bio));
+-        g_string_append_printf(tooltip, _(&quot;\n&lt;b&gt;%s:&lt;/b&gt; %s&quot;), _(&quot;Bio&quot;),
+-                               escaped);
+-        g_free(escaped);
+-    }
+-
+-    if (tooltip-&gt;len == 0) {
+-        return g_string_free(tooltip, TRUE);
+-    }
+-
+-    return g_string_free(tooltip, FALSE);
++    return tooltip;
+ }
+ 
+ static GList *gaym_away_states(GaimConnection * gc)
+@@ -286,6 +258,7 @@
+ 
+ static void gaym_set_info(GaimConnection * gc, const char *info)
+ {
++
+     struct gaym_conn *gaym = gc-&gt;proto_data;
+     GaimAccount *account = gaim_connection_get_account(gc);
+     char *hostname = &quot;none&quot;;
+@@ -296,10 +269,10 @@
+ 
+     if (info &amp;&amp; strlen(info) &gt; 2) {
+         gaim_debug_misc(&quot;gaym&quot;, &quot;option1, info=%x\n&quot;, info);
+-        gaym-&gt;bio = g_strdup(info);
++        gaym-&gt;bio = g_strdup_printf(&quot;%s&quot;,info);
+     } else if (gaym-&gt;server_bioline &amp;&amp; strlen(gaym-&gt;server_bioline) &gt; 2) {
+         gaim_debug_misc(&quot;gaym&quot;, &quot;option2\n&quot;);
+-        gaym-&gt;bio = gaym_bio_strdup(gaym-&gt;server_bioline);
++        gaym-&gt;bio = g_strdup(gaym_mask_bio(gaym-&gt;server_bioline));
+     } else {
+         gaim_debug_misc(&quot;gaym&quot;, &quot;option3\n&quot;);
+         gaym-&gt;bio = g_strdup(&quot;Gaim User&quot;);
+@@ -310,8 +283,9 @@
+     gaim_debug_info(&quot;gaym&quot;, &quot;INFO=%x BIO=%x\n&quot;, info, gaym-&gt;bio);
+     gaim_debug_misc(&quot;gaym&quot;, &quot;In login_cb, gc-&gt;account=%x\n&quot;, gc-&gt;account);
+     bioline =
+-        g_strdup_printf(&quot;%s#%s&quot;, gaym-&gt;thumbnail ? gaym-&gt;thumbnail : &quot;&quot;,
+-                        gaym-&gt;bio ? gaym-&gt;bio : &quot;&quot;);
++        g_strdup_printf(&quot;%s#%s\001%s&quot;, gaym-&gt;thumbnail ? gaym-&gt;thumbnail : &quot;&quot;,
++                        gaym-&gt;bio ? gaym-&gt;bio : &quot;&quot;,
++			gaym-&gt;server_stats ? gaym-&gt;server_stats : &quot;&quot;);
+ 
+     buf = gaym_format(gaym, &quot;vvvv:&quot;, &quot;USER&quot;,
+                       gaim_account_get_username(account),
+@@ -493,6 +467,10 @@
+     gaim_connection_update_progress(gc, buf, 1, 6);
+     g_free(buf);
+ 
++    
++    //Making a change to try cached password first.
++    //gaym_try_cached_password(account, gaym_login_with_hash);
++   
+     gaym_get_hash_from_weblogin(account, gaym_login_with_hash);
+ }
+ 
+@@ -575,13 +553,13 @@
+                         &quot;In login_cb, user_bioline: %x, gc-&gt;account=%x\n&quot;,
+                         user_bioline, gc-&gt;account);
+ 
+-        login_name =
++        login_name = 
+             gaym_nick_to_gcom_strdup(gaim_connection_get_display_name(gc));
++        bioline = g_strdup_printf(&quot;%s#%s\001%s&quot;,
++                                gaym-&gt;thumbnail,
++                                user_bioline ? user_bioline : &quot;&quot;,
++                                gaym-&gt;server_stats ? gaym-&gt;server_stats : &quot;&quot;);
+ 
+-        bioline = g_strdup_printf(&quot;%s#%s&quot;,
+-                                  gaym-&gt;thumbnail,
+-                                  user_bioline ? user_bioline : &quot;&quot;);
+-
+         buf = gaym_format(gaym, &quot;vn&quot;, &quot;NICK&quot;, login_name);
+         gaim_debug_misc(&quot;gaym&quot;, &quot;Command: %s\n&quot;, buf);
+ 
+@@ -652,6 +630,7 @@
+     struct gaym_conn *gaym = gc-&gt;proto_data;
+     const char *args[2];
+     const char *awaymsg = NULL;
++    const char *stripped_msg = NULL;
+     if (strchr(status_chars, *who) != NULL)
+         args[0] = who + 1;
+     else
+@@ -659,13 +638,11 @@
+ 
+ 
+     if (flags &amp; GAIM_CONV_IM_AUTO_RESP) {
+-        awaymsg = g_strdup_printf(&quot;&lt;Auto-response&gt; %s&quot;, what);
++	stripped_msg = gaim_markup_strip_html(what);
++        awaymsg = g_strdup_printf(&quot;&lt;Auto-response&gt; %s&quot;, stripped_msg);
++	g_free(stripped_msg);
++	gaim_debug_misc(&quot;gaym: sending away message -- %s\n&quot;,awaymsg);
+         args[1] = awaymsg;
+-        /**
+-         * Prevent memory leak
+-         * g_free(what);
+-         * what=args[1];
+-         */
+ 
+     } else
+         args[1] = what;
+@@ -697,19 +674,10 @@
+         gc-&gt;away = NULL;
+     }
+ 
+-    /**
+-     * FIXME:  set the Bio to the away message; if the away message
+-     * is NULL, then set the Bio to the original bio.
+-     */
+-
+     if (msg)
+         gc-&gt;away = g_strdup(msg);
+ 
+     /**
+-     *  The following would be great, and gay.com's server supports
+-     *  it, but gay.com's clients don't see the result.  So even though
+-     *  we can see the result, we won't bother.
+-     *
+      * args[0] = msg;
+      * gaym_cmd_away(gaym, &quot;away&quot;, NULL, args);
+      */
+@@ -718,15 +686,9 @@
+ static void gaym_add_buddy(GaimConnection * gc, GaimBuddy * buddy,
+                            GaimGroup * group)
+ {
+-    if (buddy-&gt;name) {
+-        buddy-&gt;name = g_strstrip(buddy-&gt;name);
+-    }
+-    if (buddy-&gt;alias) {
+-        buddy-&gt;alias = g_strstrip(buddy-&gt;alias);
+-    }
+-    if (buddy-&gt;server_alias) {
+-        buddy-&gt;server_alias = g_strstrip(buddy-&gt;server_alias);
+-    }
++    buddy-&gt;name = g_strstrip(buddy-&gt;name);
++    buddy-&gt;alias = g_strstrip(buddy-&gt;alias);
++    buddy-&gt;server_alias = g_strstrip(buddy-&gt;server_alias);
+     struct gaym_conn *gaym = (struct gaym_conn *) gc-&gt;proto_data;
+     struct gaym_buddy *ib = g_new0(struct gaym_buddy, 1);
+     ib-&gt;name = g_strdup(buddy-&gt;name);
+@@ -734,9 +696,6 @@
+     ib-&gt;online = FALSE;
+     ib-&gt;bio = NULL;
+     ib-&gt;thumbnail = NULL;
+-    ib-&gt;sex = NULL;
+-    ib-&gt;age = NULL;
+-    ib-&gt;location = NULL;
+     g_hash_table_replace(gaym-&gt;buddies, ib-&gt;name, ib);
+     gaim_debug_misc(&quot;gaym&quot;, &quot;Add buddy: %s\n&quot;, buddy-&gt;name);
+     /**
+@@ -997,9 +956,6 @@
+     g_free(ib-&gt;name);
+     g_free(ib-&gt;bio);
+     g_free(ib-&gt;thumbnail);
+-    g_free(ib-&gt;sex);
+-    g_free(ib-&gt;age);
+-    g_free(ib-&gt;location);
+     g_free(ib);
+ }
+ 
+@@ -1181,33 +1137,11 @@
+     if (strncmp(conv-&gt;account-&gt;protocol_id, &quot;prpl-gaym&quot;, 9) == 0
+         &amp;&amp; gaim_conversation_get_type(conv) == GAIM_CONV_IM) {
+ 
+-        /**
+-         * First check to see if we already have the photo via
+-         * the buddy list process.
+-         */
+-
+         struct gaym_conn *gaym;
+ 
+         GaimConnection *gc = gaim_conversation_get_gc(conv);
+-
+         gaym = (struct gaym_conn *) gc-&gt;proto_data;
+ 
+-        if (!gaym) {
+-            return;
+-        }
+-
+-        struct gaym_buddy *ib =
+-            g_hash_table_lookup(gaym-&gt;buddies, conv-&gt;name);
+-
+-        if (ib) {
+-            return;
+-        }
+-
+-        /**
+-         * Since this person isn't in our buddy list, go ahead
+-         * with the WHOIS to get the photo for the IM thumbnail
+-         */
+-
+         gaym-&gt;info_window_needed = FALSE;
+ 
+         gaym-&gt;whois.nick = g_strdup(conv-&gt;name);
+
+Modified: qrc/trunk/gaym/src/gaym.h
+===================================================================
+--- qrc/trunk/gaym/src/gaym.h	2005-07-12 04:15:19 UTC (rev 191)
++++ qrc/trunk/gaym/src/gaym.h	2005-07-12 04:53:53 UTC (rev 192)
+@@ -77,6 +77,7 @@
+     char *thumbnail;
+     char *hash_pw;
+     char *server_bioline;
++    char *server_stats;
+     char *roomlist_filter;
+     char *bio;
+ 
+@@ -122,9 +123,6 @@
+     gboolean online;            /* is online */
+     char *bio;                  /* bio string */
+     char *thumbnail;            /* thumbnail string */
+-    char *sex;                  /* sex string */
+-    char *age;                  /* age string */
+-    char *location;             /* location string */
+ };
+ 
+ typedef int (*IRCCmdCallback) (struct gaym_conn * gaym, const char *cmd,
+
+Modified: qrc/trunk/gaym/src/weblogin.c
+===================================================================
+--- qrc/trunk/gaym/src/weblogin.c	2005-07-12 04:15:19 UTC (rev 191)
++++ qrc/trunk/gaym/src/weblogin.c	2005-07-12 04:53:53 UTC (rev 192)
+@@ -488,7 +488,11 @@
+ 
+ 
+ 
+-
++	gaym-&gt;server_stats=NULL;
++	gaym-&gt;hash_pw=NULL;
++	gaym-&gt;server_bioline=NULL;
++	gaym-&gt;thumbnail=NULL;
++	
+         // First, look for password
+         match = &quot;password\&quot; value=\&quot;&quot;;
+         temp = strstr(text, match);
+@@ -534,9 +538,13 @@
+                     || (gaym-&gt;server_bioline = NULL);
+                 g_free(bio);
+ 
+-            }
+-            // We have established a session. Call session callback.
+-
++		//Parse out stats part of bio.
++		temp2 = strchr(result, (char)0x01);
++		if(temp2++) {
++		    gaim_debug_misc(&quot;gaym&quot;, &quot;Stats: %s\n&quot;, temp2);
++		    gaym-&gt;server_stats = g_strdup(temp2);
++		}
++	    }
+         } else {
+             // gaim_connection_error(
+             // gaim_account_get_connection(((struct
+@@ -705,6 +713,18 @@
+     }
+ }
+ 
++void gaym_try_cached_password(GaimAccount * account,
++                            void (*callback) (GaimAccount * account))
++{
++
++    const char* pw;
++    pw=gaim_account_get_string(account, &quot;password&quot;, NULL);
++    if (pw==NULL)
++        gaym_get_hash_from_weblogin(account, callback);
++    
++
++}
++
+ /**
+  * vim:tabstop=4:shiftwidth=4:expandtab:
+  */
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000122.html">[Qrc-svn] r191 - qrc/trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000124.html">[Qrc-svn] r193 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#123">[ date ]</a>
+              <a href="thread.html#123">[ thread ]</a>
+              <a href="subject.html#123">[ subject ]</a>
+              <a href="author.html#123">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

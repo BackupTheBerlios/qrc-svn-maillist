@@ -1,0 +1,420 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r225 - in qrc/trunk: . gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r225%20-%20in%20qrc/trunk%3A%20.%20gaym/src&In-Reply-To=%3C200507231225.j6NCPRB7001207%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000154.html">
+   <LINK REL="Next"  HREF="000156.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r225 - in qrc/trunk: . gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r225%20-%20in%20qrc/trunk%3A%20.%20gaym/src&In-Reply-To=%3C200507231225.j6NCPRB7001207%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r225 - in qrc/trunk: . gaym/src">deckrider at berlios.de
+       </A><BR>
+    <I>Sat Jul 23 14:25:27 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000154.html">[Qrc-svn] r224 - qrc/trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000156.html">[Qrc-svn] r226 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#155">[ date ]</a>
+              <a href="thread.html#155">[ thread ]</a>
+              <a href="subject.html#155">[ subject ]</a>
+              <a href="author.html#155">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-23 14:25:21 +0200 (Sat, 23 Jul 2005)
+New Revision: 225
+
+Removed:
+   qrc/trunk/chatsort/
+Modified:
+   qrc/trunk/Makefile.am
+   qrc/trunk/configure.ac
+   qrc/trunk/gaym/src/gaym.h
+   qrc/trunk/gaym/src/gayminfo.h
+   qrc/trunk/gaym/src/msgs.c
+Log:
+There have been lots of commits in the recent period, which have
+introduced duplicate functionality with respect to room sorting and
+chatroom icons.  This commit is an attempt to clean this up by doing the
+following:
+
+   within gaym/src:  svn merge -r 224:218
+   within gaym/src:  svn merge -r 223:224
+
+The first command backs out all chatsort and chaticon changes from gaym.
+The second command adds back Jason's latest chatsort changes to gaym.
+
+In addition, the chatsort plugin has been removed, since sorting is now
+easily achieved within the gaym prpl (yay Jason!), and the corresponding
+chatsort plugin logic has been removed from configure.ac and
+Makefile.am.
+
+Other commits are probably needed after this to restore the fix to
+gaym_msg_join() within gaym/src/msg.c, but I thought it is worthwhile to
+commit the merge separately.
+
+
+Modified: qrc/trunk/Makefile.am
+===================================================================
+--- qrc/trunk/Makefile.am	2005-07-23 03:06:59 UTC (rev 224)
++++ qrc/trunk/Makefile.am	2005-07-23 12:25:21 UTC (rev 225)
+@@ -6,10 +6,6 @@
+ MAYBE_CHATICON = chaticon
+ endif
+ 
+-if COND_CHATSORT
+-MAYBE_CHATSORT = chatsort
+-endif
+-
+ if COND_GAYM
+ MAYBE_GAYM = gaym
+ endif
+@@ -26,6 +22,5 @@
+ 	nsis \
+ 	$(MAYBE_BOT_CHALLENGER) \
+ 	$(MAYBE_CHATICON) \
+-	$(MAYBE_CHATSORT) \
+ 	$(MAYBE_GAYM) \
+ 	$(MAYBE_ROOMBROWSE)
+
+Modified: qrc/trunk/configure.ac
+===================================================================
+--- qrc/trunk/configure.ac	2005-07-23 03:06:59 UTC (rev 224)
++++ qrc/trunk/configure.ac	2005-07-23 12:25:21 UTC (rev 225)
+@@ -42,10 +42,6 @@
+ 	[AS_HELP_STRING(--enable-chaticon,build the chaticon plugin @&lt;:@default=no@:&gt;@)],,
+ 	[enable_chaticon=&quot;no&quot;])
+ 
+-AC_ARG_ENABLE([chatsort],
+-	[AS_HELP_STRING(--enable-chatsort,build the chatsort plugin @&lt;:@default=no@:&gt;@)],,
+-	[enable_chatsort=&quot;no&quot;])
+-
+ AC_ARG_ENABLE([gaym],
+ 	[AS_HELP_STRING(--enable-gaym,build the gaym plugin @&lt;:@default=yes@:&gt;@)],,
+ 	[enable_gaym=&quot;yes&quot;])
+@@ -56,7 +52,6 @@
+ 
+ AM_CONDITIONAL([COND_BOT_CHALLENGER], [test &quot;$enable_bot_challenger&quot; = &quot;yes&quot;])
+ AM_CONDITIONAL([COND_CHATICON], [test &quot;$enable_chaticon&quot; = &quot;yes&quot;])
+-AM_CONDITIONAL([COND_CHATSORT], [test &quot;$enable_chatsort&quot; = &quot;yes&quot;])
+ AM_CONDITIONAL([COND_GAYM], [test &quot;$enable_gaym&quot; = &quot;yes&quot;])
+ AM_CONDITIONAL([COND_ROOMBROWSE], [test &quot;$enable_roombrowse&quot; = &quot;yes&quot;])
+ 
+@@ -68,10 +63,6 @@
+ 	enable_chaticon=&quot;no&quot;
+ fi
+ 
+-if test &quot;$enable_chatsort&quot; != &quot;yes&quot; ; then
+-	enable_chatsort=&quot;no&quot;
+-fi
+-
+ if test &quot;$enable_gaym&quot; != &quot;yes&quot; ; then
+ 	enable_gaym=&quot;no&quot;
+ fi
+@@ -82,7 +73,7 @@
+ 
+ # Checks for libraries.
+ PKG_PROG_PKG_CONFIG([$REQUIRED_PKG_CONFIG])
+-if test &quot;$enable_chaticon&quot; = &quot;yes&quot; -o &quot;$enable_chatsort&quot; = &quot;yes&quot; -o &quot;$enable_roombrowse&quot; = &quot;yes&quot;; then
++if test &quot;$enable_chaticon&quot; = &quot;yes&quot; -o &quot;$enable_roombrowse&quot; = &quot;yes&quot;; then
+ 	PKG_CHECK_MODULES([GTK], [$REQUIRED_GTK],
+ 		[
+ 		AC_SUBST(GTK_CFLAGS)
+@@ -136,7 +127,6 @@
+ AC_CONFIG_FILES([Makefile
+                  bot-challenger/Makefile
+                  chaticon/Makefile
+-                 chatsort/Makefile
+                  gaym/Makefile
+                  gaym/pixmaps/Makefile
+                  gaym/src/Makefile
+@@ -150,7 +140,6 @@
+ echo
+ echo Build bot-challenger plugin...... : $enable_bot_challenger
+ echo Build chaticon plugin............ : $enable_chaticon
+-echo Build chatsort plugin............ : $enable_chatsort
+ echo Build gaym plugin................ : $enable_gaym
+ echo Build roombrowse plugin.......... : $enable_roombrowse
+ echo
+
+Modified: qrc/trunk/gaym/src/gaym.h
+===================================================================
+--- qrc/trunk/gaym/src/gaym.h	2005-07-23 03:06:59 UTC (rev 224)
++++ qrc/trunk/gaym/src/gaym.h	2005-07-23 12:25:21 UTC (rev 225)
+@@ -77,7 +77,7 @@
+     gboolean blist_updating;
+     GHashTable *info_window_needed;
+     GHashTable *im_thumbnail_needed;
+-    GList *join_flags; //Temporary holding space for join flags. 
++
+     GString *motd;
+     GString *names;
+     char *nameconv;
+@@ -106,7 +106,6 @@
+     char *password;
+     struct gaym_conn *gaym;
+     gboolean hasFormData;
+-    
+ 
+ } GaimUrlSession;
+ 
+
+Modified: qrc/trunk/gaym/src/gayminfo.h
+===================================================================
+--- qrc/trunk/gaym/src/gayminfo.h	2005-07-23 03:06:59 UTC (rev 224)
++++ qrc/trunk/gaym/src/gayminfo.h	2005-07-23 12:25:21 UTC (rev 225)
+@@ -37,7 +37,6 @@
+     char *who;
+     char *bio;
+     char *stats;
+-    char *thumbnail;
+ };
+ void gaym_fetch_thumbnail_cb(void *user_data, const char *pic_data,
+                              size_t len);
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-07-23 03:06:59 UTC (rev 224)
++++ qrc/trunk/gaym/src/msgs.c	2005-07-23 12:25:21 UTC (rev 225)
+@@ -199,21 +199,6 @@
+ 
+     picpath = return_string_between(match, &quot;\n&quot;, info_data);
+     if (!picpath || strlen(picpath) == 0) {
+-
+-        if (d-&gt;thumbnail) {
+-            hashurl =
+-                g_hash_table_lookup(gaym-&gt;confighash,
+-                                    &quot;mini-profile-panel.thumbnail-prefix&quot;);
+-            picurl = g_strdup_printf(&quot;%s%s&quot;, hashurl, d-&gt;thumbnail);
+-            if (picurl) {
+-                gaim_url_fetch(picurl, FALSE,
+-                               &quot;Mozilla/4.0 (compatible; MSIE 5.0)&quot;, FALSE,
+-                               gaym_fetch_photo_cb, user_data);
+-
+-                return;
+-            }
+-
+-        }
+         gaim_notify_userinfo(d-&gt;gc, d-&gt;who,
+                              t = g_strdup_printf(&quot;Gay.com - %s&quot;, d-&gt;who),
+                              d-&gt;who, NULL, info, NULL, NULL);
+@@ -222,7 +207,6 @@
+     }
+ 
+     picurl = g_strdup_printf(&quot;<A HREF="http://www.gay.com%s">http://www.gay.com%s</A>&quot;, picpath);
+-
+     if (picurl) {
+         gaim_url_fetch(picurl, FALSE, &quot;Mozilla/4.0 (compatible; MSIE 5.0)&quot;,
+                        FALSE, gaym_fetch_photo_cb, user_data);
+@@ -299,7 +283,6 @@
+         data-&gt;who = g_strdup(args[1]);
+         data-&gt;bio = gaym_bio_strdup(args[5]);
+         data-&gt;stats = gaym_stats_strdup(args[5]);
+-        data-&gt;thumbnail = gaym_thumbnail_strdup(args[5]);
+ 
+         char *infourl = g_strdup_printf(&quot;%s?pw=%s&amp;name=%s&quot;, hashurl,
+                                         gaym-&gt;hash_pw, args[1]);
+@@ -431,7 +414,7 @@
+         if (!convo) {
+             gaim_debug(GAIM_DEBUG_ERROR, &quot;gaym&quot;,
+                        &quot;Got a NAMES list for %s, which doesn't exist\n&quot;,
+-                       args[1]);
++                       args[2]);
+             g_string_free(gaym-&gt;names, TRUE);
+             gaym-&gt;names = NULL;
+             g_free(gaym-&gt;nameconv);
+@@ -459,52 +442,44 @@
+             gaym-&gt;nameconv = NULL;
+         } else {
+             GList *users = NULL;
++            GList *flags = NULL;
+ 
+-            gaim_debug_misc(&quot;gaym&quot;,
+-                            &quot;Using names for initial list population&quot;);
+             while (*cur) {
++                GaimConvChatBuddyFlags f = GAIM_CBFLAGS_NONE;
+                 end = strchr(cur, ' ');
+-                /**
+-                 * if (!end)
+-                 * end = cur + strlen(cur);
+-                 * if (*cur == '@') {
+-                 * f = GAIM_CBFLAGS_OP;
+-                 * cur++;
+-                 * } else if (*cur == '%') {
+-                 * f = GAIM_CBFLAGS_HALFOP;
+-                 * cur++;
+-                 * } else if (*cur == '+') {
+-                 * f = GAIM_CBFLAGS_VOICE;
+-                 * cur++;
+-                 * }
+-                 */
++                if (!end)
++                    end = cur + strlen(cur);
++                if (*cur == '@') {
++                    f = GAIM_CBFLAGS_OP;
++                    cur++;
++                } else if (*cur == '%') {
++                    f = GAIM_CBFLAGS_HALFOP;
++                    cur++;
++                } else if (*cur == '+') {
++                    f = GAIM_CBFLAGS_VOICE;
++                    cur++;
++                }
+                 tmp = g_strndup(cur, end - cur);
+-
+-                gcom_nick_to_gaym(tmp);
+                 users = g_list_prepend(users, tmp);
+-                /* flags = g_list_prepend(flags, GINT_TO_POINTER(f)); */
++                flags = g_list_prepend(flags, GINT_TO_POINTER(f));
+                 cur = end;
+                 if (*cur)
+                     cur++;
+             }
+-            /**
+-             * users = g_list_reverse(users);
+-             * flags = g_list_reverse(flags);
+-             */
++            users = g_list_reverse(users);
++            flags = g_list_reverse(flags);
+ 
+             if (users != NULL) {
+                 GList *l;
+ 
+                 gaim_conv_chat_add_users(GAIM_CONV_CHAT(convo), users,
+-                                         gaym-&gt;join_flags);
++                                         flags);
+ 
+-
+                 for (l = users; l != NULL; l = l-&gt;next)
+                     g_free(l-&gt;data);
+ 
+                 g_list_free(users);
+-                g_list_free(gaym-&gt;join_flags);
+-                gaym-&gt;join_flags = NULL;
++                g_list_free(flags);
+             }
+         }
+         g_free(names);
+@@ -715,12 +690,12 @@
+ 
+         serv_got_joined_chat(gc, id++, args[0]);
+ 
+-	gint* entry=g_new(gint, 1);
+-	gaim_debug_misc(&quot;gaym&quot;,&quot;Made int: %x\n&quot;,entry);
+-	*entry=200;
+-	
+-        g_hash_table_insert(gaym-&gt;entry_order, g_strdup(args[0]), entry); 
+-	g_free(nick);
++        gint *entry = g_new(gint, 1);
++        gaim_debug_misc(&quot;gaym&quot;, &quot;Made int: %x\n&quot;, entry);
++        *entry = 200;
++
++        g_hash_table_insert(gaym-&gt;entry_order, g_strdup(args[0]), entry);
++        g_free(nick);
+         return;
+     }
+ 
+@@ -743,11 +718,11 @@
+         g_free(bio);
+     }
+ 
+-    gint* entry=g_hash_table_lookup(gaym-&gt;entry_order, args[0]);
++    gint *entry = g_hash_table_lookup(gaym-&gt;entry_order, args[0]);
+ 
+-    if (*entry&lt;201)
+-	*entry=201;
+-    
++    if (*entry &lt; 201)
++        *entry = 201;
++
+     flags = chat_pecking_order(args[1]);
+     flags = include_chat_entry_order(flags, (*entry)++);
+ 
+@@ -918,7 +893,7 @@
+     gcom_nick_to_gaym(nick);
+     if (!gaim_utf8_strcasecmp(nick, gaim_connection_get_display_name(gc))) {
+ 
+-	g_hash_table_remove(gaym-&gt;entry_order, args[0]);
++        g_hash_table_remove(gaym-&gt;entry_order, args[0]);
+         msg = g_strdup_printf(_(&quot;You have parted the channel&quot;));
+ 
+         gaim_conv_chat_write(GAIM_CONV_CHAT(convo), args[0], msg,
+@@ -1275,7 +1250,7 @@
+ {
+     GaimConnection *gc = gaim_account_get_connection(gaym-&gt;account);
+     GaimConversation *convo;
+-    GaimConvChatBuddyFlags flags;
++    GaimConvChatBuddyFlags flags = GAIM_CBFLAGS_NONE;
+     char *channel = args[1];
+     char *nick = args[2];
+     char *extra = args[4];
+@@ -1305,22 +1280,17 @@
+     }
+ 
+     flags = chat_pecking_order(extra);
+-    gint* entry = g_hash_table_lookup(gaym-&gt;entry_order, channel);
++    gint *entry = g_hash_table_lookup(gaym-&gt;entry_order, channel);
+ 
+-    gaim_debug_misc(&quot;gaym&quot;,&quot;looked up int: %x, %i\n&quot;,entry,*entry);
++    gaim_debug_misc(&quot;gaym&quot;, &quot;looked up int: %x, %i\n&quot;, entry, *entry);
+     flags = include_chat_entry_order(flags, (*entry)--);
+-    
+-    gaim_debug_misc(&quot;gaym&quot;,&quot;flags: %i\n&quot;,flags);
+-    /**
+-     * g_hash_table_insert(gaym-&gt;join_flags, g_strdup(nick), flags);
+-     */
+-    //gaym-&gt;join_flags =
+-    //    g_list_prepend(gaym-&gt;join_flags, GINT_TO_POINTER(flags));
+-   
++
++    gaim_debug_misc(&quot;gaym&quot;, &quot;flags: %i\n&quot;, flags);
++
+     gaim_conv_chat_add_user(GAIM_CONV_CHAT(convo), nick, NULL, flags,
+-      FALSE);
+-     
++                            FALSE);
+ 
++
+     /**
+      * Make the ignore.png icon appear next to the nick.
+      */
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000154.html">[Qrc-svn] r224 - qrc/trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000156.html">[Qrc-svn] r226 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#155">[ date ]</a>
+              <a href="thread.html#155">[ thread ]</a>
+              <a href="subject.html#155">[ subject ]</a>
+              <a href="author.html#155">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

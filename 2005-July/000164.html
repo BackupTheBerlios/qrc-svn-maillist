@@ -1,0 +1,314 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r234 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r234%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507232359.j6NNxb4u022393%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000163.html">
+   <LINK REL="Next"  HREF="000165.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r234 - qrc/trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r234%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507232359.j6NNxb4u022393%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r234 - qrc/trunk/gaym/src">deckrider at berlios.de
+       </A><BR>
+    <I>Sun Jul 24 01:59:37 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000163.html">[Qrc-svn] r233 - qrc/trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000165.html">[Qrc-svn] r235 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#164">[ date ]</a>
+              <a href="thread.html#164">[ thread ]</a>
+              <a href="subject.html#164">[ subject ]</a>
+              <a href="author.html#164">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-24 01:58:55 +0200 (Sun, 24 Jul 2005)
+New Revision: 234
+
+Modified:
+   qrc/trunk/gaym/src/cmds.c
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/helpers.c
+   qrc/trunk/gaym/src/helpers.h
+   qrc/trunk/gaym/src/msgs.c
+Log:
+Fixing the ability to run &quot;/list [filter]&quot; which I accidentally broke
+when refactoring the roomlist mechanisms.
+
+
+Modified: qrc/trunk/gaym/src/cmds.c
+===================================================================
+--- qrc/trunk/gaym/src/cmds.c	2005-07-23 18:40:07 UTC (rev 233)
++++ qrc/trunk/gaym/src/cmds.c	2005-07-23 23:58:55 UTC (rev 234)
+@@ -213,12 +213,14 @@
+ int gaym_cmd_list(struct gaym_conn *gaym, const char *cmd,
+                   const char *target, const char **args)
+ {
+-
+-
+-    if (args[0])
+-        gaym-&gt;roomlist_filter = g_strdown(g_strdup(args[0]));
+-    else
++    if (args[0]) {
++        gchar *tmp = g_utf8_strdown(args[0], -1);
++        gaym-&gt;roomlist_filter =
++            g_utf8_normalize(args[0], -1, G_NORMALIZE_ALL);
++        g_free(tmp);
++    } else {
+         gaym-&gt;roomlist_filter = NULL;
++    }
+     gaim_roomlist_show_with_account(gaym-&gt;account);
+ 
+     return 0;
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-23 18:40:07 UTC (rev 233)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-23 23:58:55 UTC (rev 234)
+@@ -517,6 +517,7 @@
+     gaym_cmd_table_build(gaym);
+     gaym-&gt;msgs = g_hash_table_new(g_str_hash, g_str_equal);
+     gaym_msg_table_build(gaym);
++    gaym-&gt;roomlist_filter = NULL;
+     /**
+      * The last parameter needs to be NULL here, since the same
+      * field is added for both the key and the value (and if we
+@@ -1221,6 +1222,11 @@
+         gaym-&gt;roomlist = NULL;
+         gaim_roomlist_unref(list);
+     }
++
++    if (gaym-&gt;roomlist_filter) {
++        g_free(gaym-&gt;roomlist_filter);
++        gaym-&gt;roomlist_filter = NULL;
++    }
+ }
+ 
+ void gaym_roomlist_expand_category(struct _GaimRoomlist *list,
+
+Modified: qrc/trunk/gaym/src/helpers.c
+===================================================================
+--- qrc/trunk/gaym/src/helpers.c	2005-07-23 18:40:07 UTC (rev 233)
++++ qrc/trunk/gaym/src/helpers.c	2005-07-23 23:58:55 UTC (rev 234)
+@@ -338,10 +338,13 @@
+ }
+ 
+ void build_roomlist_from_config(GaimRoomlist * roomlist,
+-                                GHashTable * confighash)
++                                GHashTable * confighash, gchar * pattern)
+ {
+     gchar **roominst = NULL;
+     gchar *altname = NULL;
++    gchar *normalized = NULL;
++    gchar *lowercase = NULL;
++    gchar *found = NULL;
+     int level = 0;
+     int old_level = 0;
+     int i = 0;
+@@ -370,27 +373,38 @@
+              * component parts, determine the level and the parent,
+              * and add this as both a room and a category
+              */
+-            roominst = g_strsplit(roomarr[i], &quot; &quot;, 2);
+-            level = roomlist_level_strip(roominst[1]);
+-            parent = find_parent(level, old_level, room);
+-            altname = g_strdup_printf(&quot;%s:*&quot;, roominst[1]);
+-            if (max == 0) {
+-                room =
+-                    gaim_roomlist_room_new(GAIM_ROOMLIST_ROOMTYPE_ROOM,
+-                                           altname, parent);
+-            } else {
+-                room =
+-                    gaim_roomlist_room_new(GAIM_ROOMLIST_ROOMTYPE_CATEGORY
+-                                           | GAIM_ROOMLIST_ROOMTYPE_ROOM,
+-                                           altname, parent);
++            if (pattern != NULL) {
++                lowercase = g_utf8_strdown(roomarr[i], -1);
++                normalized =
++                    g_utf8_normalize(lowercase, -1, G_NORMALIZE_ALL);
++                found = g_strstr_len(normalized, -1, pattern);
++                g_free(normalized);
++                g_free(lowercase);
+             }
+-            gaim_roomlist_room_add_field(roomlist, room, altname);
+-            gaim_roomlist_room_add_field(roomlist, room, roominst[0]);
+-            gaim_roomlist_room_add(roomlist, room);
+-            g_free(altname);
+-            old_level = level;
+-            g_strfreev(roominst);
+-        } else {
++            if (found != NULL || pattern == NULL) {
++                found = NULL;
++                roominst = g_strsplit(roomarr[i], &quot; &quot;, 2);
++                level = roomlist_level_strip(roominst[1]);
++                parent = find_parent(level, old_level, room);
++                altname = g_strdup_printf(&quot;%s:*&quot;, roominst[1]);
++                if (max == 0) {
++                    room =
++                        gaim_roomlist_room_new(GAIM_ROOMLIST_ROOMTYPE_ROOM,
++                                               altname, parent);
++                } else {
++                    room =
++                        gaim_roomlist_room_new
++                        (GAIM_ROOMLIST_ROOMTYPE_CATEGORY |
++                         GAIM_ROOMLIST_ROOMTYPE_ROOM, altname, parent);
++                }
++                gaim_roomlist_room_add_field(roomlist, room, altname);
++                gaim_roomlist_room_add_field(roomlist, room, roominst[0]);
++                gaim_roomlist_room_add(roomlist, room);
++                g_free(altname);
++                g_strfreev(roominst);
++                old_level = level;
++            }
++        } else if (pattern == NULL) {
+             /**
+              * This is a plain category, determine the level and
+              * the parent and add it.
+@@ -406,7 +420,6 @@
+     }
+     g_strfreev(roomarr);
+     gaim_roomlist_set_in_progress(roomlist, FALSE);
+-
+ }
+ 
+ GaimConvChatBuddyFlags chat_pecking_order(const char *extra)
+@@ -431,10 +444,13 @@
+     return flags;
+ }
+ 
+-GaimConvChatBuddyFlags include_chat_entry_order(GaimConvChatBuddyFlags flags, gint entry) {
+-    
++GaimConvChatBuddyFlags include_chat_entry_order(GaimConvChatBuddyFlags
++                                                flags, gint entry)
++{
++
+     return (flags | (entry &lt;&lt; 4));
+ }
++
+ /**
+  * vim:tabstop=4:shiftwidth=4:expandtab:
+  */
+
+Modified: qrc/trunk/gaym/src/helpers.h
+===================================================================
+--- qrc/trunk/gaym/src/helpers.h	2005-07-23 18:40:07 UTC (rev 233)
++++ qrc/trunk/gaym/src/helpers.h	2005-07-23 23:58:55 UTC (rev 234)
+@@ -142,9 +142,10 @@
+  * @param roomlist The GaimRoomlist that these rooms should be loaded
+  *                 into.
+  * @param confighash The GHashTable that config.txt was converted into
++ * @param pattern The pattern to match against or NULL for everythying
+  */
+ void build_roomlist_from_config(GaimRoomlist * roomlist,
+-                                GHashTable * confighash);
++                                GHashTable * confighash, gchar * pattern);
+ 
+ /**
+  * Determine the correct GaimConvChatBuddyFlags based on the &quot;extra&quot;
+@@ -156,7 +157,8 @@
+  */
+ GaimConvChatBuddyFlags chat_pecking_order(const char *extra);
+ 
+-GaimConvChatBuddyFlags include_chat_entry_order(GaimConvChatBuddyFlags flags, gint entry);
++GaimConvChatBuddyFlags include_chat_entry_order(GaimConvChatBuddyFlags
++                                                flags, gint entry);
+ #endif                          /* _GAIM_GAYM_HELPERS_H_ */
+ 
+ /**
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-07-23 18:40:07 UTC (rev 233)
++++ qrc/trunk/gaym/src/msgs.c	2005-07-23 23:58:55 UTC (rev 234)
+@@ -310,7 +310,7 @@
+     /**
+      * Begin result of member created room list
+      */
+-    if (!strcmp(name, &quot;321&quot;)) {
++    if (!strcmp(name, &quot;321&quot;) &amp;&amp; gaym-&gt;roomlist_filter == NULL) {
+         GaimRoomlistRoom *room;
+         room = gaim_roomlist_room_new(GAIM_ROOMLIST_ROOMTYPE_CATEGORY,
+                                       _(&quot;Member Created&quot;), NULL);
+@@ -364,13 +364,22 @@
+          */
+         field_name[i - 2] = ':';
+ 
+-        room = gaim_roomlist_room_new(GAIM_ROOMLIST_ROOMTYPE_ROOM,
+-                                      field_name,
+-                                      g_list_nth_data(gaym-&gt;roomlist-&gt;
+-                                                      rooms, 0));
+-        gaim_roomlist_room_add_field(gaym-&gt;roomlist, room, field_name);
+-        gaim_roomlist_room_add_field(gaym-&gt;roomlist, room, args[1]);
+-        gaim_roomlist_room_add(gaym-&gt;roomlist, room);
++        gchar *lowercase = g_utf8_strdown(field_name, -1);
++        gchar *normalized =
++            g_utf8_normalize(lowercase, -1, G_NORMALIZE_ALL);
++        g_free(lowercase);
++        if (gaym-&gt;roomlist_filter == NULL ||
++            g_strstr_len(normalized, -1, gaym-&gt;roomlist_filter) != NULL) {
++
++            room = gaim_roomlist_room_new(GAIM_ROOMLIST_ROOMTYPE_ROOM,
++                                          field_name,
++                                          g_list_nth_data(gaym-&gt;roomlist-&gt;
++                                                          rooms, 0));
++            gaim_roomlist_room_add_field(gaym-&gt;roomlist, room, field_name);
++            gaim_roomlist_room_add_field(gaym-&gt;roomlist, room, args[1]);
++            gaim_roomlist_room_add(gaym-&gt;roomlist, room);
++        }
++        g_free(normalized);
+         g_free(field_name);
+     }
+ 
+@@ -379,7 +388,12 @@
+      * This is our trigger to add the static rooms
+      */
+     if (!strcmp(name, &quot;323&quot;)) {
+-        build_roomlist_from_config(gaym-&gt;roomlist, gaym-&gt;confighash);
++        build_roomlist_from_config(gaym-&gt;roomlist, gaym-&gt;confighash,
++                                   gaym-&gt;roomlist_filter);
++        if (gaym-&gt;roomlist_filter) {
++            g_free(gaym-&gt;roomlist_filter);
++            gaym-&gt;roomlist_filter = NULL;
++        }
+         return;
+     }
+ }
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000163.html">[Qrc-svn] r233 - qrc/trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000165.html">[Qrc-svn] r235 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#164">[ date ]</a>
+              <a href="thread.html#164">[ thread ]</a>
+              <a href="subject.html#164">[ subject ]</a>
+              <a href="author.html#164">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,132 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r82 - in trunk: . gaym nsis
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r82%20-%20in%20trunk%3A%20.%20gaym%20nsis&In-Reply-To=%3C200506090656.j596u1KU030207%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000021.html">
+   <LINK REL="Next"  HREF="000023.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r82 - in trunk: . gaym nsis</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r82%20-%20in%20trunk%3A%20.%20gaym%20nsis&In-Reply-To=%3C200506090656.j596u1KU030207%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r82 - in trunk: . gaym nsis">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Thu Jun  9 08:56:01 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000021.html">[Qrc-svn] r81 - in trunk: . chatsort roombrowse
+</A></li>
+        <LI>Next message: <A HREF="000023.html">[Qrc-svn] r83 - trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22">[ date ]</a>
+              <a href="thread.html#22">[ thread ]</a>
+              <a href="subject.html#22">[ subject ]</a>
+              <a href="author.html#22">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-09 08:55:37 +0200 (Thu, 09 Jun 2005)
+New Revision: 82
+
+Added:
+   trunk/gaym/Makefile.mingw
+Modified:
+   trunk/Makefile.mingw
+   trunk/gaym/Makefile.am
+   trunk/nsis/installer.nsi
+Log:
+Updating win32 build.
+
+Modified: trunk/Makefile.mingw
+===================================================================
+--- trunk/Makefile.mingw	2005-06-09 06:16:28 UTC (rev 81)
++++ trunk/Makefile.mingw	2005-06-09 06:55:37 UTC (rev 82)
+@@ -13,5 +13,5 @@
+ 		-DGAIM_TOP=&quot;$(GAIM_TOP)&quot; nsis/installer.nsi
+ 
+ clean:
+-	$(MAKE) -C src -f Makefile.mingw clean
++	$(MAKE) -C gaym -f Makefile.mingw clean
+ 	-rm *.exe
+
+Modified: trunk/gaym/Makefile.am
+===================================================================
+--- trunk/gaym/Makefile.am	2005-06-09 06:16:28 UTC (rev 81)
++++ trunk/gaym/Makefile.am	2005-06-09 06:55:37 UTC (rev 82)
+@@ -1,3 +1,6 @@
++EXTRA_DIST = \
++	Makefile.mingw
++
+ SUBDIRS = \
+ 	src \
+         pixmaps
+
+Added: trunk/gaym/Makefile.mingw
+===================================================================
+--- trunk/gaym/Makefile.mingw	2005-06-09 06:16:28 UTC (rev 81)
++++ trunk/gaym/Makefile.mingw	2005-06-09 06:55:37 UTC (rev 82)
+@@ -0,0 +1,10 @@
++# Makefile.mingw
++#
++# Description: Top Makefile for win32 (mingw) port of qrc
++#
++
++all:
++	$(MAKE) -C src -f Makefile.mingw
++
++clean:
++	$(MAKE) -C src -f Makefile.mingw clean
+
+Modified: trunk/nsis/installer.nsi
+===================================================================
+--- trunk/nsis/installer.nsi	2005-06-09 06:16:28 UTC (rev 81)
++++ trunk/nsis/installer.nsi	2005-06-09 06:55:37 UTC (rev 82)
+@@ -172,10 +172,10 @@
+     SetOutPath &quot;$INSTDIR\plugins&quot;
+     SetCompress Auto
+     SetOverwrite on
+-    File &quot;..\gaym\${GAYM_DLL}&quot;
++    File &quot;..\gaym\src\${GAYM_DLL}&quot;
+     
+     SetOutPath &quot;$INSTDIR\pixmaps\gaim\status\default&quot;
+-    File &quot;..\pixmaps\${GAYM_PNG}&quot;
++    File &quot;..\gaym\pixmaps\${GAYM_PNG}&quot;
+     
+     StrCmp $R0 &quot;NONE&quot; done
+     CreateShortCut &quot;$SMPROGRAMS\Gaim\${GAYM_UNINSTALL_LNK}&quot; &quot;$INSTDIR\${GAYM_UNINST_EXE}&quot;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000021.html">[Qrc-svn] r81 - in trunk: . chatsort roombrowse
+</A></li>
+	<LI>Next message: <A HREF="000023.html">[Qrc-svn] r83 - trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#22">[ date ]</a>
+              <a href="thread.html#22">[ thread ]</a>
+              <a href="subject.html#22">[ subject ]</a>
+              <a href="author.html#22">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

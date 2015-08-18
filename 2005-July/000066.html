@@ -1,0 +1,191 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r134 - trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r134%20-%20trunk/gaym/src&In-Reply-To=%3C200507011407.j61E73hw032701%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000065.html">
+   <LINK REL="Next"  HREF="000067.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r134 - trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r134%20-%20trunk/gaym/src&In-Reply-To=%3C200507011407.j61E73hw032701%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r134 - trunk/gaym/src">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Fri Jul  1 16:07:03 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000065.html">[Qrc-svn] r133 - trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000067.html">[Qrc-svn] r135 - trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#66">[ date ]</a>
+              <a href="thread.html#66">[ thread ]</a>
+              <a href="subject.html#66">[ subject ]</a>
+              <a href="author.html#66">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-01 16:07:02 +0200 (Fri, 01 Jul 2005)
+New Revision: 134
+
+Modified:
+   trunk/gaym/src/gaym.c
+   trunk/gaym/src/gaympriv.c
+   trunk/gaym/src/gaympriv.h
+   trunk/gaym/src/msgs.c
+Log:
+Removed the &quot;Only buddies may open an IM session&quot; feature, which no one
+seems to use, and is somewhat reduntant anyway.
+
+
+Modified: trunk/gaym/src/gaym.c
+===================================================================
+--- trunk/gaym/src/gaym.c	2005-07-01 12:09:55 UTC (rev 133)
++++ trunk/gaym/src/gaym.c	2005-07-01 14:07:02 UTC (rev 134)
+@@ -1112,17 +1112,6 @@
+           GAYBOI_SPAM_URL));
+     gaim_plugin_pref_frame_add(frame, ppref);
+ 
+-    ppref =
+-        gaim_plugin_pref_new_with_label(_
+-                                        (&quot;Instant Messages (stricter privacy settings override these)&quot;));
+-    gaim_plugin_pref_frame_add(frame, ppref);
+-
+-    ppref =
+-        gaim_plugin_pref_new_with_name_and_label
+-        (&quot;/plugins/prpl/gaym/only_buddies_can_im&quot;,
+-         _(&quot;Only buddies may open an IM session to me&quot;));
+-    gaim_plugin_pref_frame_add(frame, ppref);
+-
+     return frame;
+ }
+ 
+@@ -1189,7 +1178,6 @@
+     gaim_prefs_add_none(&quot;/plugins/prpl/gaym&quot;);
+     gaim_prefs_add_int(&quot;/plugins/prpl/gaym/chat_room_instances&quot;, 4);
+     gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/show_bio_with_join&quot;, TRUE);
+-    gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/only_buddies_can_im&quot;, FALSE);
+ 
+     gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/botfilter_enable&quot;, FALSE);
+     gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/botfilter_ignore_null&quot;, FALSE);
+
+Modified: trunk/gaym/src/gaympriv.c
+===================================================================
+--- trunk/gaym/src/gaympriv.c	2005-07-01 12:09:55 UTC (rev 133)
++++ trunk/gaym/src/gaympriv.c	2005-07-01 14:07:02 UTC (rev 134)
+@@ -166,40 +166,6 @@
+     }
+ }
+ 
+-gboolean gaym_im_check(GaimConnection * gc, const char *nick,
+-                       const char *msg)
+-{
+-    gboolean retval = TRUE;
+-
+-    /* not good, but don't do anything */
+-    if (!gc || !nick) {
+-        return retval;
+-    }
+-
+-    /* there is already an open conversation, so it must be allowed */
+-    if (gaim_find_conversation_with_account(nick, gc-&gt;account)) {
+-        return retval;
+-    }
+-
+-    /* user wants to allow only Buddies to IM */
+-    if (gaim_prefs_get_bool(&quot;/plugins/prpl/gaym/only_buddies_can_im&quot;)) {
+-        /* nick is not on the account's buddy list */
+-        if (!gaim_find_buddy(gc-&gt;account, nick)) {
+-            retval = FALSE;
+-            return retval;
+-        } else {
+-            return retval;
+-        }
+-    } else {
+-        /* don't make buddies use the challenge/response system */
+-        if (gaim_find_buddy(gc-&gt;account, nick)) {
+-            return retval;
+-        }
+-    }
+-
+-    return retval;
+-}
+-
+ void gaym_server_change_deny_status_cb(void *data, const char *result,
+                                        size_t len)
+ {
+
+Modified: trunk/gaym/src/gaympriv.h
+===================================================================
+--- trunk/gaym/src/gaympriv.h	2005-07-01 12:09:55 UTC (rev 133)
++++ trunk/gaym/src/gaympriv.h	2005-07-01 14:07:02 UTC (rev 134)
+@@ -52,17 +52,6 @@
+ void gaym_privacy_change(GaimConnection * gc, const char *name);
+ 
+ /**
+- * Check if the plugin's settings allow or block an IM.
+- *
+- * @param gc   The connection.
+- * @param nick The user sending the IM.
+- *
+- * @return TRUE if the user is allowed, or @c FALSE otherwise.
+- */
+-gboolean gaym_im_check(GaimConnection * gc, const char *nick,
+-                       const char *msg);
+-
+-/**
+  * Report the status of the http request to add a name to the deny
+  * list or remove a name from the deny list.
+  *
+
+Modified: trunk/gaym/src/msgs.c
+===================================================================
+--- trunk/gaym/src/msgs.c	2005-07-01 12:09:55 UTC (rev 133)
++++ trunk/gaym/src/msgs.c	2005-07-01 14:07:02 UTC (rev 134)
+@@ -1381,9 +1381,7 @@
+ 
+     if (!gaim_utf8_strcasecmp
+         (args[0], gaim_connection_get_display_name(gc))) {
+-        if (gaym_im_check(gc, nick, msg)) {
+-            serv_got_im(gc, nick, msg, 0, time(NULL));
+-        }
++        serv_got_im(gc, nick, msg, 0, time(NULL));
+     } else if (notice) {
+         serv_got_im(gc, nick, msg, 0, time(NULL));
+     } else if (convo) {
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000065.html">[Qrc-svn] r133 - trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000067.html">[Qrc-svn] r135 - trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#66">[ date ]</a>
+              <a href="thread.html#66">[ thread ]</a>
+              <a href="subject.html#66">[ subject ]</a>
+              <a href="author.html#66">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

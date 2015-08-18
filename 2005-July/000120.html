@@ -1,0 +1,150 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r189 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r189%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507111618.j6BGIGIx028359%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000119.html">
+   <LINK REL="Next"  HREF="000121.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r189 - qrc/trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r189%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507111618.j6BGIGIx028359%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r189 - qrc/trunk/gaym/src">deckrider at berlios.de
+       </A><BR>
+    <I>Mon Jul 11 18:18:16 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000119.html">[Qrc-svn] r188 - qrc/trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000121.html">[Qrc-svn] r190 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#120">[ date ]</a>
+              <a href="thread.html#120">[ thread ]</a>
+              <a href="subject.html#120">[ subject ]</a>
+              <a href="author.html#120">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-11 18:18:14 +0200 (Mon, 11 Jul 2005)
+New Revision: 189
+
+Modified:
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/gayminfo.c
+Log:
+Test for NULL before using g_strstrip() to avoid filling the log with
+error messages.
+
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-11 14:58:12 UTC (rev 188)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-11 16:18:14 UTC (rev 189)
+@@ -718,9 +718,15 @@
+ static void gaym_add_buddy(GaimConnection * gc, GaimBuddy * buddy,
+                            GaimGroup * group)
+ {
+-    buddy-&gt;name = g_strstrip(buddy-&gt;name);
+-    buddy-&gt;alias = g_strstrip(buddy-&gt;alias);
+-    buddy-&gt;server_alias = g_strstrip(buddy-&gt;server_alias);
++    if (buddy-&gt;name) {
++        buddy-&gt;name = g_strstrip(buddy-&gt;name);
++    }
++    if (buddy-&gt;alias) {
++        buddy-&gt;alias = g_strstrip(buddy-&gt;alias);
++    }
++    if (buddy-&gt;server_alias) {
++        buddy-&gt;server_alias = g_strstrip(buddy-&gt;server_alias);
++    }
+     struct gaym_conn *gaym = (struct gaym_conn *) gc-&gt;proto_data;
+     struct gaym_buddy *ib = g_new0(struct gaym_buddy, 1);
+     ib-&gt;name = g_strdup(buddy-&gt;name);
+
+Modified: qrc/trunk/gaym/src/gayminfo.c
+===================================================================
+--- qrc/trunk/gaym/src/gayminfo.c	2005-07-11 14:58:12 UTC (rev 188)
++++ qrc/trunk/gaym/src/gayminfo.c	2005-07-11 16:18:14 UTC (rev 189)
+@@ -94,13 +94,19 @@
+ 
+     if (info) {
+         bio = gaym_bio_strdup(info);
+-        bio = g_strstrip(bio);
++        if (bio) {
++            bio = g_strstrip(bio);
++        }
+ 
+         thumbnail = gaym_thumbnail_strdup(info);
+-        thumbnail = g_strstrip(thumbnail);
++        if (thumbnail) {
++            thumbnail = g_strstrip(thumbnail);
++        }
+ 
+         stats = gaym_stats_strdup(info);
+-        stats = g_strstrip(stats);
++        if (stats) {
++            stats = g_strstrip(stats);
++        }
+     }
+ 
+     GaimConnection *gc = gaim_account_get_connection(gaym-&gt;account);
+@@ -144,15 +150,21 @@
+             gchar **s = g_strsplit(stats, &quot;|&quot;, 3);
+             if (s[0] &amp;&amp; strlen(s[0]) &gt; 0) {
+                 ib-&gt;sex = g_ascii_strup(s[0], -1);
+-                ib-&gt;sex = g_strstrip(ib-&gt;sex);
++                if (ib-&gt;sex) {
++                    ib-&gt;sex = g_strstrip(ib-&gt;sex);
++                }
+             }
+             if (s[1] &amp;&amp; strlen(s[1]) &gt; 0) {
+                 ib-&gt;age = g_strdup(s[1]);
+-                ib-&gt;age = g_strstrip(ib-&gt;age);
++                if (ib-&gt;age) {
++                    ib-&gt;age = g_strstrip(ib-&gt;age);
++                }
+             }
+             if (s[2] &amp;&amp; strlen(s[2]) &gt; 0) {
+                 ib-&gt;location = g_strdup(s[2]);
+-                ib-&gt;location = g_strstrip(ib-&gt;location);
++                if (ib-&gt;location) {
++                    ib-&gt;location = g_strstrip(ib-&gt;location);
++                }
+             }
+             g_strfreev(s);
+             g_free(stats);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000119.html">[Qrc-svn] r188 - qrc/trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000121.html">[Qrc-svn] r190 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#120">[ date ]</a>
+              <a href="thread.html#120">[ thread ]</a>
+              <a href="subject.html#120">[ subject ]</a>
+              <a href="author.html#120">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

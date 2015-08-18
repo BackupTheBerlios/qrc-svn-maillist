@@ -1,0 +1,358 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r245 - in qrc/trunk: gaym/src gaym-extras
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r245%20-%20in%20qrc/trunk%3A%20gaym/src%20gaym-extras&In-Reply-To=%3C200507251331.j6PDVqlN018227%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000174.html">
+   <LINK REL="Next"  HREF="000176.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r245 - in qrc/trunk: gaym/src gaym-extras</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r245%20-%20in%20qrc/trunk%3A%20gaym/src%20gaym-extras&In-Reply-To=%3C200507251331.j6PDVqlN018227%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r245 - in qrc/trunk: gaym/src gaym-extras">deckrider at berlios.de
+       </A><BR>
+    <I>Mon Jul 25 15:31:52 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000174.html">[Qrc-svn] r244 - qrc/trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000176.html">[Qrc-svn] r246 - in qrc/trunk: gaym/src gaym-extras
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#175">[ date ]</a>
+              <a href="thread.html#175">[ thread ]</a>
+              <a href="subject.html#175">[ subject ]</a>
+              <a href="author.html#175">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-25 15:31:45 +0200 (Mon, 25 Jul 2005)
+New Revision: 245
+
+Modified:
+   qrc/trunk/gaym-extras/gaym-extras.c
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/gaym.h
+   qrc/trunk/gaym/src/gayminfo.c
+Log:
+Make tooltip consistent with buddy list (still needs icon and user name).
+
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-25 12:57:32 UTC (rev 244)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-25 13:31:45 UTC (rev 245)
+@@ -63,7 +63,7 @@
+ static guint gaym_nick_hash(const char *nick);
+ static gboolean gaym_nick_equal(const char *nick1, const char *nick2);
+ static void gaym_buddy_free(struct gaym_buddy *ib);
+-static void gaym_channel_member_free(GaymChannelMember * cm);
++static void gaym_channel_member_free(GaymBuddy * cm);
+ 
+ static void gaym_buddy_append(char *name, struct gaym_buddy *ib,
+                               BListWhois * blist_whois);
+@@ -799,17 +799,16 @@
+      */
+ }
+ 
+-GaymChannelMember *gaym_get_channel_member_reference(struct gaym_conn
+-                                                     *gaym,
+-                                                     const gchar * name)
++GaymBuddy *gaym_get_channel_member_reference(struct gaym_conn
++                                             *gaym, const gchar * name)
+ {
+ 
+-    GaymChannelMember *channel_member =
+-        (GaymChannelMember *) g_hash_table_lookup(gaym-&gt;channel_members,
+-                                                  name);
++    GaymBuddy *channel_member =
++        (GaymBuddy *) g_hash_table_lookup(gaym-&gt;channel_members,
++                                          name);
+ 
+     if (!channel_member) {
+-        channel_member = g_new0(struct channel_member, 1);
++        GaymBuddy *channel_member = g_new0(GaymBuddy, 1);
+         channel_member-&gt;ref_count = 1;
+         g_hash_table_insert(gaym-&gt;channel_members, g_strdup(name),
+                             channel_member);
+@@ -830,10 +829,9 @@
+                                          gchar * name)
+ {
+ 
+-    GaymChannelMember *channel_member;
++    GaymBuddy *channel_member;
+     channel_member =
+-        (GaymChannelMember *) g_hash_table_lookup(gaym-&gt;channel_members,
+-                                                  name);
++        (GaymBuddy *) g_hash_table_lookup(gaym-&gt;channel_members, name);
+     if (!channel_member)
+         return FALSE;
+     else {
+@@ -853,8 +851,8 @@
+     }
+ }
+ 
+-GaymChannelMember *gaym_get_channel_member_info(struct gaym_conn * gaym,
+-                                                gchar * name)
++GaymBuddy *gaym_get_channel_member_info(struct gaym_conn * gaym,
++                                        gchar * name)
+ {
+     return g_hash_table_lookup(gaym-&gt;channel_members, name);
+ }
+@@ -1137,7 +1135,7 @@
+     return (gaim_utf8_strcasecmp(nick1, nick2) == 0);
+ }
+ 
+-static void gaym_channel_member_free(GaymChannelMember * cm)
++static void gaym_channel_member_free(GaymBuddy * cm)
+ {
+     g_free(cm-&gt;name);
+     g_free(cm-&gt;bio);
+
+Modified: qrc/trunk/gaym/src/gaym.h
+===================================================================
+--- qrc/trunk/gaym/src/gaym.h	2005-07-25 12:57:32 UTC (rev 244)
++++ qrc/trunk/gaym/src/gaym.h	2005-07-25 13:31:45 UTC (rev 245)
+@@ -64,8 +64,8 @@
+     int fd;
+     guint timer;
+     GHashTable *buddies;        /* hash table of struct gaym_buddy */
+-    GHashTable *channel_members;        /* hash table of
+-                                           GaymChannelMembers */
++    GHashTable *channel_members;        /* hash table of struct gaym_buddy 
++                                         */
+ 
+     char *inbuf;
+     int inbuflen;
+@@ -113,11 +113,12 @@
+ 
+ } GaimUrlSession;
+ 
+-
++typedef struct gaym_buddy GaymBuddy;
+ struct gaym_buddy {
+     char *name;                 /* gaym formatted nick */
+     gboolean done;              /* has been checked */
+     gboolean online;            /* is online */
++    gint ref_count;             /* reference count for mem mngmnt */
+     char *bio;                  /* bio string */
+     char *thumbnail;            /* thumbnail string */
+     char *sex;                  /* sex string */
+@@ -125,24 +126,13 @@
+     char *location;             /* location string */
+ };
+ 
+-typedef struct channel_member {
+-    char *name;                 /* gaym formatted nick */
+-    char *bio;                  /* bio string */
+-    char *thumbnail;            /* thumbnail string */
+-    char *sex;                  /* sex string */
+-    char *age;                  /* age string */
+-    char *location;             /* location string */
+-    gint ref_count;             /* reference count for mem mngmnt */
+-} GaymChannelMember;
+-
+ gboolean gaym_unreference_channel_member(struct gaym_conn *gaym,
+                                          gchar * name);
+-GaymChannelMember *gaym_get_channel_member_info(struct gaym_conn *gaym,
+-                                                gchar * name);
++GaymBuddy *gaym_get_channel_member_info(struct gaym_conn *gaym,
++                                        gchar * name);
+ 
+-GaymChannelMember *gaym_get_channel_member_reference(struct gaym_conn
+-                                                     *gaym,
+-                                                     const char *name);
++GaymBuddy *gaym_get_channel_member_reference(struct gaym_conn
++                                             *gaym, const char *name);
+ typedef int (*IRCCmdCallback) (struct gaym_conn * gaym, const char *cmd,
+                                const char *target, const char **args);
+ 
+
+Modified: qrc/trunk/gaym/src/gayminfo.c
+===================================================================
+--- qrc/trunk/gaym/src/gayminfo.c	2005-07-25 12:57:32 UTC (rev 244)
++++ qrc/trunk/gaym/src/gayminfo.c	2005-07-25 13:31:45 UTC (rev 245)
+@@ -84,7 +84,7 @@
+ void gaym_update_channel_member(struct gaym_conn *gaym, const char *nick,
+                                 const char *info)
+ {
+-    GaymChannelMember *cm = gaym_get_channel_member_reference(gaym, nick);
++    GaymBuddy *cm = gaym_get_channel_member_reference(gaym, nick);
+     if (!cm) {
+         gaim_debug_error(&quot;gaym&quot;,
+                          &quot;ERROR: A member has joined a channel, or a conversation was opened, but we were unable to add the member to the internal management structure. Report a bug.&quot;);
+
+Modified: qrc/trunk/gaym-extras/gaym-extras.c
+===================================================================
+--- qrc/trunk/gaym-extras/gaym-extras.c	2005-07-25 12:57:32 UTC (rev 244)
++++ qrc/trunk/gaym-extras/gaym-extras.c	2005-07-25 13:31:45 UTC (rev 245)
+@@ -18,6 +18,7 @@
+ 
+ #include &quot;../gaym/src/gaym.h&quot;
+ #include &quot;../gaym/src/gayminfo.h&quot;
++#include &quot;../gaym/src/helpers.h&quot;
+ 
+ #define CHATSORT_PLUGIN_ID &quot;gtk-chaticon&quot;
+ 
+@@ -182,30 +183,31 @@
+ 
+ }
+ static void
+-get_icon_scale_size(GdkPixbufAnimation *icon, GaimBuddyIconSpec *spec, int *width, int *height)
++get_icon_scale_size(GdkPixbufAnimation * icon, GaimBuddyIconSpec * spec,
++                    int *width, int *height)
+ {
+-	*width = gdk_pixbuf_animation_get_width(icon);
+-	*height = gdk_pixbuf_animation_get_height(icon);
++    *width = gdk_pixbuf_animation_get_width(icon);
++    *height = gdk_pixbuf_animation_get_height(icon);
+ 
+-	/* this should eventually get smarter about preserving the aspect
+-	 * ratio when scaling, but gimmie a break, I just woke up */
+-	if(spec &amp;&amp; spec-&gt;scale_rules &amp; GAIM_ICON_SCALE_DISPLAY) {
+-		if(*width &lt; spec-&gt;min_width)
+-			*width = spec-&gt;min_width;
+-		else if(*width &gt; spec-&gt;max_width)
+-			*width = spec-&gt;max_width;
++    /* this should eventually get smarter about preserving the aspect
++       ratio when scaling, but gimmie a break, I just woke up */
++    if (spec &amp;&amp; spec-&gt;scale_rules &amp; GAIM_ICON_SCALE_DISPLAY) {
++        if (*width &lt; spec-&gt;min_width)
++            *width = spec-&gt;min_width;
++        else if (*width &gt; spec-&gt;max_width)
++            *width = spec-&gt;max_width;
+ 
+-		if(*height &lt; spec-&gt;min_height)
+-			*height = spec-&gt;min_height;
+-		else if(*height  &gt; spec-&gt;max_height)
+-			*height = spec-&gt;max_height;
+-	}
++        if (*height &lt; spec-&gt;min_height)
++            *height = spec-&gt;min_height;
++        else if (*height &gt; spec-&gt;max_height)
++            *height = spec-&gt;max_height;
++    }
+ 
+-	/* and now for some arbitrary sanity checks */
+-	if(*width &gt; 100)
+-		*width = 100;
+-	if(*height &gt; 100)
+-		*height = 100;
++    /* and now for some arbitrary sanity checks */
++    if (*width &gt; 100)
++        *width = 100;
++    if (*height &gt; 100)
++        *height = 100;
+ }
+ 
+ void gaym_gtkconv_update_thumbnail(GaimConversation * conv, struct gaym_fetch_thumbnail_data
+@@ -312,14 +314,20 @@
+         buf = gdk_pixbuf_animation_iter_get_pixbuf(icon_data-&gt;iter);
+     }
+ 
+-	get_icon_scale_size(icon_data-&gt;anim, prpl_info ? &amp;prpl_info-&gt;icon_spec :
+-			NULL, &amp;scale_width, &amp;scale_height);
+-	scale = gdk_pixbuf_scale_simple(buf,
+-				MAX(gdk_pixbuf_get_width(buf) * scale_width /
+-				    gdk_pixbuf_animation_get_width(icon_data-&gt;anim), 1),
+-				MAX(gdk_pixbuf_get_height(buf) * scale_height /
+-				    gdk_pixbuf_animation_get_height(icon_data-&gt;anim), 1),
+-				GDK_INTERP_NEAREST);
++    get_icon_scale_size(icon_data-&gt;anim,
++                        prpl_info ? &amp;prpl_info-&gt;icon_spec : NULL,
++                        &amp;scale_width, &amp;scale_height);
++    scale =
++        gdk_pixbuf_scale_simple(buf,
++                                MAX(gdk_pixbuf_get_width(buf) *
++                                    scale_width /
++                                    gdk_pixbuf_animation_get_width
++                                    (icon_data-&gt;anim), 1),
++                                MAX(gdk_pixbuf_get_height(buf) *
++                                    scale_height /
++                                    gdk_pixbuf_animation_get_height
++                                    (icon_data-&gt;anim), 1),
++                                GDK_INTERP_NEAREST);
+ 
+     gdk_pixbuf_render_pixmap_and_mask(scale, &amp;pm, &amp;bm, 100);
+     g_object_unref(G_OBJECT(scale));
+@@ -394,7 +402,7 @@
+     g_return_if_fail(conv != NULL);
+ 
+     GaimConversation *c = (GaimConversation *) conv;
+-    GaymChannelMember *cm;
++    GaymBuddy *cm;
+     struct gaym_conn *gaym = c-&gt;account-&gt;gc-&gt;proto_data;
+     GtkTreeIter iter;
+     GtkTreeModel *model;
+@@ -455,7 +463,7 @@
+ 
+     GaimGtkConversation *gtkconv = GAIM_GTK_CONVERSATION(c);
+     struct gaym_conn *gaym = account-&gt;gc-&gt;proto_data;
+-    GaymChannelMember *cm = gaym_get_channel_member_info(gaym, c-&gt;name);
++    GaymBuddy *cm = gaym_get_channel_member_info(gaym, c-&gt;name);
+ 
+     g_return_if_fail(cm != NULL);
+ 
+@@ -594,24 +602,12 @@
+ 
+     gtk_tree_path_free(path);
+ 
+-    GaymChannelMember *cm = gaym_get_channel_member_info(gaym, name);
++    GaymBuddy *cm = gaym_get_channel_member_info(gaym, name);
+ 
++    tooltiptext = build_tooltip_text(cm);
+ 
+-    if (!cm-&gt;age &amp;&amp; !cm-&gt;location &amp;&amp; !cm-&gt;bio)
+-        tooltiptext = g_strdup_printf(&quot;No info&quot;);
+-    else {
+-        tooltiptext =
+-            g_strconcat(1 ? &quot;&lt;b&gt;Age: &lt;/b&gt;&quot; : &quot;&quot;,
+-                        cm-&gt;age ? cm-&gt;age : &quot;?&quot;,
+-                        1 ? &quot;\n&lt;b&gt;Location: &lt;/b&gt;&quot; : &quot;&quot;,
+-                        cm-&gt;location ? cm-&gt;location : &quot;?&quot;,
+-                        cm-&gt;bio ? &quot;\n&lt;b&gt;Info: &lt;/b&gt; : &quot; : &quot;&quot;,
+-                        cm-&gt;bio ? cm-&gt;bio : &quot;&quot;);
+-    }
+-    if (!tooltiptext)
+-        return FALSE;
++    g_return_val_if_fail(tooltiptext != NULL, FALSE);
+ 
+-
+     tipwindow = g_hash_table_lookup(popups, tv);
+     if (tipwindow)
+         g_hash_table_remove(popups, tv);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000174.html">[Qrc-svn] r244 - qrc/trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000176.html">[Qrc-svn] r246 - in qrc/trunk: gaym/src gaym-extras
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#175">[ date ]</a>
+              <a href="thread.html#175">[ thread ]</a>
+              <a href="subject.html#175">[ subject ]</a>
+              <a href="author.html#175">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,86 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r125 - trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r125%20-%20trunk/gaym/src&In-Reply-To=%3C200506251223.j5PCNbcC029260%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000056.html">
+   <LINK REL="Next"  HREF="000058.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r125 - trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r125%20-%20trunk/gaym/src&In-Reply-To=%3C200506251223.j5PCNbcC029260%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r125 - trunk/gaym/src">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Sat Jun 25 14:23:37 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000056.html">[Qrc-svn] r124 - trunk/bot-challenger
+</A></li>
+        <LI>Next message: <A HREF="000058.html">[Qrc-svn] r126 - trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#57">[ date ]</a>
+              <a href="thread.html#57">[ thread ]</a>
+              <a href="subject.html#57">[ subject ]</a>
+              <a href="author.html#57">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-25 14:23:36 +0200 (Sat, 25 Jun 2005)
+New Revision: 125
+
+Modified:
+   trunk/gaym/src/msgs.c
+Log:
+No need to do the entire privacy check again when the user parts the
+channel.  Run gaim_conv_chat_is_user_ignored() instead.
+
+
+Modified: trunk/gaym/src/msgs.c
+===================================================================
+--- trunk/gaym/src/msgs.c	2005-06-24 13:25:28 UTC (rev 124)
++++ trunk/gaym/src/msgs.c	2005-06-25 12:23:36 UTC (rev 125)
+@@ -1247,7 +1247,7 @@
+         serv_got_chat_left(gc,
+                            gaim_conv_chat_get_id(GAIM_CONV_CHAT(convo)));
+     } else {
+-        if (gaym_privacy_check(gc, nick)) {
++        if (!gaim_conv_chat_is_user_ignored(GAIM_CONV_CHAT(convo), nick)) {
+             gaim_conv_chat_remove_user(GAIM_CONV_CHAT(convo), nick, NULL);
+         } else {
+             GaimConversationUiOps *ops =
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000056.html">[Qrc-svn] r124 - trunk/bot-challenger
+</A></li>
+	<LI>Next message: <A HREF="000058.html">[Qrc-svn] r126 - trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#57">[ date ]</a>
+              <a href="thread.html#57">[ thread ]</a>
+              <a href="subject.html#57">[ subject ]</a>
+              <a href="author.html#57">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

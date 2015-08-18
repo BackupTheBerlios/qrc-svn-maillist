@@ -1,0 +1,220 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r220 - in qrc/trunk: . chaticon
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r220%20-%20in%20qrc/trunk%3A%20.%20chaticon&In-Reply-To=%3C200507220415.j6M4FrWM027792%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000149.html">
+   <LINK REL="Next"  HREF="000151.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r220 - in qrc/trunk: . chaticon</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r220%20-%20in%20qrc/trunk%3A%20.%20chaticon&In-Reply-To=%3C200507220415.j6M4FrWM027792%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r220 - in qrc/trunk: . chaticon">jblebrun at berlios.de
+       </A><BR>
+    <I>Fri Jul 22 06:15:53 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000149.html">[Qrc-svn] r219 - qrc/trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000151.html">[Qrc-svn] r221 - in qrc/trunk: . chatsort
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#150">[ date ]</a>
+              <a href="thread.html#150">[ thread ]</a>
+              <a href="subject.html#150">[ subject ]</a>
+              <a href="author.html#150">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-07-22 06:15:45 +0200 (Fri, 22 Jul 2005)
+New Revision: 220
+
+Added:
+   qrc/trunk/chaticon/
+   qrc/trunk/chaticon/Makefile.am
+   qrc/trunk/chaticon/chaticon.c
+Log:
+Adding a plugin that will display a thumbnail under the name list in a room window.
+The framework is there, we just need a clean way to get the buddy icon data from gaym.
+For proof-of-concept for the gui stuff, a button that shows the name of whoever you click
+is included.
+
+
+
+Added: qrc/trunk/chaticon/Makefile.am
+===================================================================
+--- qrc/trunk/chaticon/Makefile.am	2005-07-21 17:58:07 UTC (rev 219)
++++ qrc/trunk/chaticon/Makefile.am	2005-07-22 04:15:45 UTC (rev 220)
+@@ -0,0 +1,25 @@
++pkgdir = \
++	$(GAIM_LIBDIR)/gaim
++
++GAYMSOURCES = \
++	chaticon.c
++
++AM_CFLAGS = \
++	$(st)
++
++libchaticon_la_LDFLAGS = \
++	-module \
++	-avoid-version \
++	$(GTK_LIBS) \
++	$(GAIM_LIBS)
++
++pkg_LTLIBRARIES = \
++	libchaticon.la
++
++libchaticon_la_SOURCES = \
++	$(GAYMSOURCES)
++
++AM_CPPFLAGS = \
++	$(DEBUG_CFLAGS) \
++	$(GTK_CFLAGS) \
++	$(GAIM_CFLAGS)
+
+Added: qrc/trunk/chaticon/chaticon.c
+===================================================================
+--- qrc/trunk/chaticon/chaticon.c	2005-07-21 17:58:07 UTC (rev 219)
++++ qrc/trunk/chaticon/chaticon.c	2005-07-22 04:15:45 UTC (rev 220)
+@@ -0,0 +1,106 @@
++/* Show icons in chat room windows */
++
++#include &quot;internal.h&quot;
++#include &quot;gtkgaim.h&quot;
++
++#include &quot;conversation.h&quot;
++#include &quot;debug.h&quot;
++#include &quot;log.h&quot;
++#include &quot;prefs.h&quot;
++#include &quot;signals.h&quot;
++#include &quot;util.h&quot;
++#include &quot;version.h&quot;
++
++#include &quot;gtkconv.h&quot;
++#include &quot;gtkimhtml.h&quot;
++#include &quot;gtkplugin.h&quot;
++
++#define CHATSORT_PLUGIN_ID &quot;gtk-chaticon&quot;
++
++GHashTable* icons;
++GHashTable* icon_spots;
++static void clear_icon() {
++
++}
++static void changed_cb(GtkTreeSelection* selection, gpointer data){
++
++	GaimConversation* c = (GaimConversation*)data;
++	GtkTreeIter iter;
++	GtkTreeModel* model;
++	gchar* name;
++	GaimConversation *temp;
++	gtk_tree_selection_get_selected(selection, &amp;model, &amp;iter);
++	gtk_tree_model_get(model,&amp;iter,CHAT_USERS_NAME_COLUMN, &amp;name, -1);
++
++	gaim_debug_misc(&quot;chatsort&quot;,&quot;Click: %s\n&quot;,name);
++	gtk_button_set_label(g_hash_table_lookup(icon_spots, c), name);
++	//Look in local icon cache here.
++	//If the icon isn't here, get it from gaym
++	//Update the widget
++}
++//This gets called BEFORE a chatlist is populated... just creates a new type of chat window.
++static void redochatwindow(GaimConversation *c) {
++
++	GtkTreeModel *oldls;
++	
++	//Get a handle to the chat pane for the conversation
++	GaimGtkConversation* gtkconv = GAIM_GTK_CONVERSATION(c);
++	GaimGtkChatPane* gtkchat = gtkconv-&gt;u.chat;
++	GtkTreeSelection* select = gtk_tree_view_get_selection(GTK_TREE_VIEW(gtkchat-&gt;list));
++	gtk_tree_selection_set_mode(select, GTK_SELECTION_SINGLE);
++
++	oldls = gtk_tree_view_get_model(GTK_TREE_VIEW(gtkchat-&gt;list));	
++	GtkBox* vbox = GTK_BOX(gtkchat-&gt;list-&gt;parent-&gt;parent);
++	GtkWidget* button = gtk_button_new_with_label(&quot;A Button&quot;);
++	g_signal_connect(G_OBJECT(select), &quot;changed&quot;, G_CALLBACK(changed_cb), c);
++
++	gtk_box_pack_end(vbox, GTK_WIDGET(button), FALSE, FALSE, 0);
++	gtk_widget_show(button);
++	g_hash_table_insert(icon_spots, c, button);
++	
++
++}
++
++
++static gboolean plugin_load(GaimPlugin *plugin)
++{
++	icons=g_hash_table_new(g_direct_hash, g_direct_equal);
++	icon_spots=g_hash_table_new(g_direct_hash, g_direct_equal);
++	
++	gaim_signal_connect(gaim_conversations_get_handle(), &quot;chat-joined&quot;, plugin, GAIM_CALLBACK(redochatwindow), NULL);
++	gaim_signal_connect(gaim_conversations_get_handle(), &quot;chat-buddy-left&quot;, plugin, GAIM_CALLBACK(clear_icon), NULL);
++
++	return TRUE;
++}
++
++static GaimPluginInfo info =
++{
++	GAIM_PLUGIN_MAGIC,
++	GAIM_MAJOR_VERSION,
++	GAIM_MINOR_VERSION,
++	GAIM_PLUGIN_STANDARD,
++	GAIM_GTK_PLUGIN_TYPE,
++	0,
++	NULL,
++	GAIM_PRIORITY_DEFAULT,
++	CHATSORT_PLUGIN_ID,
++	N_(&quot;Chatroom Icons&quot;),
++	VERSION,
++	N_(&quot;Shows user thumbnails below the names list in a chatroom.&quot;),
++	N_(&quot;Shows user thumbnails below the names list in a chatroom.&quot;),
++	&quot;Jason LeBrun &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">gaim at jasonlebrun.info</A>&quot;,
++	GAIM_WEBSITE,
++	plugin_load,
++	NULL,
++	NULL,
++	NULL,
++	NULL,
++	NULL
++};
++
++static void
++init_plugin(GaimPlugin *plugin)
++{
++}
++
++GAIM_INIT_PLUGIN(history, init_plugin, info)
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000149.html">[Qrc-svn] r219 - qrc/trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000151.html">[Qrc-svn] r221 - in qrc/trunk: . chatsort
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#150">[ date ]</a>
+              <a href="thread.html#150">[ thread ]</a>
+              <a href="subject.html#150">[ subject ]</a>
+              <a href="author.html#150">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

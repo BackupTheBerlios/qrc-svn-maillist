@@ -1,0 +1,165 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r238 - qrc/trunk/gaym-extras
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r238%20-%20qrc/trunk/gaym-extras&In-Reply-To=%3C200507240853.j6O8rBf3016851%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000167.html">
+   <LINK REL="Next"  HREF="000169.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r238 - qrc/trunk/gaym-extras</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r238%20-%20qrc/trunk/gaym-extras&In-Reply-To=%3C200507240853.j6O8rBf3016851%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r238 - qrc/trunk/gaym-extras">jblebrun at berlios.de
+       </A><BR>
+    <I>Sun Jul 24 10:53:11 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000167.html">[Qrc-svn] r237 - in qrc/trunk: gaym/src gaym-extras
+</A></li>
+        <LI>Next message: <A HREF="000169.html">[Qrc-svn] r239 - in qrc/trunk: gaym/src gaym-extras
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#168">[ date ]</a>
+              <a href="thread.html#168">[ thread ]</a>
+              <a href="subject.html#168">[ subject ]</a>
+              <a href="author.html#168">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-07-24 10:53:02 +0200 (Sun, 24 Jul 2005)
+New Revision: 238
+
+Modified:
+   qrc/trunk/gaym-extras/gaym-extras.c
+Log:
+Hey, why not show the bio, too. 
+
+OK, it's not in a beautiful place... but I can't figure out how to get it somewhere better.
+
+
+
+Modified: qrc/trunk/gaym-extras/gaym-extras.c
+===================================================================
+--- qrc/trunk/gaym-extras/gaym-extras.c	2005-07-24 08:18:06 UTC (rev 237)
++++ qrc/trunk/gaym-extras/gaym-extras.c	2005-07-24 08:53:02 UTC (rev 238)
+@@ -22,9 +22,7 @@
+ #define CHATSORT_PLUGIN_ID &quot;gtk-chaticon&quot;
+ 
+ GHashTable *icons;
+-GHashTable *icon_spots;
+ GHashTable *pending_updates;
+-GaimConvWindow *hider_window;
+ 
+ typedef struct _GaymChatIcon {
+ 
+@@ -39,15 +37,14 @@
+     GdkPixbufAnimationIter *iter;
+     gboolean animate;
+     guint32 icon_timer;
++    GtkWidget *bio_area;
+ 
+ } GaymChatIcon;
+ 
+ 
+ 
+-void
+-gaym_gtkconv_update_thumbnail(GaimConversation * conv,
+-                              struct gaym_fetch_thumbnail_data
+-                              *thumbnail_data)
++void gaym_gtkconv_update_thumbnail(GaimConversation * conv, struct gaym_fetch_thumbnail_data
++                                   *thumbnail_data)
+ {
+     GaimGtkConversation *gtkconv;
+ 
+@@ -234,10 +231,6 @@
+     gtk_tree_selection_get_selected(selection, &amp;model, &amp;iter);
+     gtk_tree_model_get(model, &amp;iter, CHAT_USERS_NAME_COLUMN, &amp;name, -1);
+ 
+-    gaim_debug_misc(&quot;chatsort&quot;, &quot;Click: %s\n&quot;, name);
+-    gtk_button_set_label(g_hash_table_lookup(icon_spots, c), name);
+-
+-
+     /* Remove the current icon stuff */
+     GaymChatIcon *icon_data = g_hash_table_lookup(icons, c);
+     if (icon_data-&gt;event != NULL)
+@@ -249,6 +242,7 @@
+     gaim_debug_misc(&quot;chaticon&quot;, &quot;got thumbnail url %s for %s\n&quot;,
+                     cm-&gt;thumbnail, name);
+ 
++    gtk_label_set_text(GTK_LABEL(icon_data-&gt;bio_area), cm-&gt;bio);
+     // Fetch thumbnail.
+ 
+     struct gaym_fetch_thumbnail_data *data;
+@@ -283,15 +277,10 @@
+     gtk_tree_selection_set_mode(select, GTK_SELECTION_SINGLE);
+ 
+     oldls = gtk_tree_view_get_model(GTK_TREE_VIEW(gtkchat-&gt;list));
+-    GtkBox *vbox = GTK_BOX(gtkchat-&gt;list-&gt;parent-&gt;parent);
+ 
+     GtkBox *hbox = GTK_BOX(gtkconv-&gt;lower_hbox);
++    GtkBox *vbox_big = GTK_BOX(gtkconv-&gt;lower_hbox-&gt;parent);
+ 
+-    GtkWidget *button = gtk_button_new_with_label(&quot;A Button&quot;);
+-    gtk_box_pack_end(vbox, GTK_WIDGET(button), FALSE, FALSE, 0);
+-    gtk_widget_show(button);
+-
+-
+     g_signal_connect(G_OBJECT(select), &quot;changed&quot;, G_CALLBACK(changed_cb),
+                      c);
+ 
+@@ -329,7 +318,11 @@
+     // g_signal_connect(G_OBJECT(icon_data-&gt;event), &quot;button-press-event&quot;,
+     // G_CALLBACK(icon_menu), conv);
+     gtk_widget_show(icon_data-&gt;event);
+-    g_hash_table_insert(icon_spots, c, button);
++
++    icon_data-&gt;bio_area = gtk_label_new(_(&quot;&quot;));
++    gtk_box_pack_start(vbox_big, icon_data-&gt;bio_area, FALSE, FALSE, 0);
++    gtk_widget_show(icon_data-&gt;bio_area);
++
+     g_hash_table_insert(icons, c, icon_data);
+ 
+ }
+@@ -337,7 +330,6 @@
+ static gboolean plugin_load(GaimPlugin * plugin)
+ {
+     icons = g_hash_table_new(g_direct_hash, g_direct_equal);
+-    icon_spots = g_hash_table_new(g_direct_hash, g_direct_equal);
+     pending_updates = g_hash_table_new(g_direct_hash, g_direct_equal);
+ 
+     gaim_signal_connect(gaim_conversations_get_handle(), &quot;chat-joined&quot;,
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000167.html">[Qrc-svn] r237 - in qrc/trunk: gaym/src gaym-extras
+</A></li>
+	<LI>Next message: <A HREF="000169.html">[Qrc-svn] r239 - in qrc/trunk: gaym/src gaym-extras
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#168">[ date ]</a>
+              <a href="thread.html#168">[ thread ]</a>
+              <a href="subject.html#168">[ subject ]</a>
+              <a href="author.html#168">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,595 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r201 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r201%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507140302.j6E321FN030204%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000131.html">
+   <LINK REL="Next"  HREF="000133.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r201 - qrc/trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r201%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507140302.j6E321FN030204%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r201 - qrc/trunk/gaym/src">deckrider at berlios.de
+       </A><BR>
+    <I>Thu Jul 14 05:02:01 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000131.html">[Qrc-svn] r200 - qrc/trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000133.html">[Qrc-svn] r202 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#132">[ date ]</a>
+              <a href="thread.html#132">[ thread ]</a>
+              <a href="subject.html#132">[ subject ]</a>
+              <a href="author.html#132">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-14 05:01:59 +0200 (Thu, 14 Jul 2005)
+New Revision: 201
+
+Modified:
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/gaym.h
+   qrc/trunk/gaym/src/helpers.c
+   qrc/trunk/gaym/src/helpers.h
+   qrc/trunk/gaym/src/msgs.c
+Log:
+Converted static roomlist processing to use confighash instead of configtxt.
+Simplified(?) static roomlist processing and moved it to helpers.[ch].
+Removed gaym-&gt;configtxt since converstion to gaym-&gt;confighash is complete.
+
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-13 20:00:29 UTC (rev 200)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-14 03:01:59 UTC (rev 201)
+@@ -541,16 +541,7 @@
+                    &quot;Could not retrieve config.txt.\n&quot;);
+         return;
+     }
+-    /**
+-     * Call Jason's cool function to do away with java madness
+-     */
+-    gaym-&gt;configtxt = ascii2native(config_text);
+ 
+-    if (!gaym-&gt;configtxt) {
+-        gaim_debug(GAIM_DEBUG_ERROR, &quot;gaym&quot;,
+-                   &quot;Could not convert config.txt to utf-8.\n&quot;);
+-    }
+-
+     gaym-&gt;confighash = gaym_properties_new(config_text);
+ 
+     if (!gaym-&gt;confighash) {
+
+Modified: qrc/trunk/gaym/src/gaym.h
+===================================================================
+--- qrc/trunk/gaym/src/gaym.h	2005-07-13 20:00:29 UTC (rev 200)
++++ qrc/trunk/gaym/src/gaym.h	2005-07-14 03:01:59 UTC (rev 201)
+@@ -110,7 +110,6 @@
+     GList **node_menu;
+     gboolean quitting;
+     char *subroom;
+-    gchar *configtxt;
+     GHashTable *confighash;
+     GaimUrlSession *session;
+ 
+
+Modified: qrc/trunk/gaym/src/helpers.c
+===================================================================
+--- qrc/trunk/gaym/src/helpers.c	2005-07-13 20:00:29 UTC (rev 200)
++++ qrc/trunk/gaym/src/helpers.c	2005-07-14 03:01:59 UTC (rev 201)
+@@ -286,6 +286,148 @@
+     return props;
+ }
+ 
++int roomlist_level_strip(char *description)
++{
++    int val = 0;
++    int i = 0;
++
++    if (!description) {
++        return val;
++    }
++
++    for (i = 0; i &lt; strlen(description); i++) {
++        if (description[i] == '+') {
++            description[i] = ' ';
++        } else {
++            break;
++        }
++        val++;
++    }
++
++    description = g_strchug(description);
++
++    return val;
++}
++
++GaimRoomlistRoom *find_parent(int level, int old_level,
++                              GaimRoomlistRoom * last_room)
++{
++    GaimRoomlistRoom *parent = NULL;
++    int i = 0;
++
++    if (level == 0) {
++        /* do nothing */
++    } else if (level == old_level) {
++        parent = last_room-&gt;parent;
++    } else if (level &gt; old_level) {
++        parent = last_room;
++    } else if (level &lt; old_level) {
++        parent = last_room;
++        for (i = old_level - level; i &gt;= 0; i--) {
++            parent = parent-&gt;parent;
++        }
++    }
++    return parent;
++}
++
++void build_roomlist_from_config(GaimRoomlist * roomlist,
++                                GHashTable * confighash)
++{
++    gchar **roominst = NULL;
++    gchar *altname = NULL;
++    gchar *altchan = NULL;
++    int level = 0;
++    int old_level = 0;
++    int i = 0;
++    int j = 0;
++    GaimRoomlistRoom *room = NULL;
++    GaimRoomlistRoom *parent = NULL;
++
++    if (!roomlist || !confighash) {
++        return;
++    }
++
++    int max = gaim_prefs_get_int(&quot;/plugins/prpl/gaym/chat_room_instances&quot;);
++
++    gchar *roomstr = g_hash_table_lookup(confighash, &quot;roomlist&quot;);
++    if (!roomstr) {
++        return;
++    }
++
++    gchar **roomarr = g_strsplit(roomstr, &quot;|&quot;, -1);
++
++    /**
++     * We need to skip the first instance, because they start
++     * with a &quot;|&quot;, which we've just split by, leaving a blank
++     * at the beginning of the list
++     */
++    for (i = 1; roomarr[i] != NULL; i++) {
++        if (roomarr[i][0] == '#') {
++            /**
++             * This is an actual room string, break it into its
++             * component parts, determine the level and the parent,
++             * and add the room as a cateory
++             */
++            roominst = g_strsplit(roomarr[i], &quot; &quot;, 2);
++            level = roomlist_level_strip(roominst[1]);
++            parent = find_parent(level, old_level, room);
++            room =
++                gaim_roomlist_room_new(GAIM_ROOMLIST_ROOMTYPE_CATEGORY,
++                                       roominst[1], parent);
++            gaim_roomlist_room_add(roomlist, room);
++            old_level = level;
++
++            /**
++             * Now add the 999=* instance of the room as a child
++             * of the category we just added
++             */
++            level++;
++            parent = find_parent(level, old_level, room);
++            altname = g_strdup_printf(&quot;%s:*&quot;, roominst[1]);
++            room = gaim_roomlist_room_new(GAIM_ROOMLIST_ROOMTYPE_ROOM,
++                                          altname, parent);
++            gaim_roomlist_room_add_field(roomlist, room, altname);
++            gaim_roomlist_room_add_field(roomlist, room, roominst[0]);
++            gaim_roomlist_room_add(roomlist, room);
++            g_free(altname);
++
++            /**
++             * And finally add the 999=1, 999=2, ... instances
++             * as siblings of the above room, based on the user's
++             * configuration of how many instances need to be
++             * represented
++             */
++            for (j = 1; j &lt;= max; j++) {
++                altname = g_strdup_printf(&quot;%s:%d&quot;, roominst[1], j);
++                altchan =
++                    g_strdup_printf(&quot;%.*s%d&quot;, strlen(roominst[0]) - 1,
++                                    roominst[0], j);
++                room = gaim_roomlist_room_new(GAIM_ROOMLIST_ROOMTYPE_ROOM,
++                                              altname, parent);
++                gaim_roomlist_room_add_field(roomlist, room, altname);
++                gaim_roomlist_room_add_field(roomlist, room, altchan);
++                gaim_roomlist_room_add(roomlist, room);
++                g_free(altname);
++                g_free(altchan);
++            }
++            g_strfreev(roominst);
++        } else {
++            /**
++             * This is a plain category, determine the level and
++             * the parent and add it.
++             */
++            level = roomlist_level_strip(roomarr[i]);
++            parent = find_parent(level, old_level, room);
++            room =
++                gaim_roomlist_room_new(GAIM_ROOMLIST_ROOMTYPE_CATEGORY,
++                                       roomarr[i], parent);
++            gaim_roomlist_room_add(roomlist, room);
++        }
++        old_level = level;
++    }
++    g_strfreev(roomarr);
++}
++
+ /**
+  * vim:tabstop=4:shiftwidth=4:expandtab:
+  */
+
+Modified: qrc/trunk/gaym/src/helpers.h
+===================================================================
+--- qrc/trunk/gaym/src/helpers.h	2005-07-13 20:00:29 UTC (rev 200)
++++ qrc/trunk/gaym/src/helpers.h	2005-07-14 03:01:59 UTC (rev 201)
+@@ -26,6 +26,8 @@
+ 
+ #include &lt;glib.h&gt;
+ 
++#include &quot;roomlist.h&quot;
++
+ char *return_string_between(const char *startbit, const char *endbit,
+                             const char *source);
+ 
+@@ -93,6 +95,45 @@
+  */
+ GHashTable *gaym_properties_new(const char *str);
+ 
++/**
++ * Gay.com provides a java property that contains instructions for
++ * building a hierarchical roomlist.  The level is shown by
++ * appending a number of '+' characters to the beginning of the
++ * room description.  This function strips the '+' characters
++ * and also returns the number of '+' characters found.
++ *
++ * @param description The string to strip and from which to calculate
++ *                    the level.
++ *
++ * @return The level (number of '+' characters found).
++ */
++int roomlist_level_strip(char *description);
++
++/**
++ * Take the level of the room to be added, the level of the last
++ * added room, and the last added room; and return the roomlist
++ * parent of the room to be added.
++ *
++ * @param level The level of the room to be added.
++ * @param old_level The level of the last added room.
++ * @param last_room The last added room.
++ *
++ * @return The parent of the room to be added.
++ */
++GaimRoomlistRoom *find_parent(int level, int old_level,
++                              GaimRoomlistRoom * last_room);
++
++/**
++ * Build the portion of the roomlist that is provided in the
++ * config.txt java properties file within the property &quot;roomlist&quot;.
++ *
++ * @param roomlist The GaimRoomlist that these rooms should be loaded
++ *                 into.
++ * @param confighash The GHashTable that config.txt was converted into
++ */
++void build_roomlist_from_config(GaimRoomlist * roomlist,
++                                GHashTable * confighash);
++
+ #endif                          /* _GAIM_GAYM_HELPERS_H_ */
+ 
+ /**
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-07-13 20:00:29 UTC (rev 200)
++++ qrc/trunk/gaym/src/msgs.c	2005-07-14 03:01:59 UTC (rev 201)
+@@ -290,6 +290,7 @@
+         gaim_roomlist_set_in_progress(gaym-&gt;roomlist, TRUE);
+         return;
+     }
++
+     /**
+      * The list of member created rooms
+      */
+@@ -344,251 +345,15 @@
+         gaim_roomlist_room_add(gaym-&gt;roomlist, room);
+         g_free(field_name);
+     }
++
+     /**
+-     * Begin result of member created room list
++     * End result of member created room list
+      * This is our trigger to add the static rooms
+      */
+     if (!strcmp(name, &quot;323&quot;)) {
+-
+-        /**
+-         * The following shoul be done just before every &quot;return&quot;
+-         * 
+-         * gaim_roomlist_set_in_progress(gaym-&gt;roomlist, FALSE);
+-         * gaim_roomlist_unref(gaym-&gt;roomlist);
+-         * gaym-&gt;roomlist = NULL;
+-         * return;
+-         * 
+-         * Perhaps this can be simplified, but not worrying with
+-         * it right now
+-         */
+-
+-        int current_level = 0;
+-        char *list_position = NULL;
+-        char *field_end = NULL;
+-        const char *match = &quot;roomlist=|&quot;;
+-        size_t field_len = 0;
+-        char *name = NULL;
+-        char *num = NULL;
+-        GaimRoomlistRoom *room = NULL;
+-        GaimRoomlistRoom *current_parent = NULL;
+-        GaimRoomlistRoom *last_room = NULL;
+-        GaimRoomlistRoom *room_title = NULL;
+-
+-        int level;
+-        int room_inst = 0;
+-        char *name_inst = NULL;
+-        char *num_inst = NULL;
+-
+-        int max =
+-            gaim_prefs_get_int(&quot;/plugins/prpl/gaym/chat_room_instances&quot;);
+-
+-        if (!gaym-&gt;configtxt) {
+-            gaim_debug_fatal(&quot;gaym&quot;,
+-                             &quot;Room list parsing error: No config webpage\n&quot;);
+-            gaim_roomlist_set_in_progress(gaym-&gt;roomlist, FALSE);
+-            gaim_roomlist_unref(gaym-&gt;roomlist);
+-            gaym-&gt;roomlist = NULL;
+-            return;
+-        }
+-
+-        list_position = strstr(gaym-&gt;configtxt, match);
+-
+-        if (!list_position) {
+-            gaim_debug_fatal(&quot;gaym&quot;,
+-                             &quot;Room list parsing error: No roomlist found\n&quot;);
+-            gaim_roomlist_set_in_progress(gaym-&gt;roomlist, FALSE);
+-            gaim_roomlist_unref(gaym-&gt;roomlist);
+-            gaym-&gt;roomlist = NULL;
+-            return;
+-        }
+-
+-        while ((list_position = strstr(list_position, &quot;\n|&quot;))) {
+-            level = 0;
+-            list_position += 2;
+-
+-            /**
+-             * This is a room
+-             */
+-            if (*list_position == '#') {
+-                /**
+-                 * First, parse the room number
+-                 */
+-                field_end = strchr(list_position, '=');
+-                if (!field_end) {
+-                    gaim_debug_error(&quot;gaym&quot;,
+-                                     &quot;Room list parsing error: room number not properly terminated\n&quot;);
+-                    gaim_roomlist_set_in_progress(gaym-&gt;roomlist, FALSE);
+-                    gaim_roomlist_unref(gaym-&gt;roomlist);
+-                    gaym-&gt;roomlist = NULL;
+-                    return;
+-                }
+-
+-                field_end++;
+-                field_len = field_end - list_position;
+-                num = g_strndup(list_position, field_len);
+-                list_position = field_end + 2;
+-
+-                /**
+-                 * Next, the +'s indicate the level in the tree
+-                 */
+-                while (*list_position == '+') {
+-                    level++;
+-                    list_position++;
+-                }
+-                if (level &gt; current_level) {
+-                    current_level = level;
+-                    current_parent = last_room;
+-                }
+-                if (level &lt; current_level) {
+-                    while (level &lt; current_level) {
+-                        current_level--;
+-                        current_parent =
+-                            current_parent ? current_parent-&gt;parent : NULL;
+-                    }
+-                }
+-                /**
+-                 * Finally, the readable room name
+-                 */
+-                field_end = strstr(list_position, &quot;\\\n&quot;);
+-                if (!field_end) {
+-                    gaim_debug_error(&quot;gaym&quot;, &quot;Room list parsing error!&quot;);
+-                    gaim_roomlist_set_in_progress(gaym-&gt;roomlist, FALSE);
+-                    gaim_roomlist_unref(gaym-&gt;roomlist);
+-                    gaym-&gt;roomlist = NULL;
+-                    return;
+-                }
+-                field_len = field_end - list_position;
+-                name = g_strndup(list_position, field_len);
+-
+-                if (gaym-&gt;roomlist_filter) {
+-                    current_parent = NULL;
+-                }
+-                list_position = field_end;
+-
+-                char *lname = g_strdown(g_strdup(name));
+-
+-                if (!gaym-&gt;roomlist_filter
+-                    || strstr(lname, gaym-&gt;roomlist_filter) != 0) {
+-
+-                    /**
+-                     * create and add the room folder
+-                     */
+-                    room =
+-                        gaim_roomlist_room_new
+-                        (GAIM_ROOMLIST_ROOMTYPE_CATEGORY, name,
+-                         current_parent);
+-                    gaim_roomlist_room_add(gaym-&gt;roomlist, room);
+-
+-                    room_title = room;
+-
+-                    name_inst = g_strdup_printf(&quot;%s:*&quot;, name);
+-                    num_inst = g_strdup_printf(&quot;%s*&quot;, num);
+-
+-                    room =
+-                        gaim_roomlist_room_new
+-                        (GAIM_ROOMLIST_ROOMTYPE_ROOM, name_inst,
+-                         room_title);
+-                    gaim_roomlist_room_add_field(gaym-&gt;roomlist, room,
+-                                                 name_inst);
+-                    gaim_roomlist_room_add_field(gaym-&gt;roomlist, room,
+-                                                 num_inst);
+-                    gaim_roomlist_room_add(gaym-&gt;roomlist, room);
+-                    g_free(name_inst);
+-                    g_free(num_inst);
+-                    name_inst = NULL;
+-                    num_inst = NULL;
+-                    /**
+-                     * and now the room instances (1, 2, 3 ...)
+-                     */
+-                    room_inst = 0;
+-                    for (room_inst = 1; room_inst &lt;= max; room_inst++) {
+-                        name_inst =
+-                            g_strdup_printf(&quot;%s:%i&quot;, name, room_inst);
+-                        num_inst = g_strdup_printf(&quot;%s%i&quot;, num, room_inst);
+-
+-                        room =
+-                            gaim_roomlist_room_new
+-                            (GAIM_ROOMLIST_ROOMTYPE_ROOM, name_inst,
+-                             room_title);
+-                        gaim_roomlist_room_add_field(gaym-&gt;roomlist, room,
+-                                                     name_inst);
+-                        gaim_roomlist_room_add_field(gaym-&gt;roomlist, room,
+-                                                     num_inst);
+-                        gaim_roomlist_room_add(gaym-&gt;roomlist, room);
+-
+-                        g_free(name_inst);
+-                        g_free(num_inst);
+-                        name_inst = NULL;
+-                        num_inst = NULL;
+-                    }
+-                    g_free(name);
+-                    g_free(num);
+-                    if (lname) {
+-                        g_free(lname);
+-                    }
+-                }
+-                /**
+-                 * This is a category
+-                 */
+-            } else if (!gaym-&gt;roomlist_filter) {
+-
+-                /**
+-                 * This code is duplicated above. Should probably make a
+-                 * function.
+-                 */
+-                while (*list_position == '+') {
+-                    level++;
+-                    list_position++;
+-                }
+-
+-                if (level &gt; current_level) {
+-                    current_level = level;
+-                    current_parent = last_room;
+-                }
+-                if (level &lt; current_level) {
+-                    while (level &lt; current_level) {
+-                        current_level--;
+-                        current_parent =
+-                            current_parent ? current_parent-&gt;parent : NULL;
+-                    }
+-                }
+-                /**
+-                 * end duplicate
+-                 */
+-                field_end = strstr(list_position, &quot;\\\n&quot;);
+-                if (!field_end) {
+-                    gaim_debug_error(&quot;gaym&quot;, &quot;Room list parsing error!&quot;);
+-                    gaim_roomlist_set_in_progress(gaym-&gt;roomlist, FALSE);
+-                    gaim_roomlist_unref(gaym-&gt;roomlist);
+-                    gaym-&gt;roomlist = NULL;
+-                    return;
+-                }
+-                field_len = field_end - list_position;
+-                name = g_strndup(list_position, field_len);
+-                room =
+-                    gaim_roomlist_room_new(GAIM_ROOMLIST_ROOMTYPE_CATEGORY,
+-                                           name, current_parent);
+-                gaim_roomlist_room_add(gaym-&gt;roomlist, room);
+-
+-                g_free(name);
+-                list_position = field_end;
+-            } else {
+-                list_position = strstr(list_position, &quot;\\\n&quot;);
+-            }
+-            if (*(list_position + 2) != '|') {
+-                if (gaym-&gt;roomlist_filter) {
+-                    g_free(gaym-&gt;roomlist_filter);
+-                }
+-                gaim_roomlist_set_in_progress(gaym-&gt;roomlist, FALSE);
+-                gaim_roomlist_unref(gaym-&gt;roomlist);
+-                gaym-&gt;roomlist = NULL;
+-                return;
+-            }
+-            last_room = room;
+-        }
++        gaim_roomlist_set_in_progress(gaym-&gt;roomlist, TRUE);
++        build_roomlist_from_config(gaym-&gt;roomlist, gaym-&gt;confighash);
+         gaim_roomlist_set_in_progress(gaym-&gt;roomlist, FALSE);
+-        gaim_roomlist_unref(gaym-&gt;roomlist);
+-        gaym-&gt;roomlist = NULL;
+         return;
+     }
+ }
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000131.html">[Qrc-svn] r200 - qrc/trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000133.html">[Qrc-svn] r202 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#132">[ date ]</a>
+              <a href="thread.html#132">[ thread ]</a>
+              <a href="subject.html#132">[ subject ]</a>
+              <a href="author.html#132">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,460 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r218 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r218%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507210210.j6L2Afax018075%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000147.html">
+   <LINK REL="Next"  HREF="000149.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r218 - qrc/trunk/gaym/src</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r218%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507210210.j6L2Afax018075%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r218 - qrc/trunk/gaym/src">jblebrun at berlios.de
+       </A><BR>
+    <I>Thu Jul 21 04:10:41 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000147.html">[Qrc-svn] r217 - qrc/branches
+</A></li>
+        <LI>Next message: <A HREF="000149.html">[Qrc-svn] r219 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#148">[ date ]</a>
+              <a href="thread.html#148">[ thread ]</a>
+              <a href="subject.html#148">[ subject ]</a>
+              <a href="author.html#148">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-07-21 04:10:29 +0200 (Thu, 21 Jul 2005)
+New Revision: 218
+
+Modified:
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/gaym.h
+   qrc/trunk/gaym/src/weblogin.c
+Log:
+Modified the login process to fix some memory leaks.
+
+In particular, the GaimUrlSession struct contains a reference to struct gaym_conn, instead of vice versa. This allows sessions to be easily cleaned on login aborts. Sessions are also deleted at the end of login process. 
+
+file changes:
+
+gaym.h:
+*add a gaym member to GaimUrlSession, remove GaimUrlSession member from gaym_conn
+
+weblogin.c:
+*pass GaimUrlSession between steps, instead of gaym_conn
+*make sure to destroy sessions if login is cancelled.
+*always destroy session after step 5 finishes.
+
+gaym.c:
+*added some frees to gaym_close to free up additional memory that may be allocated in gaym_conn
+
+
+
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-20 04:39:04 UTC (rev 217)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-21 02:10:29 UTC (rev 218)
+@@ -662,11 +662,11 @@
+             gaim_input_add(gaym-&gt;fd, GAIM_INPUT_READ, gaym_input_cb, gc);
+     }
+ }
+-
+ static void gaym_close(GaimConnection * gc)
+ {
+     struct gaym_conn *gaym = gc-&gt;proto_data;
+ 
++    gaim_debug_misc(&quot;gaym&quot;,&quot;gaym close function has been called\n&quot;);
+     if (gaym == NULL)
+         return;
+ 
+@@ -676,15 +676,50 @@
+         gaim_input_remove(gc-&gt;inpa);
+ 
+     g_free(gaym-&gt;inbuf);
++    gaim_debug_misc(&quot;gaym&quot;,&quot;closing fd %i\n&quot;,gaym-&gt;fd);
+     close(gaym-&gt;fd);
++
+     if (gaym-&gt;timer)
+         gaim_timeout_remove(gaym-&gt;timer);
++
++    if (gaym-&gt;thumbnail)
++	g_free(gaym-&gt;thumbnail);
++
++    if (gaym-&gt;hash_pw)
++	g_free(gaym-&gt;hash_pw);
++
++    if (gaym-&gt;server_bioline)
++	g_free(gaym-&gt;server_bioline);
++
++    if (gaym-&gt;server_stats)
++	g_free(gaym-&gt;server_stats);
++
++    if (gaym-&gt;roomlist_filter)
++	g_free(gaym-&gt;roomlist_filter);
++
++    if (gaym-&gt;bio)
++	g_free(gaym-&gt;bio);
++    
+     g_hash_table_destroy(gaym-&gt;cmds);
+     g_hash_table_destroy(gaym-&gt;msgs);
+     g_hash_table_destroy(gaym-&gt;info_window_needed);
+     g_hash_table_destroy(gaym-&gt;im_thumbnail_needed);
+     if (gaym-&gt;motd)
+         g_string_free(gaym-&gt;motd, TRUE);
++
++    if (gaym-&gt;names)
++	g_string_free(gaym-&gt;names, TRUE);
++    
++    if (gaym-&gt;nameconv)
++	g_free(gaym-&gt;nameconv);
++    if (gaym-&gt;subroom)
++	g_free(gaym-&gt;subroom);
++
++    g_hash_table_destroy(gaym-&gt;confighash);
++
++    if (gaym-&gt;hammer_cancel_dialog)
++	gaim_request_close(GAIM_REQUEST_ACTION, gaym-&gt;hammer_cancel_dialog);
++
+     g_free(gaym-&gt;server);
+     g_free(gaym);
+ }
+
+Modified: qrc/trunk/gaym/src/gaym.h
+===================================================================
+--- qrc/trunk/gaym/src/gaym.h	2005-07-20 04:39:04 UTC (rev 217)
++++ qrc/trunk/gaym/src/gaym.h	2005-07-21 02:10:29 UTC (rev 218)
+@@ -53,16 +53,7 @@
+ enum { IRC_USEROPT_SERVER, IRC_USEROPT_PORT, IRC_USEROPT_CHARSET };
+ enum gaym_state { IRC_STATE_NEW, IRC_STATE_ESTABLISHED };
+ 
+-typedef struct {
+ 
+-    char *cookies;
+-    void (*session_cb) (GaimAccount *);
+-    GaimAccount *account;
+-    char *username;
+-    char *password;
+-    gboolean hasFormData;
+-
+-} GaimUrlSession;
+ struct gaym_conn {
+     GaimAccount *account;
+     GHashTable *msgs;
+@@ -98,7 +89,6 @@
+     gboolean quitting;
+     char *subroom;
+     GHashTable *confighash;
+-    GaimUrlSession *session;
+ 
+     char *persist_room;
+     gboolean cancelling_persist;
+@@ -106,6 +96,20 @@
+ 
+ };
+ 
++typedef struct {
++
++    char *cookies;
++    void (*session_cb) (GaimAccount *);
++    GaimAccount *account;
++    char *username;
++    char *password;
++    struct gaym_conn *gaym;
++    gboolean hasFormData;
++    
++
++} GaimUrlSession;
++
++
+ struct gaym_buddy {
+     char *name;                 /* gaym formatted nick */
+     gboolean done;              /* has been checked */
+
+Modified: qrc/trunk/gaym/src/weblogin.c
+===================================================================
+--- qrc/trunk/gaym/src/weblogin.c	2005-07-20 04:39:04 UTC (rev 217)
++++ qrc/trunk/gaym/src/weblogin.c	2005-07-21 02:10:29 UTC (rev 218)
+@@ -62,6 +62,16 @@
+ 
+ } GaimFetchUrlData;
+ 
++static void gaym_session_destroy(GaimUrlSession* session) {
++    if (session-&gt;cookies)
++	g_free(session-&gt;cookies);
++    if (session-&gt;username)
++	g_free(session-&gt;username);
++    if (session-&gt;password)
++	g_free(session-&gt;password);
++    gaim_debug_misc(&quot;gaym&quot;,&quot;freeing session: %x\n&quot;,session);
++    g_free(session);
++}
+ /* gaim_url_decode doesn't change pluses to spaces - edit in place */
+ static const char *gaym_url_decode(const char *string)
+ {
+@@ -79,6 +89,7 @@
+ 
+ static void destroy_fetch_url_data(GaimFetchUrlData * gfud)
+ {
++    gaim_debug_misc(&quot;gaym&quot;,&quot;destroy_fetch_url_data called\n&quot;);
+     if (gfud-&gt;webdata != NULL)
+         g_free(gfud-&gt;webdata);
+     if (gfud-&gt;url != NULL)
+@@ -93,7 +104,7 @@
+         g_free(gfud-&gt;website.user);
+     if (gfud-&gt;website.passwd != NULL)
+         g_free(gfud-&gt;website.passwd);
+-
++   
+     g_free(gfud);
+ }
+ 
+@@ -222,6 +233,9 @@
+                     g_strdup_printf(&quot;%s; %.*s&quot;, session-&gt;cookies,
+                                     cookie_size, next_token);
+             else
++
++	    //FIXME: I think there is a function for resizing the memory
++	    //which is more efficient then a allocation and freeing.
+                 new_cookie =
+                     g_strdup_printf(&quot;%.*s&quot;, cookie_size, next_token);
+             if (new_cookie) {
+@@ -472,12 +486,13 @@
+ }
+ 
+ static void
+-gaym_weblogin_step5(gpointer session, const char *text, size_t len)
++gaym_weblogin_step5(gpointer data, const char *text, size_t len)
+ {
+ 
+-    struct gaym_conn *gaym = (struct gaym_conn *) session;
++    GaimUrlSession *session = (GaimUrlSession *) data;
++    struct gaym_conn* gaym = session-&gt;gaym;
+     // Get hash from text
+-    if (gaym-&gt;session &amp;&amp; GAIM_CONNECTION_IS_VALID(gaym-&gt;account-&gt;gc)) {
++    if (session &amp;&amp; GAIM_CONNECTION_IS_VALID(session-&gt;account-&gt;gc)) {
+         // char *pw_hash;
+         char *bio;
+         char *thumbnail;
+@@ -504,7 +519,7 @@
+             (temp &amp;&amp; temp2 &amp;&amp; temp != temp2
+              &amp;&amp; (gaym-&gt;hash_pw =
+                  g_strndup(temp, (temp2 - temp) * sizeof(char))))) {
+-            gaim_connection_error((gaym-&gt;account-&gt;gc),
++            gaim_connection_error((session-&gt;account-&gt;gc),
+                                   _
+                                   (&quot;Problem parsing password from web. Report a bug.&quot;));
+             return;
+@@ -551,13 +566,15 @@
+             // gaym_conn*)((GaimUrlSession*)session)-&gt;account),
+             // _(&quot;Problem parsing password from web. Report a bug.&quot;));
+         }
+-        gaym-&gt;session-&gt;session_cb(gaym-&gt;account);
++        session-&gt;session_cb(gaym-&gt;account);
+ 
+     } else {
+         gaim_debug_misc(&quot;gaym&quot;, &quot;Connection was cancelled before step5\n&quot;);
+-        gaim_debug_misc(&quot;gaym&quot;, &quot;gaym-&gt;sessoin: %x\n&quot;, gaym-&gt;session);
++        gaim_debug_misc(&quot;gaym&quot;, &quot;gaym-&gt;session: %x\n&quot;, session);
+     }
+ 
++    //We don't need the session info anymore.
++    gaym_session_destroy(session);
+ 
+ }
+ 
+@@ -565,10 +582,10 @@
+ gaym_weblogin_step4(gpointer data, const char *text, size_t len)
+ {
+ 
+-    struct gaym_conn *gaym = (struct gaym_conn *) data;
+-    gaim_debug_misc(&quot;gaym&quot;, &quot;Step 4: gaym-&gt;sessoin: %x\n&quot;, gaym-&gt;session);
+-    if (gaym-&gt;session
+-        &amp;&amp; GAIM_CONNECTION_IS_VALID(gaym-&gt;session-&gt;account-&gt;gc)) {
++    GaimUrlSession *session = (GaimUrlSession *) data;
++    gaim_debug_misc(&quot;gaym&quot;, &quot;Step 4: session: %x\n&quot;, session);
++    if (session
++        &amp;&amp; GAIM_CONNECTION_IS_VALID(session-&gt;account-&gt;gc)) {
+         // The fourth step is to parse a rand=# value out of the message
+         // text from
+         // The previous step.
+@@ -576,20 +593,22 @@
+         char url[512];
+         int nonce;
+         char *buf = g_strdup_printf(_(&quot;Signon: %s&quot;),
+-                                    (gaym-&gt;session-&gt;account-&gt;username));
+-        gaim_connection_update_progress(gaym-&gt;session-&gt;account-&gt;gc, buf, 5,
++                                    (session-&gt;account-&gt;username));
++        gaim_connection_update_progress(session-&gt;account-&gt;gc, buf, 5,
+                                         6);
+         sscanf(text, &quot;?rand=%d&quot;, &amp;nonce);
+         snprintf(url, 512,
+                  &quot;<A HREF="http://www.gay.com/messenger/applet.html?rand=%d">http://www.gay.com/messenger/applet.html?rand=%d</A>&quot;,
+                  nonce);
+ 
+-        gaym-&gt;session-&gt;hasFormData = TRUE;
++        session-&gt;hasFormData = TRUE;
+         gaim_session_fetch(url, FALSE, NULL, FALSE, gaym_weblogin_step5,
+-                           gaym, gaym-&gt;session);
++                           session, session);
+     } else {
+         gaim_debug_misc(&quot;gaym&quot;, &quot;Connection was cancelled before step4\n&quot;);
+-        gaim_debug_misc(&quot;gaym&quot;, &quot;gaym-&gt;sessoin: %x\n&quot;, gaym-&gt;session);
++        gaim_debug_misc(&quot;gaym&quot;, &quot;session: %x\n&quot;, session);
++	gaym_session_destroy(session);	
++	
+         // g_free(gaym-&gt;session);
+     }
+ }
+@@ -602,14 +621,12 @@
+ 
+ 
+ 
+-    struct gaym_conn *gaym = (struct gaym_conn *) data;
++    GaimUrlSession *session = (GaimUrlSession *) data;
+ 
+-    gaim_debug_misc(&quot;gaym&quot;, &quot;Step 3: gaym-&gt;sessoin: %x\n&quot;, gaym-&gt;session);
+-    if (gaym &amp;&amp; gaym-&gt;session
+-        &amp;&amp; GAIM_CONNECTION_IS_VALID(gaym-&gt;session-&gt;account-&gt;gc)) {
+-        if (!strstr(gaym-&gt;session-&gt;cookies, &quot;MEMBERX&quot;)) {
+-            g_free(gaym-&gt;session);
+-            gaim_connection_error((gaym-&gt;account-&gt;gc),
++    gaim_debug_misc(&quot;gaym&quot;, &quot;Step 3: session: %x\n&quot;, session);
++    if (session &amp;&amp; GAIM_CONNECTION_IS_VALID(session-&gt;account-&gt;gc)) {
++        if (!strstr(session-&gt;cookies, &quot;MEMBERX&quot;)) {
++            gaim_connection_error((session-&gt;account-&gt;gc),
+                                   _
+                                   (&quot;Problem during login. Are you sure your password is correct?&quot;));
+             return;
+@@ -621,16 +638,17 @@
+         // values.
+         char *url = &quot;<A HREF="http://www.gay.com/messenger/frameset.html">http://www.gay.com/messenger/frameset.html</A>&quot;;
+         char *buf = g_strdup_printf(_(&quot;Signon: %s&quot;),
+-                                    (gaym-&gt;session-&gt;account-&gt;username));
+-        gaim_connection_update_progress(gaym-&gt;session-&gt;account-&gt;gc, buf, 4,
++                                    (session-&gt;account-&gt;username));
++        gaim_connection_update_progress(session-&gt;account-&gt;gc, buf, 4,
+                                         6);
+-        gaym-&gt;session-&gt;hasFormData = FALSE;
++        session-&gt;hasFormData = FALSE;
+         gaim_session_fetch(url, FALSE, NULL, FALSE, gaym_weblogin_step4,
+-                           gaym, gaym-&gt;session);
++                           session, session);
+     } else {
+ 
+         gaim_debug_misc(&quot;gaym&quot;, &quot;Connection was cancelled before step3\n&quot;);
+-        gaim_debug_misc(&quot;gaym&quot;, &quot;gaym-&gt;sessoin: %x\n&quot;, gaym-&gt;session);
++        gaim_debug_misc(&quot;gaym&quot;, &quot;session: %x\n&quot;, session);
++	gaym_session_destroy(session);	
+         // g_free(gaym-&gt;session);
+ 
+     }
+@@ -639,29 +657,31 @@
+ gaym_weblogin_step2(gpointer data, const char *text, size_t len)
+ {
+ 
+-    struct gaym_conn *gaym = (struct gaym_conn *) data;
+-    gaim_debug_misc(&quot;gaym&quot;, &quot;Step 2: gaym-&gt;sessoin: %x\n&quot;, gaym-&gt;session);
+-    if (gaym-&gt;session
+-        &amp;&amp; GAIM_CONNECTION_IS_VALID(gaym-&gt;session-&gt;account-&gt;gc)) {
++    
++    GaimUrlSession *session = (GaimUrlSession *) data;
++    if (session
++        &amp;&amp; GAIM_CONNECTION_IS_VALID(session-&gt;account-&gt;gc)) {
++	gaim_debug_misc(&quot;gaym&quot;,&quot;Step 2: connection is valid.\n&quot;);
+         // The second step is to do the actual login.
+         // We connect to misc/dologin.html, using cookies set from step 1
+         // And add a few more cookie values.
+         char url[1024];
+         char *buf = g_strdup_printf(_(&quot;Signon: %s&quot;),
+-                                    gaym-&gt;session-&gt;account-&gt;username);
+-        gaim_connection_update_progress(gaym-&gt;session-&gt;account-&gt;gc, buf, 3,
++                                    session-&gt;account-&gt;username);
++        gaim_connection_update_progress(session-&gt;account-&gt;gc, buf, 3,
+                                         6);
+ 
+         snprintf(url, 1024,
+                  &quot;<A HREF="http://www.gay.com/misc/dologin.html?__login_haveForm=1&amp;__login_save=1&amp;__login_member=%s&amp;redir=%%2Findex.html&amp;__login_basepage=%%2Fmisc%%2Fdologin.html&amp;__login_password=%s">http://www.gay.com/misc/dologin.html?__login_haveForm=1&amp;__login_save=1&amp;__login_member=%s&amp;redir=%%2Findex.html&amp;__login_basepage=%%2Fmisc%%2Fdologin.html&amp;__login_password=%s</A>&quot;,
+-                 gaym-&gt;session-&gt;username, gaym-&gt;session-&gt;password);
++                 session-&gt;username, session-&gt;password);
+ 
+-        gaym-&gt;session-&gt;hasFormData = TRUE;
++        session-&gt;hasFormData = TRUE;
+         gaim_session_fetch(url, FALSE, NULL, FALSE, gaym_weblogin_step3,
+-                           gaym, gaym-&gt;session);
++                           session, session);
+     } else {
+         gaim_debug_misc(&quot;gaym&quot;, &quot;Connection was cancelled before step2\n&quot;);
+-        gaim_debug_misc(&quot;gaym&quot;, &quot;gaym-&gt;sessoin: %x\n&quot;, gaym-&gt;session);
++        gaim_debug_misc(&quot;gaym&quot;, &quot;session: %x\n&quot;, session);
++	gaym_session_destroy(session);
+         // g_free(gaym-&gt;session);
+     }
+ }
+@@ -686,12 +706,10 @@
+         session-&gt;account = account;
+         session-&gt;username = g_strdup(account-&gt;username);
+         session-&gt;password = g_strdup(account-&gt;password);
+-        if (gaym-&gt;session)
+-            g_free(gaym-&gt;session);
++	session-&gt;gaym = gaym;
+ 
+-        gaym-&gt;session = session;
+ 
+-        gaim_debug_misc(&quot;gaym&quot;, &quot;Made gaym-&gt;session: %x\n&quot;, gaym-&gt;session);
++        gaim_debug_misc(&quot;gaym&quot;, &quot;Made session: %x\n&quot;, session);
+         if (GAIM_CONNECTION_IS_VALID
+             (((GaimUrlSession *) session)-&gt;account-&gt;gc)) {
+             // The first step is to establish the initial sesion
+@@ -704,10 +722,11 @@
+                                             account-&gt;gc, buf, 2, 6);
+             ((GaimUrlSession *) session)-&gt;hasFormData = FALSE;
+             gaim_session_fetch(url, FALSE, NULL, FALSE,
+-                               gaym_weblogin_step2, gaym, gaym-&gt;session);
++                               gaym_weblogin_step2, session, session);
+         } else {
+             gaim_debug_misc(&quot;gaym&quot;, &quot;cancelled before step1\n&quot;);
+-            gaim_debug_misc(&quot;gaym&quot;, &quot;gaym-&gt;sessoin: %x\n&quot;, gaym-&gt;session);
++            gaim_debug_misc(&quot;gaym&quot;, &quot;gaym-&gt;sessoin: %x\n&quot;, session);
++	    gaym_session_destroy(session);
+         }
+ 
+     }
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000147.html">[Qrc-svn] r217 - qrc/branches
+</A></li>
+	<LI>Next message: <A HREF="000149.html">[Qrc-svn] r219 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#148">[ date ]</a>
+              <a href="thread.html#148">[ thread ]</a>
+              <a href="subject.html#148">[ subject ]</a>
+              <a href="author.html#148">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

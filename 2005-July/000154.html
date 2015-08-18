@@ -1,0 +1,206 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r224 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r224%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507230307.j6N375xf008046%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000153.html">
+   <LINK REL="Next"  HREF="000155.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r224 - qrc/trunk/gaym/src</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r224%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507230307.j6N375xf008046%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r224 - qrc/trunk/gaym/src">jblebrun at berlios.de
+       </A><BR>
+    <I>Sat Jul 23 05:07:05 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000153.html">[Qrc-svn] r223 - qrc/trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000155.html">[Qrc-svn] r225 - in qrc/trunk: . gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#154">[ date ]</a>
+              <a href="thread.html#154">[ thread ]</a>
+              <a href="subject.html#154">[ subject ]</a>
+              <a href="author.html#154">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-07-23 05:06:59 +0200 (Sat, 23 Jul 2005)
+New Revision: 224
+
+Modified:
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/gaym.h
+   qrc/trunk/gaym/src/helpers.c
+   qrc/trunk/gaym/src/helpers.h
+   qrc/trunk/gaym/src/msgs.c
+Log:
+Woohoo! Sort by entry without any pesky plugins, by hijacking the buddy flags!
+There may be one follow-up revision to check for memory leaks.
+
+
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-22 12:34:48 UTC (rev 223)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-23 03:06:59 UTC (rev 224)
+@@ -524,6 +524,10 @@
+      */
+     gaym-&gt;info_window_needed =
+         g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
++    
++    gaym-&gt;entry_order =
++	g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
++	
+ 
+     /**
+      * This is similar to gaym-&gt;info_window_needed, except this is
+
+Modified: qrc/trunk/gaym/src/gaym.h
+===================================================================
+--- qrc/trunk/gaym/src/gaym.h	2005-07-22 12:34:48 UTC (rev 223)
++++ qrc/trunk/gaym/src/gaym.h	2005-07-23 03:06:59 UTC (rev 224)
+@@ -89,6 +89,7 @@
+     gboolean quitting;
+     char *subroom;
+     GHashTable *confighash;
++    GHashTable *entry_order;
+ 
+     char *persist_room;
+     gboolean cancelling_persist;
+
+Modified: qrc/trunk/gaym/src/helpers.c
+===================================================================
+--- qrc/trunk/gaym/src/helpers.c	2005-07-22 12:34:48 UTC (rev 223)
++++ qrc/trunk/gaym/src/helpers.c	2005-07-23 03:06:59 UTC (rev 224)
+@@ -431,6 +431,10 @@
+     return flags;
+ }
+ 
++GaimConvChatBuddyFlags include_chat_entry_order(GaimConvChatBuddyFlags flags, gint entry) {
++    
++    return (flags | (entry &lt;&lt; 4));
++}
+ /**
+  * vim:tabstop=4:shiftwidth=4:expandtab:
+  */
+
+Modified: qrc/trunk/gaym/src/helpers.h
+===================================================================
+--- qrc/trunk/gaym/src/helpers.h	2005-07-22 12:34:48 UTC (rev 223)
++++ qrc/trunk/gaym/src/helpers.h	2005-07-23 03:06:59 UTC (rev 224)
+@@ -156,6 +156,7 @@
+  */
+ GaimConvChatBuddyFlags chat_pecking_order(const char *extra);
+ 
++GaimConvChatBuddyFlags include_chat_entry_order(GaimConvChatBuddyFlags flags, gint entry);
+ #endif                          /* _GAIM_GAYM_HELPERS_H_ */
+ 
+ /**
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-07-22 12:34:48 UTC (rev 223)
++++ qrc/trunk/gaym/src/msgs.c	2005-07-23 03:06:59 UTC (rev 224)
+@@ -715,8 +715,12 @@
+ 
+         serv_got_joined_chat(gc, id++, args[0]);
+ 
+-        gaym_cmd_names(gaym, &quot;names&quot;, NULL, (const char **)args);
+-        g_free(nick);
++	gint* entry=g_new(gint, 1);
++	gaim_debug_misc(&quot;gaym&quot;,&quot;Made int: %x\n&quot;,entry);
++	*entry=200;
++	
++        g_hash_table_insert(gaym-&gt;entry_order, g_strdup(args[0]), entry); 
++	g_free(nick);
+         return;
+     }
+ 
+@@ -739,7 +743,13 @@
+         g_free(bio);
+     }
+ 
++    gint* entry=g_hash_table_lookup(gaym-&gt;entry_order, args[0]);
++
++    if (*entry&lt;201)
++	*entry=201;
++    
+     flags = chat_pecking_order(args[1]);
++    flags = include_chat_entry_order(flags, (*entry)++);
+ 
+     gboolean gaym_privacy_permit = gaym_privacy_check(gc, nick);
+     gboolean show_join =
+@@ -907,6 +917,8 @@
+ 
+     gcom_nick_to_gaym(nick);
+     if (!gaim_utf8_strcasecmp(nick, gaim_connection_get_display_name(gc))) {
++
++	g_hash_table_remove(gaym-&gt;entry_order, args[0]);
+         msg = g_strdup_printf(_(&quot;You have parted the channel&quot;));
+ 
+         gaim_conv_chat_write(GAIM_CONV_CHAT(convo), args[0], msg,
+@@ -1293,16 +1305,21 @@
+     }
+ 
+     flags = chat_pecking_order(extra);
++    gint* entry = g_hash_table_lookup(gaym-&gt;entry_order, channel);
+ 
++    gaim_debug_misc(&quot;gaym&quot;,&quot;looked up int: %x, %i\n&quot;,entry,*entry);
++    flags = include_chat_entry_order(flags, (*entry)--);
++    
++    gaim_debug_misc(&quot;gaym&quot;,&quot;flags: %i\n&quot;,flags);
+     /**
+      * g_hash_table_insert(gaym-&gt;join_flags, g_strdup(nick), flags);
+      */
+-    gaym-&gt;join_flags =
+-        g_list_prepend(gaym-&gt;join_flags, GINT_TO_POINTER(flags));
+-    /**
+-     * gaim_conv_chat_add_user(GAIM_CONV_CHAT(convo), nick, NULL, flags,
+-     * FALSE);
+-     */
++    //gaym-&gt;join_flags =
++    //    g_list_prepend(gaym-&gt;join_flags, GINT_TO_POINTER(flags));
++   
++    gaim_conv_chat_add_user(GAIM_CONV_CHAT(convo), nick, NULL, flags,
++      FALSE);
++     
+ 
+     /**
+      * Make the ignore.png icon appear next to the nick.
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000153.html">[Qrc-svn] r223 - qrc/trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000155.html">[Qrc-svn] r225 - in qrc/trunk: . gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#154">[ date ]</a>
+              <a href="thread.html#154">[ thread ]</a>
+              <a href="subject.html#154">[ subject ]</a>
+              <a href="author.html#154">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

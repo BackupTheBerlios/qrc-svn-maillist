@@ -1,0 +1,155 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r207 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r207%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507151335.j6FDZOCb021705%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000137.html">
+   <LINK REL="Next"  HREF="000139.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r207 - qrc/trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r207%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507151335.j6FDZOCb021705%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r207 - qrc/trunk/gaym/src">deckrider at berlios.de
+       </A><BR>
+    <I>Fri Jul 15 15:35:24 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000137.html">[Qrc-svn] r206 - qrc/trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000139.html">[Qrc-svn] r208 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#138">[ date ]</a>
+              <a href="thread.html#138">[ thread ]</a>
+              <a href="subject.html#138">[ subject ]</a>
+              <a href="author.html#138">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-15 15:35:16 +0200 (Fri, 15 Jul 2005)
+New Revision: 207
+
+Modified:
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/msgs.c
+Log:
+Simplification of earlier info_window_needed fix
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-15 03:37:49 UTC (rev 206)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-15 13:35:16 UTC (rev 207)
+@@ -517,8 +517,13 @@
+     gaym_cmd_table_build(gaym);
+     gaym-&gt;msgs = g_hash_table_new(g_str_hash, g_str_equal);
+     gaym_msg_table_build(gaym);
++    /**
++     * The last parameter needs to be NULL here, since the same
++     * field is added for both the key and the value (and if we
++     * free it twice, thats bad and causes crashing!).
++     */
+     gaym-&gt;info_window_needed =
+-        g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
++        g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+ 
+     buf = g_strdup_printf(_(&quot;Signon: %s&quot;), username);
+     gaim_connection_update_progress(gc, buf, 1, 6);
+@@ -709,7 +714,13 @@
+     const char *args[1];
+     args[0] = who;
+     char *normalized = g_strdup(gaim_normalize(gc-&gt;account, who));
+-    g_hash_table_insert(gaym-&gt;info_window_needed, normalized, NULL);
++    /**
++     * We are adding the same char* to both the key and the value.
++     * If this changes, we need to change the corresponding
++     * g_hash_table_new_full() so that things are properly cleaned
++     * up during the remove/destroy phase.
++     */
++    g_hash_table_insert(gaym-&gt;info_window_needed, normalized, normalized);
+     gaym_cmd_whois(gaym, &quot;whois&quot;, NULL, args);
+ }
+ 
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-07-15 03:37:49 UTC (rev 206)
++++ qrc/trunk/gaym/src/msgs.c	2005-07-15 13:35:16 UTC (rev 207)
+@@ -230,18 +230,10 @@
+ 
+     gaym_buddy_status(gaym, args[1], FALSE, NULL);
+ 
+-    gboolean info_needed = FALSE;
+-    gchar *orig_key = NULL;
+-    gchar *value = NULL;
+     char *normalized = g_strdup(gaim_normalize(gaym-&gt;account, args[1]));
+-    info_needed =
+-        g_hash_table_lookup_extended(gaym-&gt;info_window_needed, normalized,
+-                                     (gpointer *) orig_key,
+-                                     (gpointer *) value);
+ 
+-    if (info_needed == TRUE) {
+-        info_needed =
+-            g_hash_table_remove(gaym-&gt;info_window_needed, normalized);
++    if (g_hash_table_lookup(gaym-&gt;info_window_needed, normalized)) {
++        g_hash_table_remove(gaym-&gt;info_window_needed, normalized);
+ 
+         char *hashurl =
+             g_hash_table_lookup(gaym-&gt;confighash, &quot;view-profile-url&quot;);
+@@ -274,20 +266,12 @@
+ 
+     gaym_buddy_status(gaym, args[1], TRUE, args[5]);
+ 
+-    gboolean info_needed = FALSE;
+-    gchar *orig_key = NULL;
+-    gchar *value = NULL;
+     char *normalized = g_strdup(gaim_normalize(gaym-&gt;account, args[1]));
+-    info_needed = g_hash_table_lookup_extended(gaym-&gt;info_window_needed,
+-                                               normalized,
+-                                               (gpointer *) orig_key,
+-                                               (gpointer *) value);
+ 
+     struct gaym_fetch_thumbnail_data *data;
+ 
+-    if (info_needed == TRUE) {
+-        info_needed =
+-            g_hash_table_remove(gaym-&gt;info_window_needed, normalized);
++    if (g_hash_table_lookup(gaym-&gt;info_window_needed, normalized)) {
++        g_hash_table_remove(gaym-&gt;info_window_needed, normalized);
+         char *hashurl = g_hash_table_lookup(gaym-&gt;confighash,
+                                             &quot;ohm.profile-url&quot;);
+         g_return_if_fail(hashurl != NULL);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000137.html">[Qrc-svn] r206 - qrc/trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000139.html">[Qrc-svn] r208 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#138">[ date ]</a>
+              <a href="thread.html#138">[ thread ]</a>
+              <a href="subject.html#138">[ subject ]</a>
+              <a href="author.html#138">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

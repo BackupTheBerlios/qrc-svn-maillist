@@ -1,0 +1,154 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r242 - qrc/trunk/gaym-extras
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r242%20-%20qrc/trunk/gaym-extras&In-Reply-To=%3C200507250504.j6P54BLF019308%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000171.html">
+   <LINK REL="Next"  HREF="000173.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r242 - qrc/trunk/gaym-extras</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r242%20-%20qrc/trunk/gaym-extras&In-Reply-To=%3C200507250504.j6P54BLF019308%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r242 - qrc/trunk/gaym-extras">jblebrun at berlios.de
+       </A><BR>
+    <I>Mon Jul 25 07:04:11 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000171.html">[Qrc-svn] r241 - in qrc/trunk: gaym/src gaym-extras
+</A></li>
+        <LI>Next message: <A HREF="000173.html">[Qrc-svn] r243 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#172">[ date ]</a>
+              <a href="thread.html#172">[ thread ]</a>
+              <a href="subject.html#172">[ subject ]</a>
+              <a href="author.html#172">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-07-25 07:03:53 +0200 (Mon, 25 Jul 2005)
+New Revision: 242
+
+Modified:
+   qrc/trunk/gaym-extras/gaym-extras.c
+Log:
+Replaced scaling code. 
+Can someone verify that it does the right thing?
+
+
+
+Modified: qrc/trunk/gaym-extras/gaym-extras.c
+===================================================================
+--- qrc/trunk/gaym-extras/gaym-extras.c	2005-07-25 04:56:43 UTC (rev 241)
++++ qrc/trunk/gaym-extras/gaym-extras.c	2005-07-25 05:03:53 UTC (rev 242)
+@@ -181,7 +181,33 @@
+     }
+ 
+ }
++static void
++get_icon_scale_size(GdkPixbufAnimation *icon, GaimBuddyIconSpec *spec, int *width, int *height)
++{
++	*width = gdk_pixbuf_animation_get_width(icon);
++	*height = gdk_pixbuf_animation_get_height(icon);
+ 
++	/* this should eventually get smarter about preserving the aspect
++	 * ratio when scaling, but gimmie a break, I just woke up */
++	if(spec &amp;&amp; spec-&gt;scale_rules &amp; GAIM_ICON_SCALE_DISPLAY) {
++		if(*width &lt; spec-&gt;min_width)
++			*width = spec-&gt;min_width;
++		else if(*width &gt; spec-&gt;max_width)
++			*width = spec-&gt;max_width;
++
++		if(*height &lt; spec-&gt;min_height)
++			*height = spec-&gt;min_height;
++		else if(*height  &gt; spec-&gt;max_height)
++			*height = spec-&gt;max_height;
++	}
++
++	/* and now for some arbitrary sanity checks */
++	if(*width &gt; 100)
++		*width = 100;
++	if(*height &gt; 100)
++		*height = 100;
++}
++
+ void gaym_gtkconv_update_thumbnail(GaimConversation * conv, struct gaym_fetch_thumbnail_data
+                                    *thumbnail_data)
+ {
+@@ -194,10 +220,12 @@
+     size_t len;
+ 
+     GdkPixbuf *buf;
+-
++    GdkPixbuf *scale;
+     GdkPixmap *pm;
+     GdkBitmap *bm;
++    int scale_width, scale_height;
+ 
++
+     GaimAccount *account;
+     GaimPluginProtocolInfo *prpl_info = NULL;
+ 
+@@ -284,9 +312,17 @@
+         buf = gdk_pixbuf_animation_iter_get_pixbuf(icon_data-&gt;iter);
+     }
+ 
++	get_icon_scale_size(icon_data-&gt;anim, prpl_info ? &amp;prpl_info-&gt;icon_spec :
++			NULL, &amp;scale_width, &amp;scale_height);
++	scale = gdk_pixbuf_scale_simple(buf,
++				MAX(gdk_pixbuf_get_width(buf) * scale_width /
++				    gdk_pixbuf_animation_get_width(icon_data-&gt;anim), 1),
++				MAX(gdk_pixbuf_get_height(buf) * scale_height /
++				    gdk_pixbuf_animation_get_height(icon_data-&gt;anim), 1),
++				GDK_INTERP_NEAREST);
+ 
+-    gdk_pixbuf_render_pixmap_and_mask(buf, &amp;pm, &amp;bm, 100);
+-    // g_object_unref(G_OBJECT(buf));
++    gdk_pixbuf_render_pixmap_and_mask(scale, &amp;pm, &amp;bm, 100);
++    g_object_unref(G_OBJECT(scale));
+ 
+ 
+     icon_data-&gt;event = gtk_event_box_new();
+@@ -303,7 +339,6 @@
+     if (bm)
+         g_object_unref(G_OBJECT(bm));
+ 
+-    buf = gdk_pixbuf_animation_get_static_image(icon_data-&gt;anim);
+ 
+ }
+ static gboolean check_for_update(gpointer * conversation,
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000171.html">[Qrc-svn] r241 - in qrc/trunk: gaym/src gaym-extras
+</A></li>
+	<LI>Next message: <A HREF="000173.html">[Qrc-svn] r243 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#172">[ date ]</a>
+              <a href="thread.html#172">[ thread ]</a>
+              <a href="subject.html#172">[ subject ]</a>
+              <a href="author.html#172">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

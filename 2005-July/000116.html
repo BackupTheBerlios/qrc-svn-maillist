@@ -1,0 +1,315 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r185 - in qrc/trunk: . gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r185%20-%20in%20qrc/trunk%3A%20.%20gaym/src&In-Reply-To=%3C200507101248.j6ACmCos012038%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000115.html">
+   <LINK REL="Next"  HREF="000117.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r185 - in qrc/trunk: . gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r185%20-%20in%20qrc/trunk%3A%20.%20gaym/src&In-Reply-To=%3C200507101248.j6ACmCos012038%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r185 - in qrc/trunk: . gaym/src">deckrider at berlios.de
+       </A><BR>
+    <I>Sun Jul 10 14:48:12 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000115.html">[Qrc-svn] r184 - qrc/trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000117.html">[Qrc-svn] r186 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#116">[ date ]</a>
+              <a href="thread.html#116">[ thread ]</a>
+              <a href="subject.html#116">[ subject ]</a>
+              <a href="author.html#116">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-10 14:48:11 +0200 (Sun, 10 Jul 2005)
+New Revision: 185
+
+Modified:
+   qrc/trunk/ChangeLog
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/gaym.h
+   qrc/trunk/gaym/src/msgs.c
+Log:
+Added Sex, Age, and Location to the Buddy List Tooltip.
+
+
+Modified: qrc/trunk/ChangeLog
+===================================================================
+--- qrc/trunk/ChangeLog	2005-07-10 03:51:00 UTC (rev 184)
++++ qrc/trunk/ChangeLog	2005-07-10 12:48:11 UTC (rev 185)
+@@ -1,7 +1,7 @@
+ 0.34.1+svn:
+ 	New Features:
+-	- Bio is now available from the buddy list via status and
+-	  tooltip text
++	- Bio displays in the buddy list status area
++	- Buddy list tooltip shows sex, age, location, and bio
+ 
+ 	Bug Fixes:
+ 	- Better refreshing of stale buddy list photos
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-10 03:51:00 UTC (rev 184)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-10 12:48:11 UTC (rev 185)
+@@ -227,8 +227,6 @@
+ 
+ static char *gaym_tooltip_text(GaimBuddy * buddy)
+ {
+-    char *escaped, *tooltip;
+-
+     struct gaym_conn *gaym =
+         (struct gaym_conn *) buddy-&gt;account-&gt;gc-&gt;proto_data;
+ 
+@@ -243,16 +241,42 @@
+         return NULL;
+     }
+ 
+-    if (!ib-&gt;bio) {
+-        return NULL;
++    char *escaped;
++    GString *tooltip = g_string_new(&quot;&quot;);
++
++    if (ib-&gt;sex) {
++        escaped = g_markup_escape_text(ib-&gt;sex, strlen(ib-&gt;sex));
++        g_string_append_printf(tooltip, _(&quot;\n&lt;b&gt;%s:&lt;/b&gt; %s&quot;), _(&quot;Sex&quot;),
++                               escaped);
++        g_free(escaped);
+     }
+ 
+-    escaped = g_markup_escape_text(ib-&gt;bio, strlen(ib-&gt;bio));
+-    tooltip = g_strdup_printf(_(&quot;\n&lt;b&gt;%s:&lt;/b&gt; %s&quot;), _(&quot;Bio&quot;), escaped);
++    if (ib-&gt;age) {
++        escaped = g_markup_escape_text(ib-&gt;age, strlen(ib-&gt;age));
++        g_string_append_printf(tooltip, _(&quot;\n&lt;b&gt;%s:&lt;/b&gt; %s&quot;), _(&quot;Age&quot;),
++                               escaped);
++        g_free(escaped);
++    }
+ 
+-    g_free(escaped);
++    if (ib-&gt;location) {
++        escaped = g_markup_escape_text(ib-&gt;location, strlen(ib-&gt;location));
++        g_string_append_printf(tooltip, _(&quot;\n&lt;b&gt;%s:&lt;/b&gt; %s&quot;),
++                               _(&quot;Location&quot;), escaped);
++        g_free(escaped);
++    }
+ 
+-    return tooltip;
++    if (ib-&gt;bio) {
++        escaped = g_markup_escape_text(ib-&gt;bio, strlen(ib-&gt;bio));
++        g_string_append_printf(tooltip, _(&quot;\n&lt;b&gt;%s:&lt;/b&gt; %s&quot;), _(&quot;Bio&quot;),
++                               escaped);
++        g_free(escaped);
++    }
++
++    if (tooltip-&gt;len == 0) {
++        return g_string_free(tooltip, TRUE);
++    }
++
++    return g_string_free(tooltip, FALSE);
+ }
+ 
+ static GList *gaym_away_states(GaimConnection * gc)
+@@ -696,6 +720,9 @@
+     ib-&gt;online = FALSE;
+     ib-&gt;bio = NULL;
+     ib-&gt;thumbnail = NULL;
++    ib-&gt;sex = NULL;
++    ib-&gt;age = NULL;
++    ib-&gt;location = NULL;
+     g_hash_table_replace(gaym-&gt;buddies, ib-&gt;name, ib);
+     gaim_debug_misc(&quot;gaym&quot;, &quot;Add buddy: %s\n&quot;, buddy-&gt;name);
+     /**
+@@ -956,6 +983,9 @@
+     g_free(ib-&gt;name);
+     g_free(ib-&gt;bio);
+     g_free(ib-&gt;thumbnail);
++    g_free(ib-&gt;sex);
++    g_free(ib-&gt;age);
++    g_free(ib-&gt;location);
+     g_free(ib);
+ }
+ 
+
+Modified: qrc/trunk/gaym/src/gaym.h
+===================================================================
+--- qrc/trunk/gaym/src/gaym.h	2005-07-10 03:51:00 UTC (rev 184)
++++ qrc/trunk/gaym/src/gaym.h	2005-07-10 12:48:11 UTC (rev 185)
+@@ -122,6 +122,9 @@
+     gboolean online;            /* is online */
+     char *bio;                  /* bio string */
+     char *thumbnail;            /* thumbnail string */
++    char *sex;                  /* sex string */
++    char *age;                  /* age string */
++    char *location;             /* location string */
+ };
+ 
+ typedef int (*IRCCmdCallback) (struct gaym_conn * gaym, const char *cmd,
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-07-10 03:51:00 UTC (rev 184)
++++ qrc/trunk/gaym/src/msgs.c	2005-07-10 12:48:11 UTC (rev 185)
+@@ -268,7 +268,8 @@
+ }
+ 
+ static void gaym_buddy_status(struct gaym_conn *gaym, char *name,
+-                              gboolean online, char *bio, char *thumbnail)
++                              gboolean online, char *bio, char *thumbnail,
++                              char *stats)
+ {
+     char *url = NULL;
+     struct gaym_fetch_thumbnail_data *data;
+@@ -311,6 +312,22 @@
+             g_free(ib-&gt;thumbnail);
+             ib-&gt;thumbnail = g_strdup(thumbnail);
+         }
++        if (stats) {
++            g_free(ib-&gt;sex);
++            g_free(ib-&gt;age);
++            g_free(ib-&gt;location);
++            gchar **s = g_strsplit(stats, &quot;|&quot;, 3);
++            if (s[0] &amp;&amp; strlen(s[0]) &gt; 0) {
++                ib-&gt;sex = g_ascii_strup(s[0], -1);
++            }
++            if (s[1] &amp;&amp; strlen(s[1]) &gt; 0) {
++                ib-&gt;age = g_strdup(s[1]);
++            }
++            if (s[2] &amp;&amp; strlen(s[2]) &gt; 0) {
++                ib-&gt;location = g_strdup(s[2]);
++            }
++            g_strfreev(s);
++        }
+         GaimBuddy *buddy = gaim_find_buddy(gaym-&gt;account, name);
+         if (buddy) {
+             serv_got_update(gc, buddy-&gt;name, online, 0, 0, 0, 0);
+@@ -335,7 +352,7 @@
+ 
+     gcom_nick_to_gaym(args[1]);
+ 
+-    gaym_buddy_status(gaym, args[1], FALSE, NULL, NULL);
++    gaym_buddy_status(gaym, args[1], FALSE, NULL, NULL, NULL);
+ 
+     if (gaym-&gt;info_window_needed == TRUE) {
+         gaym-&gt;info_window_needed = 0;
+@@ -367,8 +384,9 @@
+ 
+     char *bio = gaym_mask_bio(args[5]);
+     char *thumbpath = gaym_mask_thumbnail(args[5]);
++    char *stats = gaym_mask_stats(args[5]);
+ 
+-    gaym_buddy_status(gaym, args[1], TRUE, bio, thumbpath);
++    gaym_buddy_status(gaym, args[1], TRUE, bio, thumbpath, stats);
+ 
+     if (gaym-&gt;info_window_needed == TRUE) {
+         gaym-&gt;info_window_needed = 0;
+@@ -390,6 +408,7 @@
+     }
+     g_free(bio);
+     g_free(thumbpath);
++    g_free(stats);
+ }
+ 
+ void gaym_msg_list(struct gaym_conn *gaym, const char *name,
+@@ -1005,7 +1024,10 @@
+ 
+     GaimConversation *convo;
+     GaimConvChatBuddyFlags flags = GAIM_CBFLAGS_NONE;
+-    char *bio = NULL, *bio_markedup = NULL, *thumbnail = NULL;
++    char *bio = NULL;
++    char *bio_markedup = NULL;
++    char *thumbnail = NULL;
++    char *stats = NULL;
+     static int id = 1;
+ 
+     if (!gc) {
+@@ -1039,8 +1061,9 @@
+ 
+     bio = gaym_mask_bio(args[1]);
+     thumbnail = gaym_mask_thumbnail(args[1]);
++    stats = gaym_mask_stats(args[1]);
+ 
+-    gaym_buddy_status(gaym, nick, TRUE, bio, thumbnail);
++    gaym_buddy_status(gaym, nick, TRUE, bio, thumbnail, stats);
+ 
+     gboolean gaym_botfilter_permit =
+         gaym_botfilter_check(gc, nick, bio, FALSE);
+@@ -1051,6 +1074,7 @@
+         g_free(bio);
+     }
+     g_free(thumbnail);
++    g_free(stats);
+ 
+     if (strstr(args[1], &quot;thumb.jpg#&quot;)) {
+         if (args[1][1] == '9')
+@@ -1417,6 +1441,7 @@
+     g_free(msg);
+ }
+ 
++/* I don't think gay.com ever sends this message */
+ void gaym_msg_quit(struct gaym_conn *gaym, const char *name,
+                    const char *from, char **args)
+ {
+@@ -1431,7 +1456,7 @@
+     /* XXX this should have an API, I shouldn't grab this directly */
+     g_slist_foreach(gc-&gt;buddy_chats, (GFunc) gaym_chat_remove_buddy, data);
+ 
+-    gaym_buddy_status(gaym, data[0], FALSE, NULL, NULL);
++    gaym_buddy_status(gaym, data[0], FALSE, NULL, NULL, NULL);
+ 
+     g_free(data[0]);
+ 
+@@ -1598,11 +1623,12 @@
+ 
+     char *bio = gaym_mask_bio(extra);
+     char *thumbnail = gaym_mask_thumbnail(extra);
++    char *stats = gaym_mask_stats(extra);
+ 
+     gboolean gaym_botfilter_permit =
+         gaym_botfilter_check(gc, nick, bio, FALSE);
+ 
+-    gaym_buddy_status(gaym, nick, TRUE, bio, thumbnail);
++    gaym_buddy_status(gaym, nick, TRUE, bio, thumbnail, stats);
+ 
+     g_free(thumbnail);
+     g_free(bio);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000115.html">[Qrc-svn] r184 - qrc/trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000117.html">[Qrc-svn] r186 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#116">[ date ]</a>
+              <a href="thread.html#116">[ thread ]</a>
+              <a href="subject.html#116">[ subject ]</a>
+              <a href="author.html#116">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

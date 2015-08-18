@@ -1,0 +1,245 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r215 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r215%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507171421.j6HELi6P028553%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000145.html">
+   <LINK REL="Next"  HREF="000147.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r215 - qrc/trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r215%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507171421.j6HELi6P028553%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r215 - qrc/trunk/gaym/src">deckrider at berlios.de
+       </A><BR>
+    <I>Sun Jul 17 16:21:44 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000145.html">[Qrc-svn] r214 - in qrc/trunk: . gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000147.html">[Qrc-svn] r217 - qrc/branches
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#146">[ date ]</a>
+              <a href="thread.html#146">[ thread ]</a>
+              <a href="subject.html#146">[ subject ]</a>
+              <a href="author.html#146">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-17 16:21:43 +0200 (Sun, 17 Jul 2005)
+New Revision: 215
+
+Modified:
+   qrc/trunk/gaym/src/cmds.c
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/gaym.h
+   qrc/trunk/gaym/src/gayminfo.c
+   qrc/trunk/gaym/src/msgs.c
+Log:
+Fixed a problem introduced with the new WHOIS method of maintaining the
+buddy list state that caused looping of the thumbnail fetch of the last
+buddy that the user did &quot;Get Info&quot; on.
+
+Added the same mechanism used for &quot;info_window_needed&quot; to replace
+gaym-&gt;whois for instances when a thumbnail is needed within an IM window
+for a user that isn't already on the buddy list.  The new GHashTable is
+gaym-&gt;im_thumbnail_needed.
+
+
+Modified: qrc/trunk/gaym/src/cmds.c
+===================================================================
+--- qrc/trunk/gaym/src/cmds.c	2005-07-17 12:11:18 UTC (rev 214)
++++ qrc/trunk/gaym/src/cmds.c	2005-07-17 14:21:43 UTC (rev 215)
+@@ -566,8 +566,6 @@
+     if (!args || !args[0])
+         return 0;
+ 
+-    gaym-&gt;whois.nick = g_strdup(args[0]);
+-
+     converted_nick = gaym_nick_to_gcom_strdup(args[0]);
+     buf = gaym_format(gaym, &quot;vn&quot;, &quot;WHOIS&quot;, converted_nick);
+     gaym_send(gaym, buf);
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-17 12:11:18 UTC (rev 214)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-17 14:21:43 UTC (rev 215)
+@@ -525,6 +525,14 @@
+     gaym-&gt;info_window_needed =
+         g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+ 
++    /**
++     * This is similar to gaym-&gt;info_window_needed, except this is
++     * for thumbails inside the IM conversation window if the
++     * person is not already on the buddy list
++     */
++    gaym-&gt;im_thumbnail_needed =
++        g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
++
+     buf = g_strdup_printf(_(&quot;Signon: %s&quot;), username);
+     gaim_connection_update_progress(gc, buf, 1, 6);
+     g_free(buf);
+@@ -674,6 +682,7 @@
+     g_hash_table_destroy(gaym-&gt;cmds);
+     g_hash_table_destroy(gaym-&gt;msgs);
+     g_hash_table_destroy(gaym-&gt;info_window_needed);
++    g_hash_table_destroy(gaym-&gt;im_thumbnail_needed);
+     if (gaym-&gt;motd)
+         g_string_free(gaym-&gt;motd, TRUE);
+     g_free(gaym-&gt;server);
+@@ -713,6 +722,7 @@
+     struct gaym_conn *gaym = gc-&gt;proto_data;
+     const char *args[1];
+     args[0] = who;
++
+     char *normalized = g_strdup(gaim_normalize(gc-&gt;account, who));
+     /**
+      * We are adding the same char* to both the key and the value.
+@@ -1305,7 +1315,11 @@
+          * with the WHOIS to get the photo for the IM thumbnail
+          */
+ 
+-        gaym-&gt;whois.nick = g_strdup(conv-&gt;name);
++        char *normalized =
++            g_strdup(gaim_normalize(gc-&gt;account, conv-&gt;name));
++        g_hash_table_insert(gaym-&gt;im_thumbnail_needed, normalized,
++                            normalized);
++
+         name = gaym_nick_to_gcom_strdup(conv-&gt;name);
+         buf = gaym_format(gaym, &quot;vn&quot;, &quot;WHOIS&quot;, name);
+         gaim_debug_misc(&quot;gaym&quot;, &quot;Conversation triggered command: %s\n&quot;,
+
+Modified: qrc/trunk/gaym/src/gaym.h
+===================================================================
+--- qrc/trunk/gaym/src/gaym.h	2005-07-17 12:11:18 UTC (rev 214)
++++ qrc/trunk/gaym/src/gaym.h	2005-07-17 14:21:43 UTC (rev 215)
+@@ -85,26 +85,13 @@
+ 
+     gboolean blist_updating;
+     GHashTable *info_window_needed;
++    GHashTable *im_thumbnail_needed;
+ 
+     GString *motd;
+     GString *names;
+     char *nameconv;
+     char *traceconv;
+ 
+-    struct _whois {
+-        char *nick;
+-        char *away;
+-        char *userhost;
+-        char *name;
+-        char *server;
+-        char *serverinfo;
+-        char *channels;
+-        int gaymop;
+-        int identified;
+-        int idle;
+-        time_t signon;
+-    } whois;
+-
+     GaimRoomlist *roomlist;
+ 
+     GList **node_menu;
+
+Modified: qrc/trunk/gaym/src/gayminfo.c
+===================================================================
+--- qrc/trunk/gaym/src/gayminfo.c	2005-07-17 12:11:18 UTC (rev 214)
++++ qrc/trunk/gaym/src/gayminfo.c	2005-07-17 14:21:43 UTC (rev 215)
+@@ -117,10 +117,14 @@
+ 
+     struct gaym_buddy *ib = g_hash_table_lookup(gaym-&gt;buddies, name);
+ 
++    char *normalized = g_strdup(gaim_normalize(gaym-&gt;account, name));
++    char *im_thumbnail =
++        g_hash_table_lookup(gaym-&gt;im_thumbnail_needed, normalized);
++
+     if (thumbnail) {
+         if ((ib &amp;&amp; gaim_utf8_strcasecmp(thumbnail, ib-&gt;thumbnail))
+-            || (gaym-&gt;whois.nick
+-                &amp;&amp; !gaim_utf8_strcasecmp(gaym-&gt;whois.nick, name))) {
++            || im_thumbnail) {
++
+             char *hashurl = NULL;
+             hashurl =
+                 g_hash_table_lookup(gaym-&gt;confighash,
+@@ -136,6 +140,11 @@
+         }
+     }
+ 
++    if (im_thumbnail) {
++        g_hash_table_remove(gaym-&gt;im_thumbnail_needed, normalized);
++    }
++    g_free(normalized);
++
+     if (ib) {
+         g_free(ib-&gt;bio);
+         ib-&gt;bio = NULL;
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-07-17 12:11:18 UTC (rev 214)
++++ qrc/trunk/gaym/src/msgs.c	2005-07-17 14:21:43 UTC (rev 215)
+@@ -280,12 +280,12 @@
+         g_return_if_fail(hashurl != NULL);
+         data = g_new0(struct gaym_fetch_thumbnail_data, 1);
+         data-&gt;gc = gaim_account_get_connection(gaym-&gt;account);
+-        data-&gt;who = g_strdup(gaym-&gt;whois.nick);
++        data-&gt;who = g_strdup(args[1]);
+         data-&gt;bio = gaym_bio_strdup(args[5]);
+         data-&gt;stats = gaym_stats_strdup(args[5]);
+ 
+         char *infourl = g_strdup_printf(&quot;%s?pw=%s&amp;name=%s&quot;, hashurl,
+-                                        gaym-&gt;hash_pw, gaym-&gt;whois.nick);
++                                        gaym-&gt;hash_pw, args[1]);
+         if (infourl) {
+             gaim_url_fetch(infourl, FALSE,
+                            &quot;Mozilla/4.0 (compatible; MSIE 5.0)&quot;, FALSE,
+@@ -561,12 +561,6 @@
+             return;
+         gaim_notify_error(gc, NULL, _(&quot;No such nick or channel&quot;), args[1]);
+     }
+-
+-    if (gaym-&gt;whois.nick
+-        &amp;&amp; !gaim_utf8_strcasecmp(gaym-&gt;whois.nick, args[1])) {
+-        g_free(gaym-&gt;whois.nick);
+-        gaym-&gt;whois.nick = NULL;
+-    }
+ }
+ 
+ void gaym_msg_nosend(struct gaym_conn *gaym, const char *name,
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000145.html">[Qrc-svn] r214 - in qrc/trunk: . gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000147.html">[Qrc-svn] r217 - qrc/branches
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#146">[ date ]</a>
+              <a href="thread.html#146">[ thread ]</a>
+              <a href="subject.html#146">[ subject ]</a>
+              <a href="author.html#146">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

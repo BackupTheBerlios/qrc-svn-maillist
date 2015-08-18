@@ -1,0 +1,261 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r228 - in qrc/trunk: . gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r228%20-%20in%20qrc/trunk%3A%20.%20gaym/src&In-Reply-To=%3C200507231634.j6NGYEAL026561%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000157.html">
+   <LINK REL="Next"  HREF="000159.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r228 - in qrc/trunk: . gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r228%20-%20in%20qrc/trunk%3A%20.%20gaym/src&In-Reply-To=%3C200507231634.j6NGYEAL026561%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r228 - in qrc/trunk: . gaym/src">deckrider at berlios.de
+       </A><BR>
+    <I>Sat Jul 23 18:34:14 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000157.html">[Qrc-svn] r227 - qrc/trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000159.html">[Qrc-svn] r229 - in qrc/trunk: . gaym-extras
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#158">[ date ]</a>
+              <a href="thread.html#158">[ thread ]</a>
+              <a href="subject.html#158">[ subject ]</a>
+              <a href="author.html#158">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-23 18:33:58 +0200 (Sat, 23 Jul 2005)
+New Revision: 228
+
+Modified:
+   qrc/trunk/ChangeLog
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/gaym.h
+   qrc/trunk/gaym/src/msgs.c
+Log:
+Add preference to allow members to be sorted either by entrance time
+or by category + name.
+
+Add and use MAX_CHANNEL_MEMBERS (currently set to 200).
+
+
+Modified: qrc/trunk/ChangeLog
+===================================================================
+--- qrc/trunk/ChangeLog	2005-07-23 13:27:44 UTC (rev 227)
++++ qrc/trunk/ChangeLog	2005-07-23 16:33:58 UTC (rev 228)
+@@ -7,6 +7,8 @@
+ 	  (Room Name:*) is both a Category (which can be expanded) and a
+ 	  Room (which can be joined), with the individual Room Instances
+ 	  as children
++	- Room members can now be sorted by length of time in the
++	  room (longest in the room at the bottom)
+ 
+ 	Bug Fixes:
+ 	- Better refreshing of stale buddy list photos
+@@ -20,7 +22,7 @@
+ 	- Addressed several memory leaks
+ 
+ 	Preference Changes:
+-	- none
++	- Sort chat room members by entrance time or category + name
+ 
+ 0.34.1:
+ 	Bug Fixes:
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-23 13:27:44 UTC (rev 227)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-23 16:33:58 UTC (rev 228)
+@@ -1399,6 +1399,18 @@
+ 
+     ppref =
+         gaim_plugin_pref_new_with_name_and_label
++        (&quot;/plugins/prpl/gaym/chat_member_sorting&quot;,
++         _
++         (&quot;Sort members by\n\t(changes do not affect rooms you are already in)&quot;));
++    gaim_plugin_pref_set_type(ppref, GAIM_PLUGIN_PREF_CHOICE);
++    gaim_plugin_pref_add_choice(ppref, _(&quot;Entrance time&quot;),
++                                GINT_TO_POINTER(1));
++    gaim_plugin_pref_add_choice(ppref, _(&quot;Category + Name&quot;),
++                                GINT_TO_POINTER(2));
++    gaim_plugin_pref_frame_add(frame, ppref);
++
++    ppref =
++        gaim_plugin_pref_new_with_name_and_label
+         (&quot;/plugins/prpl/gaym/chat_room_instances&quot;,
+          _(&quot;Number of chat room instances to display&quot;));
+     gaim_plugin_pref_set_bounds(ppref, 0, 9);
+@@ -1506,6 +1518,7 @@
+                         GAIM_CALLBACK(gaym_get_photo_info), NULL);
+ 
+     gaim_prefs_add_none(&quot;/plugins/prpl/gaym&quot;);
++    gaim_prefs_add_int(&quot;/plugins/prpl/gaym/chat_member_sorting&quot;, 1);
+     gaim_prefs_add_int(&quot;/plugins/prpl/gaym/chat_room_instances&quot;, 4);
+     gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/show_join&quot;, TRUE);
+     gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/show_part&quot;, TRUE);
+
+Modified: qrc/trunk/gaym/src/gaym.h
+===================================================================
+--- qrc/trunk/gaym/src/gaym.h	2005-07-23 13:27:44 UTC (rev 227)
++++ qrc/trunk/gaym/src/gaym.h	2005-07-23 16:33:58 UTC (rev 228)
+@@ -42,8 +42,21 @@
+ 
+ #define MAX_BIO_LEN 150         /* max number of characters in bio */
+ 
++#define MAX_CHANNEL_MEMBERS 200
++
+ #define GAYBOI_SPAM_URL &quot;<A HREF="http://gayboi.org/spam/spamlst.php">http://gayboi.org/spam/spamlst.php</A>&quot;
+ 
++typedef enum {
++    GAYM_CHAT_SORT_TIME = 1,    /* Entrance time */
++    GAYM_CHAT_SORT_FLAGS        /* Category + Nick/Name */
++} GaymChatSortType;
++
++typedef struct _ChatSort ChatSort;
++struct _ChatSort {
++    gint type;
++    gint counter;
++};
++
+ typedef struct _BListWhois BListWhois;
+ struct _BListWhois {
+     int count;
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-07-23 13:27:44 UTC (rev 227)
++++ qrc/trunk/gaym/src/msgs.c	2005-07-23 16:33:58 UTC (rev 228)
+@@ -648,6 +648,8 @@
+                    const char *from, char **args)
+ {
+     GaimConnection *gc = gaim_account_get_connection(gaym-&gt;account);
++    g_return_if_fail(gc != NULL);
++
+     char *nick = gaym_mask_nick(from);
+ 
+     GaimConversation *convo;
+@@ -656,11 +658,6 @@
+     char *bio_markedup = NULL;
+     static int id = 1;
+ 
+-    if (!gc) {
+-        g_free(nick);
+-        return;
+-    }
+-
+     gcom_nick_to_gaym(nick);
+     if (!gaim_utf8_strcasecmp(nick, gaim_connection_get_display_name(gc))) {
+         /* We are joining a channel for the first time */
+@@ -674,11 +671,14 @@
+ 
+         serv_got_joined_chat(gc, id++, args[0]);
+ 
+-        gint *entry = g_new(gint, 1);
+-        gaim_debug_misc(&quot;gaym&quot;, &quot;Made int: %x\n&quot;, entry);
+-        *entry = 200;
++        ChatSort *chat_sort = g_new0(ChatSort, 1);
+ 
+-        g_hash_table_insert(gaym-&gt;entry_order, g_strdup(args[0]), entry);
++        chat_sort-&gt;type =
++            gaim_prefs_get_int(&quot;/plugins/prpl/gaym/chat_member_sorting&quot;);
++        chat_sort-&gt;counter = MAX_CHANNEL_MEMBERS;
++
++        g_hash_table_insert(gaym-&gt;entry_order, g_strdup(args[0]),
++                            chat_sort);
+         g_free(nick);
+         return;
+     }
+@@ -691,6 +691,9 @@
+         return;
+     }
+ 
++    ChatSort *chat_sort = g_hash_table_lookup(gaym-&gt;entry_order, args[0]);
++    g_return_if_fail(chat_sort != NULL);
++
+     gaym_buddy_status(gaym, nick, TRUE, args[1]);
+ 
+     gboolean gaym_botfilter_permit =
+@@ -702,14 +705,16 @@
+         g_free(bio);
+     }
+ 
+-    gint *entry = g_hash_table_lookup(gaym-&gt;entry_order, args[0]);
++    if (chat_sort-&gt;counter &lt;= MAX_CHANNEL_MEMBERS) {
++        chat_sort-&gt;counter = MAX_CHANNEL_MEMBERS + 1;
++    }
+ 
+-    if (*entry &lt; 201)
+-        *entry = 201;
+-
+     flags = chat_pecking_order(args[1]);
+-    flags = include_chat_entry_order(flags, (*entry)++);
+ 
++    if (chat_sort-&gt;type == GAYM_CHAT_SORT_TIME) {
++        flags = include_chat_entry_order(flags, chat_sort-&gt;counter++);
++    }
++
+     gboolean gaym_privacy_permit = gaym_privacy_check(gc, nick);
+     gboolean show_join =
+         gaim_prefs_get_bool(&quot;/plugins/prpl/gaym/show_join&quot;);
+@@ -1263,18 +1268,18 @@
+         return;
+     }
+ 
++    ChatSort *chat_sort = g_hash_table_lookup(gaym-&gt;entry_order, channel);
++    g_return_if_fail(chat_sort != NULL);
++
+     flags = chat_pecking_order(extra);
+-    gint *entry = g_hash_table_lookup(gaym-&gt;entry_order, channel);
+ 
+-    gaim_debug_misc(&quot;gaym&quot;, &quot;looked up int: %x, %i\n&quot;, entry, *entry);
+-    flags = include_chat_entry_order(flags, (*entry)--);
++    if (chat_sort-&gt;type == GAYM_CHAT_SORT_TIME) {
++        flags = include_chat_entry_order(flags, chat_sort-&gt;counter--);
++    }
+ 
+-    gaim_debug_misc(&quot;gaym&quot;, &quot;flags: %i\n&quot;, flags);
+-
+     gaim_conv_chat_add_user(GAIM_CONV_CHAT(convo), nick, NULL, flags,
+                             FALSE);
+ 
+-
+     /**
+      * Make the ignore.png icon appear next to the nick.
+      */
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000157.html">[Qrc-svn] r227 - qrc/trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000159.html">[Qrc-svn] r229 - in qrc/trunk: . gaym-extras
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#158">[ date ]</a>
+              <a href="thread.html#158">[ thread ]</a>
+              <a href="subject.html#158">[ subject ]</a>
+              <a href="author.html#158">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

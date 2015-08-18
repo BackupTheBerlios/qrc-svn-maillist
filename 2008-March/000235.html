@@ -1,0 +1,278 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r305 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2008-March/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r305%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200803191937.m2JJbUJE006136%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000234.html">
+   
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r305 - qrc/trunk/gaym/src</H1>
+    <B>jblebrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r305%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200803191937.m2JJbUJE006136%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r305 - qrc/trunk/gaym/src">jblebrun at mail.berlios.de
+       </A><BR>
+    <I>Wed Mar 19 20:39:14 CET 2008</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000234.html">[Qrc-svn] r304 - qrc/trunk/gaym/src
+</A></li>
+        
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#235">[ date ]</a>
+              <a href="thread.html#235">[ thread ]</a>
+              <a href="subject.html#235">[ subject ]</a>
+              <a href="author.html#235">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2008-03-19 20:37:29 +0100 (Wed, 19 Mar 2008)
+New Revision: 305
+
+Modified:
+   qrc/trunk/gaym/src/Makefile.am
+   qrc/trunk/gaym/src/cmds.c
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/gaympriv.c
+   qrc/trunk/gaym/src/msgs.c
+Log:
+Removed botfilter code
+
+Modified: qrc/trunk/gaym/src/Makefile.am
+===================================================================
+--- qrc/trunk/gaym/src/Makefile.am	2008-03-19 19:20:13 UTC (rev 304)
++++ qrc/trunk/gaym/src/Makefile.am	2008-03-19 19:37:29 UTC (rev 305)
+@@ -2,8 +2,6 @@
+ 	$(PURPLE_LIBDIR)/purple-2
+ 
+ GAYMSOURCES = \
+-	botfilter.c \
+-	botfilter.h \
+ 	cmds.c \
+ 	gaym.c \
+ 	gaym.h \
+
+Modified: qrc/trunk/gaym/src/cmds.c
+===================================================================
+--- qrc/trunk/gaym/src/cmds.c	2008-03-19 19:20:13 UTC (rev 304)
++++ qrc/trunk/gaym/src/cmds.c	2008-03-19 19:37:29 UTC (rev 305)
+@@ -276,6 +276,7 @@
+     gaym_send(gaym, buf);
+     g_free(buf);
+ 
++    purple_debug_misc(&quot;names&quot;,&quot;target is %s\n&quot;,target);
+     gaym-&gt;nameconv = g_strdup(target);
+ 
+     return 0;
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2008-03-19 19:20:13 UTC (rev 304)
++++ qrc/trunk/gaym/src/gaym.c	2008-03-19 19:37:29 UTC (rev 305)
+@@ -39,7 +39,6 @@
+ #include &quot;helpers.h&quot;
+ #include &quot;gayminfo.h&quot;
+ #include &quot;gaympriv.h&quot;
+-#include &quot;botfilter.h&quot;
+ #include &quot;gaym.h&quot;
+ 
+ static const char *gaym_blist_icon(PurpleAccount * a, PurpleBuddy * b);
+@@ -668,7 +667,6 @@
+ 
+         char *user_agent = &quot;Mozilla/4.0&quot;;
+ 
+-        get_spamlist_from_web();
+         purple_util_fetch_url(url, FALSE, user_agent, FALSE,
+                        gaym_get_configtxt_cb, gaym);
+ 
+@@ -1539,39 +1537,7 @@
+                                         (&quot;Bio-Based Chat Room Activity Filtering&quot;));
+     purple_plugin_pref_frame_add(frame, ppref);
+ 
+-    ppref =
+-        purple_plugin_pref_new_with_name_and_label
+-        (&quot;/plugins/prpl/gaym/botfilter_enable&quot;, _(&quot;Enable&quot;));
+-    purple_plugin_pref_frame_add(frame, ppref);
+ 
+-    ppref =
+-        purple_plugin_pref_new_with_name_and_label
+-        (&quot;/plugins/prpl/gaym/botfilter_ignore_null&quot;,
+-         _(&quot;Ignore if bio is blank&quot;));
+-    purple_plugin_pref_frame_add(frame, ppref);
+-
+-    ppref =
+-        purple_plugin_pref_new_with_name_and_label
+-        (&quot;/plugins/prpl/gaym/botfilter_patterns&quot;,
+-         _
+-         (&quot;Ignore if bio contains these patterns\n\t? = match any single character\n\t* = match zero, one, or more&quot;));
+-    purple_plugin_pref_frame_add(frame, ppref);
+-
+-    ppref =
+-        purple_plugin_pref_new_with_name_and_label
+-        (&quot;/plugins/prpl/gaym/botfilter_sep&quot;,
+-         _(&quot;Above patterns are separated by&quot;));
+-    purple_plugin_pref_set_max_length(ppref, 1);
+-    purple_plugin_pref_frame_add(frame, ppref);
+-
+-    ppref =
+-        purple_plugin_pref_new_with_name_and_label
+-        (&quot;/plugins/prpl/gaym/botfilter_url&quot;,
+-         _
+-         (&quot;URL for GayBoi's spam database\n\tblank to disable\n\tchanges affect next login\n\tdefault is &quot;
+-          GAYBOI_SPAM_URL));
+-    purple_plugin_pref_frame_add(frame, ppref);
+-
+     return frame;
+ }
+ 
+@@ -1721,21 +1687,6 @@
+     purple_prefs_add_bool(&quot;/plugins/prpl/gaym/show_part&quot;, TRUE);
+     purple_prefs_add_bool(&quot;/plugins/prpl/gaym/show_bio_with_join&quot;, TRUE);
+ 
+-    purple_prefs_add_bool(&quot;/plugins/prpl/gaym/botfilter_enable&quot;, FALSE);
+-    purple_prefs_add_bool(&quot;/plugins/prpl/gaym/botfilter_ignore_null&quot;, FALSE);
+-    purple_prefs_add_string(&quot;/plugins/prpl/gaym/botfilter_sep&quot;, &quot;|&quot;);
+-    purple_prefs_add_string(&quot;/plugins/prpl/gaym/botfilter_patterns&quot;,
+-                          &quot;NULL|MODE * -i|*dantcamboy*|*Free preview*|*epowerchat*|*Live gay sex cam show*|*camboiz*&quot;);
+-    purple_prefs_add_string(&quot;/plugins/prpl/gaym/botfilter_url&quot;,
+-                          GAYBOI_SPAM_URL);
+-
+-    purple_prefs_connect_callback(&quot;/plugins/prpl/gaym/botfilter_url&quot;,
+-                                &quot;botfilter_url&quot;, botfilter_url_changed_cb,
+-                                NULL);
+-
+-    purple_prefs_add_string(&quot;/plugins/prpl/gaym/botfilter_url_result&quot;, &quot;&quot;);
+-    purple_prefs_add_int(&quot;/plugins/prpl/gaym/botfilter_url_last_check&quot;, 0);
+-
+     _gaym_plugin = plugin;
+ 
+     gaym_register_commands();
+
+Modified: qrc/trunk/gaym/src/gaympriv.c
+===================================================================
+--- qrc/trunk/gaym/src/gaympriv.c	2008-03-19 19:20:13 UTC (rev 304)
++++ qrc/trunk/gaym/src/gaympriv.c	2008-03-19 19:37:29 UTC (rev 305)
+@@ -35,7 +35,6 @@
+ #include &quot;util.h&quot;
+ 
+ /* local headers for this plugin */
+-#include &quot;botfilter.h&quot;
+ #include &quot;gaym.h&quot;
+ #include &quot;gaympriv.h&quot;
+ #include &quot;helpers.h&quot;
+@@ -152,9 +151,7 @@
+                 purple_conversation_get_ui_ops(convo);
+             if (name) {
+                 if (!purple_utf8_strcasecmp(name, buddy-&gt;name)) {
+-                    if (gaym_privacy_check(gc, buddy-&gt;name)
+-                        &amp;&amp; gaym_botfilter_check(gc, buddy-&gt;name, NULL,
+-                                                TRUE)) {
++                    if (gaym_privacy_check(gc, buddy-&gt;name)) {
+                         purple_conv_chat_unignore(PURPLE_CONV_CHAT(convo),
+                                                 buddy-&gt;name);
+                     } else {
+@@ -164,8 +161,7 @@
+                     ops-&gt;chat_update_user((convo), buddy-&gt;name);
+                 }
+             } else {
+-                if (gaym_privacy_check(gc, buddy-&gt;name)
+-                    &amp;&amp; gaym_botfilter_check(gc, buddy-&gt;name, NULL, TRUE)) {
++                if (gaym_privacy_check(gc, buddy-&gt;name)) {
+                     purple_conv_chat_unignore(PURPLE_CONV_CHAT(convo),
+                                             buddy-&gt;name);
+                 } else {
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2008-03-19 19:20:13 UTC (rev 304)
++++ qrc/trunk/gaym/src/msgs.c	2008-03-19 19:37:29 UTC (rev 305)
+@@ -32,7 +32,6 @@
+ #include &quot;privacy.h&quot;
+ #include &quot;prefs.h&quot;
+ 
+-#include &quot;botfilter.h&quot;
+ #include &quot;gaym.h&quot;
+ #include &quot;gayminfo.h&quot;
+ #include &quot;gaympriv.h&quot;
+@@ -787,8 +786,6 @@
+     gaym_buddy_status(gaym, nick, TRUE, args[1], TRUE);
+ 
+ 
+-    gboolean gaym_botfilter_permit =
+-        gaym_botfilter_check(gc, nick, bio, FALSE);
+ 
+     bio = gaym_bio_strdup(args[1]);
+     if (bio) {
+@@ -810,12 +807,10 @@
+     if (purple_prefs_get_bool(&quot;/plugins/prpl/gaym/show_bio_with_join&quot;)) {
+         purple_conv_chat_add_user(PURPLE_CONV_CHAT(convo), nick, bio_markedup,
+                                 flags, (gaym_privacy_permit
+-                                        &amp;&amp; gaym_botfilter_permit
+                                         &amp;&amp; show_join));
+     } else {
+         purple_conv_chat_add_user(PURPLE_CONV_CHAT(convo), nick, NULL,
+                                 flags, (gaym_privacy_permit
+-                                        &amp;&amp; gaym_botfilter_permit
+                                         &amp;&amp; show_join));
+     }
+ 
+@@ -823,7 +818,7 @@
+      * Make the ignore.png icon appear next to the nick.
+      */
+     PurpleConversationUiOps *ops = purple_conversation_get_ui_ops(convo);
+-    if (gaym_privacy_permit &amp;&amp; gaym_botfilter_permit) {
++    if (gaym_privacy_permit) {
+         purple_conv_chat_unignore(PURPLE_CONV_CHAT(convo), nick);
+     } else {
+         purple_conv_chat_ignore(PURPLE_CONV_CHAT(convo), nick);
+@@ -1473,8 +1468,6 @@
+                                             gaym-&gt;account);
+ 
+     char *bio = gaym_bio_strdup(extra);
+-    gboolean gaym_botfilter_permit =
+-        gaym_botfilter_check(gc, nick, bio, FALSE);
+     g_free(bio);
+ 
+     gaym_buddy_status(gaym, nick, TRUE, extra, FALSE);
+@@ -1498,7 +1491,7 @@
+      * Make the ignore.png icon appear next to the nick.
+      */
+     PurpleConversationUiOps *ops = purple_conversation_get_ui_ops(convo);
+-    if (gaym_privacy_check(gc, nick) &amp;&amp; gaym_botfilter_permit) {
++    if (gaym_privacy_check(gc, nick)) {
+         purple_conv_chat_unignore(PURPLE_CONV_CHAT(convo), nick);
+     } else {
+         purple_conv_chat_ignore(PURPLE_CONV_CHAT(convo), nick);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000234.html">[Qrc-svn] r304 - qrc/trunk/gaym/src
+</A></li>
+	
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#235">[ date ]</a>
+              <a href="thread.html#235">[ thread ]</a>
+              <a href="subject.html#235">[ subject ]</a>
+              <a href="author.html#235">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

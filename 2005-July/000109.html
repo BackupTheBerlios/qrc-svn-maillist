@@ -1,0 +1,711 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r178 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r178%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507092123.j69LNAQ0030645%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000108.html">
+   <LINK REL="Next"  HREF="000110.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r178 - qrc/trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r178%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507092123.j69LNAQ0030645%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r178 - qrc/trunk/gaym/src">deckrider at berlios.de
+       </A><BR>
+    <I>Sat Jul  9 23:23:10 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000108.html">[Qrc-svn] r177 - qrc/trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000110.html">[Qrc-svn] r179 - qrc/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#109">[ date ]</a>
+              <a href="thread.html#109">[ thread ]</a>
+              <a href="subject.html#109">[ subject ]</a>
+              <a href="author.html#109">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-09 23:23:07 +0200 (Sat, 09 Jul 2005)
+New Revision: 178
+
+Modified:
+   qrc/trunk/gaym/src/cmds.c
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/gaym.h
+   qrc/trunk/gaym/src/msgs.c
+   qrc/trunk/gaym/src/parse.c
+Log:
+Converted from using ISON to WHOIS to manage buddies.  This fixes a long
+standing issue where the buddy's photo won't refresh on the buddy list
+unless you do something that causes a WHOIS to be generated.  It also
+lays the foundation for showing the Bio in the buddy list.
+
+Moved GAYBOI_SPAM_URL from gaym/src/gaym.c to gaym/src/gaym.h.
+
+Removed unnecessary forward declarations in msgs.c
+
+Update the buddy list every 60 seconds instead of every 45 seconds.
+
+
+Modified: qrc/trunk/gaym/src/cmds.c
+===================================================================
+--- qrc/trunk/gaym/src/cmds.c	2005-07-09 01:37:49 UTC (rev 177)
++++ qrc/trunk/gaym/src/cmds.c	2005-07-09 21:23:07 UTC (rev 178)
+@@ -567,7 +567,7 @@
+         return 0;
+ 
+     gaym-&gt;whois.nick = g_strdup(args[0]);
+-    gcom_nick_to_gaym(gaym-&gt;whois.nick);
++
+     converted_nick = gaym_nick_to_gcom_strdup(args[0]);
+     buf = gaym_format(gaym, &quot;vn&quot;, &quot;WHOIS&quot;, converted_nick);
+     gaym_send(gaym, buf);
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-09 01:37:49 UTC (rev 177)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-09 21:23:07 UTC (rev 178)
+@@ -42,8 +42,6 @@
+ #include &quot;botfilter.h&quot;
+ #include &quot;gaym.h&quot;
+ 
+-#define GAYBOI_SPAM_URL &quot;<A HREF="http://gayboi.org/spam/spamlst.php">http://gayboi.org/spam/spamlst.php</A>&quot;
+-
+ char *gaym_mask_bio(const char *biostring);
+ static const char *gaym_blist_icon(GaimAccount * a, GaimBuddy * b);
+ static void gaym_blist_emblems(GaimBuddy * b, char **se, char **sw,
+@@ -67,7 +65,7 @@
+ static void gaym_buddy_free(struct gaym_buddy *ib);
+ 
+ static void gaym_buddy_append(char *name, struct gaym_buddy *ib,
+-                              GString * string);
++                              BListWhois * blist_whois);
+ static void gaym_buddy_clear_done(char *name, struct gaym_buddy *ib,
+                                   gpointer nothing);
+ 
+@@ -90,16 +88,24 @@
+     return ret;
+ }
+ 
+-/* XXX I don't like messing directly with these buddies */
+ gboolean gaym_blist_timeout(struct gaym_conn * gaym)
+ {
+-    GString *string = g_string_sized_new(512);
++    /**
++     * There are 510 characters available for an IRC command (512 if
++     * you count CR-LF).  &quot;WHOIS &quot; takes up 6 characters.  Assuming
++     * you need allow an extra character for the NULL when using
++     * g_string_sized_new(), we need to allocate (510-6)+1=505 here.
++     */
++    BListWhois *blist_whois = g_new0(BListWhois, 1);
++    blist_whois-&gt;count = 0;
++    blist_whois-&gt;string = g_string_sized_new(505);
++
+     char *list, *buf;
+ 
+     g_hash_table_foreach(gaym-&gt;buddies, (GHFunc) gaym_buddy_append,
+-                         (gpointer) string);
++                         (gpointer) blist_whois);
+ 
+-    list = g_string_free(string, FALSE);
++    list = g_string_free(blist_whois-&gt;string, FALSE);
+     if (!list || !strlen(list)) {
+         g_hash_table_foreach(gaym-&gt;buddies, (GHFunc) gaym_buddy_clear_done,
+                              NULL);
+@@ -109,11 +115,12 @@
+                              (GSourceFunc) gaym_blist_timeout,
+                              (gpointer) gaym);
+         g_free(list);
++        g_free(blist_whois);
+ 
+         return TRUE;
+     }
+     gaym-&gt;blist_updating = TRUE;
+-    buf = gaym_format(gaym, &quot;vn&quot;, &quot;ISON&quot;, list);
++    buf = gaym_format(gaym, &quot;vn&quot;, &quot;WHOIS&quot;, list);
+     gaym_send(gaym, buf);
+     gaim_timeout_remove(gaym-&gt;timer);
+     gaym-&gt;timer =
+@@ -122,10 +129,9 @@
+                          (gpointer) gaym);
+ 
+     g_free(buf);
+-
+     g_free(list);
++    g_free(blist_whois);
+ 
+-
+     return TRUE;
+ }
+ 
+@@ -136,29 +142,41 @@
+ }
+ 
+ static void gaym_buddy_append(char *name, struct gaym_buddy *ib,
+-                              GString * string)
++                              BListWhois * blist_whois)
+ {
+-    char *converted_name;
+-    if ((strlen(name) + string-&gt;len) &gt; CHUNK_SIZE)
+-        return;
+-    else if (ib-&gt;done == FALSE) {
+-        ib-&gt;stale = TRUE;
++    char *converted_name = NULL;
++    converted_name = gaym_nick_to_gcom_strdup(name);
++
++    /**
++     * There are 510 characters available for an IRC command (512 if
++     * you count CR-LF).  &quot;WHOIS &quot; takes up 6 characters.  This means
++     * we have up to 504 characters available for comma separated
++     * converted_names
++     */
++    if (ib-&gt;done == FALSE &amp;&amp; blist_whois-&gt;count &lt; 10
++        &amp;&amp; (strlen(converted_name) + blist_whois-&gt;string-&gt;len + 1) &lt;=
++        504) {
++        blist_whois-&gt;count++;
+         ib-&gt;done = TRUE;
+-        ib-&gt;flag = FALSE;
+-        converted_name = gaym_nick_to_gcom_strdup(name);
+-        g_string_append_printf(string, &quot;%s &quot;, converted_name);
+-        g_free(converted_name);
+-        return;
++        if (blist_whois-&gt;string-&gt;len == 0) {
++            g_string_append_printf(blist_whois-&gt;string, &quot;%s&quot;,
++                                   converted_name);
++        } else {
++            g_string_append_printf(blist_whois-&gt;string, &quot;,%s&quot;,
++                                   converted_name);
++        }
+     }
++
++    g_free(converted_name);
++    return;
+ }
+ 
+-static void gaym_ison_one(struct gaym_conn *gaym, struct gaym_buddy *ib)
++static void gaym_whois_one(struct gaym_conn *gaym, struct gaym_buddy *ib)
+ {
+     char *buf;
+     char *nick;
+-    ib-&gt;flag = FALSE;
+     nick = gaym_nick_to_gcom_strdup(ib-&gt;name);
+-    buf = gaym_format(gaym, &quot;vn&quot;, &quot;ISON&quot;, nick);
++    buf = gaym_format(gaym, &quot;vn&quot;, &quot;WHOIS&quot;, nick);
+     gaym_send(gaym, buf);
+     g_free(nick);
+     g_free(buf);
+@@ -613,22 +631,45 @@
+     struct gaym_conn *gaym = (struct gaym_conn *) gc-&gt;proto_data;
+     struct gaym_buddy *ib = g_new0(struct gaym_buddy, 1);
+     ib-&gt;name = g_strdup(buddy-&gt;name);
++    ib-&gt;done = FALSE;
++    ib-&gt;online = FALSE;
++    ib-&gt;bio = NULL;
++    ib-&gt;thumbnail = NULL;
+     g_hash_table_replace(gaym-&gt;buddies, ib-&gt;name, ib);
+     gaim_debug_misc(&quot;gaym&quot;, &quot;Add buddy: %s\n&quot;, buddy-&gt;name);
+     /**
+      * if the timer isn't set, this is during signon, so we don't want to
+-     * flood ourself off with ISON's, so we don't, but after that we want
++     * flood ourself off with WHOIS's, so we don't, but after that we want
+      * to know when someone's online asap
+      */
+     if (gaym-&gt;timer)
+-        gaym_ison_one(gaym, ib);
++        gaym_whois_one(gaym, ib);
+ }
+ 
+ static void gaym_remove_buddy(GaimConnection * gc, GaimBuddy * buddy,
+                               GaimGroup * group)
+ {
+     struct gaym_conn *gaym = (struct gaym_conn *) gc-&gt;proto_data;
+-    g_hash_table_remove(gaym-&gt;buddies, buddy-&gt;name);
++
++    /**
++     * Only remove buddy-&gt;name from gaym-&gt;buddies if it doesn't
++     * exist in any other group on the buddy list.  This allows us
++     * to manage the buddy once, even though it might exist in
++     * several groups within the buddy list.
++     *
++     * To add to confusion, the buddy being deleted is not yet deleted,
++     * so we look for less than two identical buddies, and if so, then
++     * remove the buddy from gaym-&gt;buddies.
++     */
++
++    GSList *buddies = gaim_find_buddies(gaym-&gt;account, buddy-&gt;name);
++    guint length = g_slist_length(buddies);
++
++    if (length &lt; 2) {
++        g_hash_table_remove(gaym-&gt;buddies, buddy-&gt;name);
++    }
++
++    g_slist_free(buddies);
+ }
+ 
+ static void gaym_input_cb(gpointer data, gint source,
+@@ -852,6 +893,8 @@
+ static void gaym_buddy_free(struct gaym_buddy *ib)
+ {
+     g_free(ib-&gt;name);
++    g_free(ib-&gt;bio);
++    g_free(ib-&gt;thumbnail);
+     g_free(ib);
+ }
+ 
+
+Modified: qrc/trunk/gaym/src/gaym.h
+===================================================================
+--- qrc/trunk/gaym/src/gaym.h	2005-07-09 01:37:49 UTC (rev 177)
++++ qrc/trunk/gaym/src/gaym.h	2005-07-09 21:23:07 UTC (rev 178)
+@@ -37,12 +37,17 @@
+ 
+ #define IRC_INITIAL_BUFSIZE 1024
+ 
+-#define CHUNK_SIZE 500
+-
+-#define BLIST_UPDATE_PERIOD 45000       // buddy list updated every 45s
++#define BLIST_UPDATE_PERIOD 60000       // buddy list updated every 45s
+ #define BLIST_CHUNK_INTERVAL 5000       // 5s between ISON chunks
+ 
++#define GAYBOI_SPAM_URL &quot;<A HREF="http://gayboi.org/spam/spamlst.php">http://gayboi.org/spam/spamlst.php</A>&quot;
+ 
++typedef struct _BListWhois BListWhois;
++struct _BListWhois {
++    int count;
++    GString *string;
++};
++
+ enum { IRC_USEROPT_SERVER, IRC_USEROPT_PORT, IRC_USEROPT_CHARSET };
+ enum gaym_state { IRC_STATE_NEW, IRC_STATE_ESTABLISHED };
+ 
+@@ -96,6 +101,7 @@
+         int idle;
+         time_t signon;
+     } whois;
++
+     GaimRoomlist *roomlist;
+ 
+     GList **node_menu;
+@@ -111,19 +117,13 @@
+ };
+ 
+ struct gaym_buddy {
+-    char *name;
+-    gboolean online;
+-    gboolean flag;              // Marks an ISON response.
+-
+-    gboolean stale;             // Signifies ISON update needed
+-    gboolean done;              // Keep track of which buddies have been
+-    // checked.
+-
++    char *name;                 /* gaym formatted nick */
++    gboolean done;              /* has been checked */
++    gboolean online;            /* is online */
++    char *bio;                  /* bio string */
++    char *thumbnail;            /* thumbnail string */
+ };
+ 
+-
+-
+-
+ typedef int (*IRCCmdCallback) (struct gaym_conn * gaym, const char *cmd,
+                                const char *target, const char **args);
+ 
+@@ -158,8 +158,6 @@
+                      const char *from, char **args);
+ void gaym_msg_inviteonly(struct gaym_conn *gaym, const char *name,
+                          const char *from, char **args);
+-void gaym_msg_ison(struct gaym_conn *gaym, const char *name,
+-                   const char *from, char **args);
+ void gaym_msg_who(struct gaym_conn *gaym, const char *name,
+                   const char *from, char **args);
+ void gaym_msg_chanfull(struct gaym_conn *gaym, const char *name,
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-07-09 01:37:49 UTC (rev 177)
++++ qrc/trunk/gaym/src/msgs.c	2005-07-09 21:23:07 UTC (rev 178)
+@@ -38,22 +38,6 @@
+ #include &quot;botfilter.h&quot;
+ #include &quot;gaym.h&quot;
+ 
+-/**
+- * begin forward declarations
+- */
+-
+-static char *gaym_mask_nick(const char *mask);
+-
+-static void gaym_chat_remove_buddy(GaimConversation * convo,
+-                                   char *data[2]);
+-
+-static void gaym_buddy_status(char *name, struct gaym_buddy *ib,
+-                              struct gaym_conn *gaym);
+-
+-/**
+- * end forward declarations
+- */
+-
+ char *gaym_mask_thumbnail(const char *biostring)
+ {
+     char *start = strchr(biostring, ':');
+@@ -283,84 +267,129 @@
+     }
+ }
+ 
++static void gaym_buddy_status(struct gaym_conn *gaym, char *name,
++                              gboolean online, char *bio, char *thumbnail)
++{
++    char *url = NULL;
++    struct gaym_fetch_thumbnail_data *data;
+ 
++    if (!gaym || !gaym-&gt;account || !gaym-&gt;buddies || !name) {
++        return;
++    }
++
++    GaimConnection *gc = gaim_account_get_connection(gaym-&gt;account);
++
++    if (!gc) {
++        return;
++    }
++
++    struct gaym_buddy *ib = g_hash_table_lookup(gaym-&gt;buddies, name);
++
++    if (thumbnail) {
++        if ((ib &amp;&amp; gaim_utf8_strcasecmp(thumbnail, ib-&gt;thumbnail))
++            || (gaym-&gt;whois.nick
++                &amp;&amp; !gaim_utf8_strcasecmp(gaym-&gt;whois.nick, name))) {
++            data = g_new0(struct gaym_fetch_thumbnail_data, 1);
++            data-&gt;gc = gaim_account_get_connection(gaym-&gt;account);
++            data-&gt;who = g_strdup(name);
++            url =
++                g_strdup_printf
++                (&quot;<A HREF="http://gay.com/images/personals/pictures%s">http://gay.com/images/personals/pictures%s</A>&quot;, thumbnail);
++            gaim_url_fetch(url, FALSE, &quot;Mozilla/4.0&quot;, FALSE,
++                           gaym_fetch_thumbnail_cb, data);
++            g_free(url);
++        }
++    }
++
++    if (ib) {
++        ib-&gt;online = online;
++        if (bio) {
++            g_free(ib-&gt;bio);
++            ib-&gt;bio = g_strdup(bio);
++        }
++        if (thumbnail) {
++            g_free(ib-&gt;thumbnail);
++            ib-&gt;thumbnail = g_strdup(thumbnail);
++        }
++        GaimBuddy *buddy = gaim_find_buddy(gaym-&gt;account, name);
++        if (buddy) {
++            serv_got_update(gc, buddy-&gt;name, online, 0, 0, 0, 0);
++        }
++    }
++
++    return;
++}
++
+ void gaym_msg_no_such_nick(struct gaym_conn *gaym, const char *name,
+                            const char *from, char **args)
+ {
+-    if (!args || !args[1]) {
++    /**
++     * name = 701
++     * from = irc.server.name
++     * args[1] = the nick that wasn't found
++     */
++
++    if (!gaym || !args || !args[1]) {
+         return;
+     }
+ 
+     gcom_nick_to_gaym(args[1]);
+-    gaym-&gt;info_window_needed = 0;
+-    char *buf;
+ 
+-    buf =
+-        g_strdup_printf
+-        (&quot;That user is not logged on. Check &lt;a href='<A HREF="http://my.gay.com/%s">http://my.gay.com/%s</A>'&gt;here&lt;/a&gt; to see if that user has a profile.&quot;,
+-         args[1]);
+-    gaim_notify_userinfo(gaim_account_get_connection(gaym-&gt;account), NULL,
+-                         NULL, &quot;No such user&quot;, NULL, buf, NULL, NULL);
++    gaym_buddy_status(gaym, args[1], FALSE, NULL, NULL);
++
++    if (gaym-&gt;info_window_needed == TRUE) {
++        gaym-&gt;info_window_needed = 0;
++        char *buf;
++
++        buf =
++            g_strdup_printf
++            (&quot;That user is not logged on. Check &lt;a href='<A HREF="http://my.gay.com/%s">http://my.gay.com/%s</A>'&gt;here&lt;/a&gt; to see if that user has a profile.&quot;,
++             args[1]);
++        gaim_notify_userinfo(gaim_account_get_connection(gaym-&gt;account),
++                             NULL, NULL, &quot;No such user&quot;, NULL, buf, NULL,
++                             NULL);
++    }
+ }
+ 
+ void gaym_msg_whois(struct gaym_conn *gaym, const char *name,
+                     const char *from, char **args)
+ {
+-    char *thumburl = NULL;
++    /**
++     * name = 311
++     * from = irc.server.name
++     * args[1] = the nick that we have information about
++     */
+ 
+-    gcom_nick_to_gaym(args[1]);
+-    if (!gaym-&gt;whois.nick) {
+-        gaim_debug(GAIM_DEBUG_WARNING, &quot;gaym&quot;,
+-                   &quot;Unexpected WHOIS reply for %s\n&quot;, args[1]);
++    if (!gaym || !args || !args[1]) {
+         return;
+     }
++    struct gaym_fetch_thumbnail_data *data;
+ 
+-    if (gaim_utf8_strcasecmp(gaym-&gt;whois.nick, args[1])) {
+-        gaim_debug(GAIM_DEBUG_WARNING, &quot;gaym&quot;,
+-                   &quot;Got WHOIS reply for %s while waiting for %s\n&quot;,
+-                   args[1], gaym-&gt;whois.nick);
+-        return;
+-    }
+-
+-    struct gaym_fetch_thumbnail_data *data, *data2;
+-
+-    data = g_new0(struct gaym_fetch_thumbnail_data, 1);
+-    data2 = g_new0(struct gaym_fetch_thumbnail_data, 1);
+-    data-&gt;gc = gaim_account_get_connection(gaym-&gt;account);
+-    data-&gt;who = g_strdup(gaym-&gt;whois.nick);
+-
+-    data2-&gt;gc = gaim_account_get_connection(gaym-&gt;account);
+-    data2-&gt;who = g_strdup(gaym-&gt;whois.nick);
+-
++    char *bio = gaym_mask_bio(args[5]);
+     char *thumbpath = gaym_mask_thumbnail(args[5]);
+-    data2-&gt;bio = gaym_mask_bio(args[5]);
+-    data2-&gt;stats = gaym_mask_stats(args[5]);
+ 
+-    if (thumbpath)
+-        thumburl =
+-            g_strdup_printf
+-            (&quot;<A HREF="http://www.gay.com/images/personals/pictures%s">http://www.gay.com/images/personals/pictures%s</A>&gt;&quot;, thumbpath);
+-    if (thumburl) {
+-        gaim_url_fetch(thumburl, FALSE,
+-                       &quot;Mozilla/4.0 (compatible; MSIE 5.0)&quot;, FALSE,
+-                       gaym_fetch_thumbnail_cb, data);
+-        g_free(thumburl);
+-    }
++    gaym_buddy_status(gaym, args[1], TRUE, bio, thumbpath);
+ 
+     if (gaym-&gt;info_window_needed == TRUE) {
+         gaym-&gt;info_window_needed = 0;
++        data = g_new0(struct gaym_fetch_thumbnail_data, 1);
++        data-&gt;gc = gaim_account_get_connection(gaym-&gt;account);
++        data-&gt;who = g_strdup(gaym-&gt;whois.nick);
++        data-&gt;bio = gaym_mask_bio(args[5]);
++        data-&gt;stats = gaym_mask_stats(args[5]);
+         char *infourl =
+             g_strdup_printf
+             (&quot;<A HREF="http://www.gay.com/messenger/get-profile.txt?pw=%s&amp;name=%s">http://www.gay.com/messenger/get-profile.txt?pw=%s&amp;name=%s</A>&quot;,
+              gaym-&gt;hash_pw, gaym-&gt;whois.nick);
+-
+         if (infourl) {
+             gaim_url_fetch(infourl, FALSE,
+                            &quot;Mozilla/4.0 (compatible; MSIE 5.0)&quot;, FALSE,
+-                           gaym_fetch_info_cb, data2);
++                           gaym_fetch_info_cb, data);
+             g_free(infourl);
+         }
+     }
++    g_free(bio);
++    g_free(thumbpath);
+ }
+ 
+ void gaym_msg_list(struct gaym_conn *gaym, const char *name,
+@@ -955,62 +984,6 @@
+     g_free(buf);
+ }
+ 
+-void gaym_msg_ison(struct gaym_conn *gaym, const char *name,
+-                   const char *from, char **args)
+-{
+-    char **nicks;
+-    struct gaym_buddy *ib;
+-    int i;
+-
+-    if (!args || !args[1])
+-        return;
+-    nicks = g_strsplit(args[1], &quot; &quot;, -1);
+-    for (i = 0; (nicks[i] != NULL) &amp;&amp; (*nicks[i] != '\0'); i++) {
+-        gcom_nick_to_gaym(nicks[i]);
+-        if ((ib =
+-             g_hash_table_lookup(gaym-&gt;buddies,
+-                                 (gconstpointer) nicks[i])) == NULL) {
+-            gaim_debug_misc(&quot;gaym&quot;, &quot;Not found in buddylist\n&quot;);
+-            continue;
+-        }
+-        ib-&gt;flag = TRUE;
+-
+-    }
+-
+-    g_strfreev(nicks);
+-
+-    g_hash_table_foreach(gaym-&gt;buddies, (GHFunc) gaym_buddy_status,
+-                         (gpointer) gaym);
+-}
+-
+-static void gaym_buddy_status(char *name, struct gaym_buddy *ib,
+-                              struct gaym_conn *gaym)
+-{
+-    GaimConnection *gc = gaim_account_get_connection(gaym-&gt;account);
+-    GaimBuddy *buddy = gaim_find_buddy(gaym-&gt;account, name);
+-
+-    if (!gc || !buddy || !ib-&gt;stale)
+-        return;
+-
+-    if (ib-&gt;online &amp;&amp; !ib-&gt;flag) {
+-        /**
+-         * FUTURE VERSION ALERT: This will become
+-         * gaim_prpl_got_user_status.
+-         * serv_got_update is being deprecated.
+-         */
+-        serv_got_update(gc, buddy-&gt;name, FALSE, 0, 0, 0, 0);
+-        ib-&gt;online = FALSE;
+-    }
+-
+-    if (!ib-&gt;online &amp;&amp; ib-&gt;flag) {
+-        serv_got_update(gc, buddy-&gt;name, TRUE, 0, 0, 0, 0);
+-        ib-&gt;online = TRUE;
+-        ib-&gt;flag = FALSE;
+-    }
+-    ib-&gt;stale = FALSE;
+-    ib-&gt;flag = FALSE;
+-}
+-
+ void gaym_msg_trace(struct gaym_conn *gaym, const char *name,
+                     const char *from, char **args)
+ {
+@@ -1032,7 +1005,6 @@
+     GaimConversation *convo;
+     GaimConvChatBuddyFlags flags = GAIM_CBFLAGS_NONE;
+     char *bio = NULL, *bio_markedup = NULL;
+-    struct gaym_buddy *ib;
+     static int id = 1;
+ 
+     if (!gc) {
+@@ -1107,10 +1079,8 @@
+     }
+     ops-&gt;chat_update_user((convo), nick);
+ 
+-    if ((ib = g_hash_table_lookup(gaym-&gt;buddies, nick)) != NULL) {
+-        ib-&gt;flag = TRUE;
+-        gaym_buddy_status(nick, ib, gaym);
+-    }
++    gaym_buddy_status(gaym, nick, TRUE, bio_markedup, NULL);
++
+     g_free(bio_markedup);
+     g_free(nick);
+ }
+@@ -1446,7 +1416,6 @@
+                    const char *from, char **args)
+ {
+     GaimConnection *gc = gaim_account_get_connection(gaym-&gt;account);
+-    struct gaym_buddy *ib;
+     char *data[2];
+ 
+     if (!args || !args[0] || !gc)
+@@ -1457,10 +1426,8 @@
+     /* XXX this should have an API, I shouldn't grab this directly */
+     g_slist_foreach(gc-&gt;buddy_chats, (GFunc) gaym_chat_remove_buddy, data);
+ 
+-    if ((ib = g_hash_table_lookup(gaym-&gt;buddies, data[0])) != NULL) {
+-        ib-&gt;flag = FALSE;
+-        gaym_buddy_status(data[0], ib, gaym);
+-    }
++    gaym_buddy_status(gaym, data[0], FALSE, NULL, NULL);
++
+     g_free(data[0]);
+ 
+     return;
+
+Modified: qrc/trunk/gaym/src/parse.c
+===================================================================
+--- qrc/trunk/gaym/src/parse.c	2005-07-09 01:37:49 UTC (rev 177)
++++ qrc/trunk/gaym/src/parse.c	2005-07-09 21:23:07 UTC (rev 178)
+@@ -50,14 +50,12 @@
+     {
+     &quot;001&quot;, &quot;n:&quot;, gaym_msg_endmotd},     /* login ok */
+     {
+-    &quot;205&quot;, &quot;nnvvvvv&quot;, gaym_msg_trace},    /* trace response */
++    &quot;205&quot;, &quot;nnvvvvv&quot;, gaym_msg_trace},  /* trace response */
+     {
+     &quot;263&quot;, &quot;n:&quot;, gaym_msg_list_busy},   /* Server load to heavy */
+     {
+     &quot;301&quot;, &quot;nn:&quot;, gaym_msg_away},       /* User is away */
+     {
+-    &quot;303&quot;, &quot;n:&quot;, gaym_msg_ison},        /* ISON reply */
+-    {
+     &quot;311&quot;, &quot;nnvvv:&quot;, gaym_msg_whois},   /* Whois user */
+     {
+     &quot;312&quot;, &quot;nnv:&quot;, gaym_msg_whois},     /* Whois server */
+@@ -187,20 +185,17 @@
+             (&quot;quit [message]:  Disconnect from the server, with an optional message.&quot;)},
+     {
+     &quot;quote&quot;, &quot;*&quot;, gaym_cmd_quote,
+-            N_(&quot;quote [...]:  Send a raw command to the server.&quot;)}, 
+-    {
++            N_(&quot;quote [...]:  Send a raw command to the server.&quot;)}, {
+     &quot;umode&quot;, &quot;:&quot;, gaym_cmd_mode,
+             N_
+             (&quot;umode &lt;+|-&gt;&lt;A-Za-z&gt;:  Set or unset a user mode.&quot;)},
+     {
+     &quot;trace&quot;, &quot;n&quot;, gaym_cmd_trace,
+-            N_(&quot;trace &lt;nick&gt;: Get trace information on a user.&quot;)}, 
+-
+-    {
++            N_(&quot;trace &lt;nick&gt;: Get trace information on a user.&quot;)}, {
+     &quot;whois&quot;, &quot;n&quot;, gaym_cmd_whois,
+             N_(&quot;whois &lt;nick&gt;:  Get information on a user.&quot;)}, {
+     NULL, NULL, NULL}
+-    
++
+ };
+ 
+ static GaimCmdRet gaym_parse_gaim_cmd(GaimConversation * conv,
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000108.html">[Qrc-svn] r177 - qrc/trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000110.html">[Qrc-svn] r179 - qrc/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#109">[ date ]</a>
+              <a href="thread.html#109">[ thread ]</a>
+              <a href="subject.html#109">[ subject ]</a>
+              <a href="author.html#109">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

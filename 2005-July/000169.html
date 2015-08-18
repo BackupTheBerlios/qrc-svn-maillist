@@ -1,0 +1,432 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r239 - in qrc/trunk: gaym/src gaym-extras
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r239%20-%20in%20qrc/trunk%3A%20gaym/src%20gaym-extras&In-Reply-To=%3C200507241936.j6OJa8dC013004%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000168.html">
+   <LINK REL="Next"  HREF="000170.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r239 - in qrc/trunk: gaym/src gaym-extras</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r239%20-%20in%20qrc/trunk%3A%20gaym/src%20gaym-extras&In-Reply-To=%3C200507241936.j6OJa8dC013004%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r239 - in qrc/trunk: gaym/src gaym-extras">jblebrun at berlios.de
+       </A><BR>
+    <I>Sun Jul 24 21:36:08 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000168.html">[Qrc-svn] r238 - qrc/trunk/gaym-extras
+</A></li>
+        <LI>Next message: <A HREF="000170.html">[Qrc-svn] r240 - qrc/trunk/gaym-extras
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#169">[ date ]</a>
+              <a href="thread.html#169">[ thread ]</a>
+              <a href="subject.html#169">[ subject ]</a>
+              <a href="author.html#169">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-07-24 21:36:03 +0200 (Sun, 24 Jul 2005)
+New Revision: 239
+
+Modified:
+   qrc/trunk/gaym-extras/gaym-extras.c
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/gayminfo.c
+   qrc/trunk/gaym/src/msgs.c
+   qrc/trunk/gaym/src/weblogin.c
+Log:
+PLEASE BEAT THE HELL OUT OF THIS! 
+
+*Various bug/crash fixes
+*channel_members struct also maintains info for open pvt ims
+*Added bio display to pvt windows
+*Probably need to change the name of channel_member, channel_members, since it includes pvt ims too.
+
+gaym-extras.c:
+*Add stat info to bio display
+*Add bio display in pvt ims
+
+gayminfo.c:
+*ran indent
+
+msgs.c:
+*New signal gets emitted in gaym_msg_whois
+*gaym_msg_whois updates the channel_members entry
+
+gaym.c:
+*Add signal to notify of info updates.
+*Debug messages to keep track of channel_member reference counting
+*Added hooks to store pvt im conversation user info in channel_members, too.
+
+
+
+
+
+
+
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-24 08:53:02 UTC (rev 238)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-24 19:36:03 UTC (rev 239)
+@@ -848,8 +848,13 @@
+         channel_member-&gt;ref_count = 1;
+         g_hash_table_insert(gaym-&gt;channel_members, g_strdup(name),
+                             channel_member);
++        gaim_debug_misc(&quot;gaym&quot;, &quot;Creating channel_members entry for %s\n&quot;,
++                        name);
+         return g_hash_table_lookup(gaym-&gt;channel_members, name);
+     } else {
++        gaim_debug_misc(&quot;gaym&quot;,
++                        &quot;Adding reference to channel_members entry for %s\n&quot;,
++                        name);
+         (channel_member-&gt;ref_count)++;
+         return channel_member;
+     }
+@@ -874,8 +879,11 @@
+ 
+         channel_member-&gt;ref_count--;
+ 
+-        if (channel_member-&gt;ref_count == 0)
++        if (channel_member-&gt;ref_count == 0) {
++            gaim_debug_misc(&quot;gaym&quot;, &quot;Removing %s from channel_members\n&quot;,
++                            name);
+             return g_hash_table_remove(gaym-&gt;channel_members, name);
++        }
+         return FALSE;
+     }
+ }
+@@ -1412,13 +1420,23 @@
+ }
+ static void gaym_clean_channel_members(GaimConversation * conv)
+ {
+-    GaimConvChat *chat = gaim_conversation_get_chat_data(conv);
+-    GaimConnection *gc = gaim_conversation_get_gc(conv);
+-    struct gaym_conn *gaym = gc-&gt;proto_data;
+-    GList *users = gaim_conv_chat_get_users(chat);
+-    gaim_debug_misc(&quot;gaym&quot;, &quot;got userlist %x length %i\n&quot;, users,
+-                    g_list_length(users));
+-    g_list_foreach(users, (GFunc) deref_one_user, gaym);
++
++    g_return_if_fail(conv != NULL);
++
++    if (conv-&gt;type == GAIM_CONV_CHAT) {
++        GaimConvChat *chat = gaim_conversation_get_chat_data(conv);
++        GaimConnection *gc = gaim_conversation_get_gc(conv);
++        struct gaym_conn *gaym = gc-&gt;proto_data;
++        GList *users = gaim_conv_chat_get_users(chat);
++        gaim_debug_misc(&quot;gaym&quot;, &quot;got userlist %x length %i\n&quot;, users,
++                        g_list_length(users));
++        g_list_foreach(users, (GFunc) deref_one_user, gaym);
++    } else if (conv-&gt;type == GAIM_CONV_IM) {
++        gaim_debug_misc(&quot;gaym&quot;, &quot;removing reference to %s\n&quot;, conv-&gt;name);
++        GaimConnection *gc = gaim_conversation_get_gc(conv);
++        struct gaym_conn *gaym = gc-&gt;proto_data;
++        gaym_unreference_channel_member(gaym, conv-&gt;name);
++    }
+ }
+ static void gaym_get_photo_info(GaimConversation * conv)
+ {
+@@ -1436,7 +1454,6 @@
+         struct gaym_conn *gaym;
+ 
+         GaimConnection *gc = gaim_conversation_get_gc(conv);
+-
+         gaym = (struct gaym_conn *) gc-&gt;proto_data;
+ 
+         if (!gaym) {
+@@ -1465,8 +1482,11 @@
+         gaim_debug_misc(&quot;gaym&quot;, &quot;Conversation triggered command: %s\n&quot;,
+                         buf);
+         gaym_send(gaym, buf);
++        gaym_get_channel_member_reference(gaym, name);
+         g_free(name);
+         g_free(buf);
++        // Opens a reference in channel_members.
++
+     }
+ }
+ 
+@@ -1606,11 +1626,17 @@
+ 
+ 
+     gaim_signal_connect(gaim_conversations_get_handle(),
+-                        &quot;chat-left&quot;, plugin,
++                        &quot;deleting-conversation&quot;, plugin,
+                         GAIM_CALLBACK(gaym_clean_channel_members), NULL);
+ 
++    gaim_signal_register(gaim_accounts_get_handle(),
++                         &quot;info-updated&quot;,
++                         gaim_marshal_VOID__POINTER_POINTER, NULL, 3,
++                         gaim_value_new(GAIM_TYPE_SUBTYPE,
++                                        GAIM_SUBTYPE_ACCOUNT),
++                         gaim_value_new(GAIM_TYPE_POINTER,
++                                        GAIM_TYPE_CHAR));
+ 
+-
+     gaim_prefs_add_none(&quot;/plugins/prpl/gaym&quot;);
+     gaim_prefs_add_int(&quot;/plugins/prpl/gaym/chat_room_instances&quot;, 4);
+     gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/show_join&quot;, TRUE);
+
+Modified: qrc/trunk/gaym/src/gayminfo.c
+===================================================================
+--- qrc/trunk/gaym/src/gayminfo.c	2005-07-24 08:53:02 UTC (rev 238)
++++ qrc/trunk/gaym/src/gayminfo.c	2005-07-24 19:36:03 UTC (rev 239)
+@@ -87,7 +87,7 @@
+     GaymChannelMember *cm = gaym_get_channel_member_reference(gaym, nick);
+     if (!cm) {
+         gaim_debug_error(&quot;gaym&quot;,
+-                         &quot;ERROR: A member has joined a channel, but we were unable to add the member to the internal management structure. Report a bug.&quot;);
++                         &quot;ERROR: A member has joined a channel, or a conversation was opened, but we were unable to add the member to the internal management structure. Report a bug.&quot;);
+         return;
+     } else {
+         gchar *stats = gaym_stats_strdup(info);
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-07-24 08:53:02 UTC (rev 238)
++++ qrc/trunk/gaym/src/msgs.c	2005-07-24 19:36:03 UTC (rev 239)
+@@ -277,16 +277,24 @@
+ 
+     struct gaym_fetch_thumbnail_data *data;
+ 
++    // Update, but then release the reference. It was already opened
++    // during conversation-created.
++    gaym_update_channel_member(gaym, args[1], args[5]);
++    gaym_unreference_channel_member(gaym, args[1]);
++    gaim_signal_emit(gaim_accounts_get_handle(), &quot;info-updated&quot;,
++                     gaym-&gt;account, args[1]);
++
+     if (g_hash_table_lookup(gaym-&gt;info_window_needed, normalized)) {
+-        g_hash_table_remove(gaym-&gt;info_window_needed, normalized);
+-        char *hashurl = g_hash_table_lookup(gaym-&gt;confighash,
+-                                            &quot;ohm.profile-url&quot;);
+-        g_return_if_fail(hashurl != NULL);
++
+         data = g_new0(struct gaym_fetch_thumbnail_data, 1);
+         data-&gt;gc = gaim_account_get_connection(gaym-&gt;account);
+         data-&gt;who = g_strdup(args[1]);
+         data-&gt;bio = gaym_bio_strdup(args[5]);
+         data-&gt;stats = gaym_stats_strdup(args[5]);
++        g_hash_table_remove(gaym-&gt;info_window_needed, normalized);
++        char *hashurl = g_hash_table_lookup(gaym-&gt;confighash,
++                                            &quot;ohm.profile-url&quot;);
++        g_return_if_fail(hashurl != NULL);
+ 
+         char *infourl = g_strdup_printf(&quot;%s?pw=%s&amp;name=%s&quot;, hashurl,
+                                         gaym-&gt;hash_pw, args[1]);
+@@ -710,6 +718,7 @@
+ 
+     gaym_buddy_status(gaym, nick, TRUE, args[1]);
+ 
++
+     gboolean gaym_botfilter_permit =
+         gaym_botfilter_check(gc, nick, bio, FALSE);
+ 
+
+Modified: qrc/trunk/gaym/src/weblogin.c
+===================================================================
+--- qrc/trunk/gaym/src/weblogin.c	2005-07-24 08:53:02 UTC (rev 238)
++++ qrc/trunk/gaym/src/weblogin.c	2005-07-24 19:36:03 UTC (rev 239)
+@@ -267,6 +267,7 @@
+ // 
+ // 
+ // 
++// 
+ // this
+ // structure, as well.
+ static void
+@@ -303,6 +304,7 @@
+                        // 
+                        // 
+                        // 
++                       // 
+                        // (see 
+                        // above)
+                        (gfud-&gt;full ? &quot;&quot; : &quot;/&quot;),
+@@ -318,6 +320,7 @@
+                        // 
+                        // 
+                        // 
++                       // 
+                        // See 
+                        // above
+                        (gfud-&gt;full ? &quot;&quot; : &quot;/&quot;),
+
+Modified: qrc/trunk/gaym-extras/gaym-extras.c
+===================================================================
+--- qrc/trunk/gaym-extras/gaym-extras.c	2005-07-24 08:53:02 UTC (rev 238)
++++ qrc/trunk/gaym-extras/gaym-extras.c	2005-07-24 19:36:03 UTC (rev 239)
+@@ -23,6 +23,7 @@
+ 
+ GHashTable *icons;
+ GHashTable *pending_updates;
++GHashTable *im_window_bios;
+ 
+ typedef struct _GaymChatIcon {
+ 
+@@ -221,6 +222,9 @@
+ static void changed_cb(GtkTreeSelection * selection, gpointer conv)
+ {
+ 
++    g_return_if_fail(selection != NULL);
++    g_return_if_fail(conv != NULL);
++
+     GaimConversation *c = (GaimConversation *) conv;
+     GaymChannelMember *cm;
+     struct gaym_conn *gaym = c-&gt;account-&gt;gc-&gt;proto_data;
+@@ -228,7 +232,9 @@
+     GtkTreeModel *model;
+     gchar *name;
+ 
+-    gtk_tree_selection_get_selected(selection, &amp;model, &amp;iter);
++    if (!gtk_tree_selection_get_selected(selection, &amp;model, &amp;iter))
++        return;
++
+     gtk_tree_model_get(model, &amp;iter, CHAT_USERS_NAME_COLUMN, &amp;name, -1);
+ 
+     /* Remove the current icon stuff */
+@@ -242,7 +248,18 @@
+     gaim_debug_misc(&quot;chaticon&quot;, &quot;got thumbnail url %s for %s\n&quot;,
+                     cm-&gt;thumbnail, name);
+ 
+-    gtk_label_set_text(GTK_LABEL(icon_data-&gt;bio_area), cm-&gt;bio);
++    char *buf;
++    buf = g_strdup_printf(&quot; &quot;);
++    if (cm-&gt;age)
++        buf = g_strdup_printf(&quot;Age: %s&quot;, cm-&gt;age);
++    if (cm-&gt;location)
++        buf = g_strdup_printf(&quot;%s Location: %s&quot;, buf, cm-&gt;location);
++    if (cm-&gt;bio)
++        buf = g_strdup_printf(&quot;%s\nBio: %s&quot;, buf, cm-&gt;bio);
++
++    gtk_label_set_text(GTK_LABEL(icon_data-&gt;bio_area), buf);
++    gtk_label_set_line_wrap(GTK_LABEL(icon_data-&gt;bio_area), TRUE);
++    g_free(buf);
+     // Fetch thumbnail.
+ 
+     struct gaym_fetch_thumbnail_data *data;
+@@ -261,6 +278,60 @@
+ 
+ }
+ 
++static void clean_im_bio(GaimConversation * c)
++{
++
++    g_return_if_fail(c-&gt;type == GAIM_CONV_IM);
++    g_hash_table_remove(im_window_bios, c-&gt;name);
++
++}
++
++static void update_im_bio(GaimAccount * account, gchar * name)
++{
++    gaim_debug_misc(&quot;chaticon&quot;, &quot;update bio area: %s\n&quot;, name);
++    g_return_if_fail(name != NULL);
++    g_return_if_fail(account != NULL);
++
++    GaimConversation *c =
++        gaim_find_conversation_with_account(name, account);
++
++    g_return_if_fail(c != NULL);
++
++    gaim_debug_misc(&quot;chaticon&quot;, &quot;got conversation\n&quot;);
++    g_return_if_fail(c-&gt;type == GAIM_CONV_IM);
++
++    GaimGtkConversation *gtkconv = GAIM_GTK_CONVERSATION(c);
++    struct gaym_conn *gaym = account-&gt;gc-&gt;proto_data;
++    GaymChannelMember *cm = gaym_get_channel_member_info(gaym, c-&gt;name);
++
++    g_return_if_fail(cm != NULL);
++
++    gaim_debug_misc(&quot;chaticon&quot;, &quot;got cm\n&quot;);
++    GtkBox *vbox_big = GTK_BOX(gtkconv-&gt;lower_hbox-&gt;parent);
++
++    GtkWidget *bio_area = g_hash_table_lookup(im_window_bios, c-&gt;name);
++    if (!bio_area) {
++        bio_area = gtk_label_new(_(&quot; &quot;));
++        g_hash_table_insert(im_window_bios, c, bio_area);
++        gtk_box_pack_start(vbox_big, bio_area, TRUE, TRUE, 0);
++        gtk_widget_show(bio_area);
++    }
++    gaim_debug_misc(&quot;chaticon&quot;, &quot;Populating bio area with cm %x\n&quot;, cm);
++    char *buf;
++    buf = g_strdup_printf(&quot; &quot;);
++    if (cm-&gt;age)
++        buf = g_strdup_printf(&quot;Age: %s&quot;, cm-&gt;age);
++    if (cm-&gt;location)
++        buf = g_strdup_printf(&quot;%s Location: %s&quot;, buf, cm-&gt;location);
++    if (cm-&gt;bio)
++        buf = g_strdup_printf(&quot;%s\nBio: %s&quot;, buf, cm-&gt;bio);
++
++    gtk_label_set_text(GTK_LABEL(bio_area), buf);
++    gtk_label_set_line_wrap(GTK_LABEL(bio_area), TRUE);
++    g_free(buf);
++
++}
++
+ static void redochatwindow(GaimConversation * c)
+ {
+ 
+@@ -320,7 +391,7 @@
+     gtk_widget_show(icon_data-&gt;event);
+ 
+     icon_data-&gt;bio_area = gtk_label_new(_(&quot;&quot;));
+-    gtk_box_pack_start(vbox_big, icon_data-&gt;bio_area, FALSE, FALSE, 0);
++    gtk_box_pack_start(vbox_big, icon_data-&gt;bio_area, TRUE, TRUE, 0);
+     gtk_widget_show(icon_data-&gt;bio_area);
+ 
+     g_hash_table_insert(icons, c, icon_data);
+@@ -331,9 +402,17 @@
+ {
+     icons = g_hash_table_new(g_direct_hash, g_direct_equal);
+     pending_updates = g_hash_table_new(g_direct_hash, g_direct_equal);
++    im_window_bios =
++        g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL,
++                              (GDestroyNotify) gtk_widget_destroy);
+ 
+     gaim_signal_connect(gaim_conversations_get_handle(), &quot;chat-joined&quot;,
+                         plugin, GAIM_CALLBACK(redochatwindow), NULL);
++    gaim_signal_connect(gaim_accounts_get_handle(), &quot;info-updated&quot;,
++                        plugin, GAIM_CALLBACK(update_im_bio), NULL);
++    gaim_signal_connect(gaim_conversations_get_handle(),
++                        &quot;deleting-conversation&quot;, plugin,
++                        GAIM_CALLBACK(clean_im_bio), NULL);
+ 
+     return TRUE;
+ }
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000168.html">[Qrc-svn] r238 - qrc/trunk/gaym-extras
+</A></li>
+	<LI>Next message: <A HREF="000170.html">[Qrc-svn] r240 - qrc/trunk/gaym-extras
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#169">[ date ]</a>
+              <a href="thread.html#169">[ thread ]</a>
+              <a href="subject.html#169">[ subject ]</a>
+              <a href="author.html#169">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

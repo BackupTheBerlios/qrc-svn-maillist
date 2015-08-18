@@ -1,0 +1,107 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r132 - trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r132%20-%20trunk/gaym/src&In-Reply-To=%3C200506301711.j5UHBMvT003590%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000064.html">
+   
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r132 - trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r132%20-%20trunk/gaym/src&In-Reply-To=%3C200506301711.j5UHBMvT003590%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r132 - trunk/gaym/src">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Thu Jun 30 19:11:22 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000064.html">[Qrc-svn] r131 - trunk/bot-challenger
+</A></li>
+        
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#63">[ date ]</a>
+              <a href="thread.html#63">[ thread ]</a>
+              <a href="subject.html#63">[ subject ]</a>
+              <a href="author.html#63">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-30 19:11:17 +0200 (Thu, 30 Jun 2005)
+New Revision: 132
+
+Modified:
+   trunk/gaym/src/botfilter.c
+Log:
+Don't use bot filtering against members of the permit list or members
+of the buddy list.  Thanks Evan Langlois &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">Evan at CoolRunningConcepts.com</A>&gt;
+
+
+
+Modified: trunk/gaym/src/botfilter.c
+===================================================================
+--- trunk/gaym/src/botfilter.c	2005-06-30 15:02:31 UTC (rev 131)
++++ trunk/gaym/src/botfilter.c	2005-06-30 17:11:17 UTC (rev 132)
+@@ -83,6 +83,7 @@
+         return permitted;
+     }
+ 
++    /* don't ignore self */
+     if (!gaim_utf8_strcasecmp(gc-&gt;account-&gt;username, nick)) {
+         permitted = TRUE;
+         gaim_debug_info(&quot;gaym&quot;, &quot;declining to block/ignore self\n&quot;);
+@@ -90,6 +91,22 @@
+         return permitted;
+     }
+ 
++    /* don't make buddies use the challenge/response system */
++    if (gaim_find_buddy(gc-&gt;account, nick)) {
++        permitted = TRUE;
++        return permitted;
++    }
++
++    /* don't make permit list members use the challenge/response system */
++    GSList *slist = NULL;
++    for (slist = gc-&gt;account-&gt;permit; slist != NULL; slist = slist-&gt;next) {
++        if (!gaim_utf8_strcasecmp
++            (nick, gaim_normalize(gc-&gt;account, (char *) slist-&gt;data))) {
++            permitted = TRUE;
++            return permitted;
++        }
++    }
++
+     /**
+      * prevent gaim privacy changes from affecting previously
+      * filtered bots
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000064.html">[Qrc-svn] r131 - trunk/bot-challenger
+</A></li>
+	
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#63">[ date ]</a>
+              <a href="thread.html#63">[ thread ]</a>
+              <a href="subject.html#63">[ subject ]</a>
+              <a href="author.html#63">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

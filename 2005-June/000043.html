@@ -1,0 +1,299 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r111 - trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r111%20-%20trunk/gaym/src&In-Reply-To=%3C200506162326.j5GNQGQI018342%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000042.html">
+   <LINK REL="Next"  HREF="000044.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r111 - trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r111%20-%20trunk/gaym/src&In-Reply-To=%3C200506162326.j5GNQGQI018342%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r111 - trunk/gaym/src">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Fri Jun 17 01:26:16 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000042.html">[Qrc-svn] r110 - trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000044.html">[Qrc-svn] r112 - trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#43">[ date ]</a>
+              <a href="thread.html#43">[ thread ]</a>
+              <a href="subject.html#43">[ subject ]</a>
+              <a href="author.html#43">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-17 01:26:08 +0200 (Fri, 17 Jun 2005)
+New Revision: 111
+
+Added:
+   trunk/gaym/src/configtxt.c
+   trunk/gaym/src/configtxt.h
+Modified:
+   trunk/gaym/src/Makefile.am
+   trunk/gaym/src/gaym.c
+Log:
+Synchronize local and server deny lists.  Because Gay.com seems to store
+a maximum of 67-68 people on this list, synchronization logic defaults
+to attempting to store the superset of the local and server lists on
+each.
+
+
+Modified: trunk/gaym/src/Makefile.am
+===================================================================
+--- trunk/gaym/src/Makefile.am	2005-06-16 15:03:22 UTC (rev 110)
++++ trunk/gaym/src/Makefile.am	2005-06-16 23:26:08 UTC (rev 111)
+@@ -3,6 +3,8 @@
+ 
+ GAYMSOURCES = \
+ 	cmds.c \
++	configtxt.c \
++	configtxt.h \
+ 	dcc_send.c \
+ 	gaym.c \
+ 	gaym.h \
+
+Added: trunk/gaym/src/configtxt.c
+===================================================================
+--- trunk/gaym/src/configtxt.c	2005-06-16 15:03:22 UTC (rev 110)
++++ trunk/gaym/src/configtxt.c	2005-06-16 23:26:08 UTC (rev 111)
+@@ -0,0 +1,111 @@
++/**
++ * GayM
++ *
++ * GayM is the legal property of its developers, whose names are too numerous
++ * to list here.  Please refer to the COPYRIGHT file distributed with this
++ * source distribution.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
++
++/* config.h */
++#ifdef HAVE_CONFIG_H
++#include &quot;config.h&quot;
++#endif
++
++/* system headers */
++#include &lt;glib.h&gt;
++
++/* gaim headers for this plugin */
++#include &quot;util.h&quot;
++#include &quot;debug.h&quot;
++#include &quot;account.h&quot;
++#include &quot;privacy.h&quot;
++
++/* local headers for this plugin */
++#include &quot;gaympriv.h&quot;
++#include &quot;gaym.h&quot;
++
++void synchronize_deny_list(GaimConnection * gc, const char *configtxt)
++{
++    char *srvdeny = NULL;
++    char *start = NULL;
++    char *end = NULL;
++    gchar **srvdenylist = NULL;
++    GSList *list;
++    gint i = 0;
++    gboolean needsync = FALSE;
++
++    start =
++        g_strstr_len(configtxt, -1, &quot;connect-list.ignore.members=&quot;) + 28;
++    end = g_strstr_len(start, -1, &quot;\n&quot;);
++    srvdeny = g_strndup(start, end - start);
++
++    srvdenylist = g_strsplit(srvdeny, &quot;,&quot;, -1);
++
++    /* Add server deny list from config.txt to local deny list */
++    for (i = 0; srvdenylist[i]; i++) {
++        needsync = TRUE;
++        for (list = gc-&gt;account-&gt;deny; list != NULL; list = list-&gt;next) {
++            if (!gaim_utf8_strcasecmp
++                (srvdenylist[i],
++                 gaim_normalize(gc-&gt;account, (char *) list-&gt;data))) {
++                needsync = FALSE;
++                break;
++            }
++        }
++        if (needsync) {
++            if (!gaim_privacy_deny_add(gc-&gt;account, srvdenylist[i], TRUE)) {
++                gaim_debug_error(&quot;gaym&quot;,
++                                 &quot;Failed to add %s to local deny list from server.\n&quot;,
++                                 srvdenylist[i]);
++            } else {
++                gaim_debug_misc(&quot;gaym&quot;,
++                                &quot;Added %s to local deny list from server.\n&quot;,
++                                srvdenylist[i]);
++            }
++        }
++    }
++
++    /* Add local deny list not found in config.txt to server deny list */
++    for (list = gc-&gt;account-&gt;deny; list != NULL; list = list-&gt;next) {
++        needsync = TRUE;
++        for (i = 0; srvdenylist[i]; i++) {
++            if (!gaim_utf8_strcasecmp
++                (srvdenylist[i],
++                 gaim_normalize(gc-&gt;account, (char *) list-&gt;data))) {
++                needsync = FALSE;
++                break;
++            }
++        }
++        if (needsync) {
++            gaym_server_store_deny(gc, (char *) list-&gt;data, TRUE);
++        }
++    }
++
++    g_strfreev(srvdenylist);
++    g_free(srvdeny);
++    return;
++}
++
++void process_configtxt(GaimConnection * gc, const char *configtxt)
++{
++    synchronize_deny_list(gc, configtxt);
++    return;
++}
++
++/**
++ * vim:tabstop=4:shiftwidth=4:expandtab:
++ */
+
+Added: trunk/gaym/src/configtxt.h
+===================================================================
+--- trunk/gaym/src/configtxt.h	2005-06-16 15:03:22 UTC (rev 110)
++++ trunk/gaym/src/configtxt.h	2005-06-16 23:26:08 UTC (rev 111)
+@@ -0,0 +1,54 @@
++/**
++ * @file configtxt.h GayM Privacy API
++ *
++ * GayM
++ *
++ * GayM is the legal property of its developers, whose names are too numerous
++ * to list here.  Please refer to the COPYRIGHT file distributed with this
++ * source distribution.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
++#ifndef _GAIM_GAYM_CONFIGTXT_H_
++#define _GAIM_GAYM_CONFIGTXT_H_
++
++#include &quot;connection.h&quot;
++
++/**
++ * Try to synchronize the server's deny list with gaim's local deny
++ * list.  Because there may be a limit to the number of people you can
++ * store on the server's deny list, this function's goal so to put the
++ * superset of the two on both.
++ *
++ * @param gc        The connection.
++ * @param configtxt The config.txt java properties retrieved from Gay.com.
++ */
++void synchronize_deny_list(GaimConnection * gc, const char *configtxt);
++
++/**
++ * This is the driver function to do all the processing of the config.txt
++ * java properties file upon retrieval from Gay.com.  It should perform
++ * each of the above functions.
++ *
++ * @param gc        The connection.
++ * @param configtxt The config.txt java properties retrieved from Gay.com.
++ */
++void process_configtxt(GaimConnection * gc, const char *configtxt);
++
++#endif                          /* _GAIM_GAYM_CONFIGTXT_H_ */
++
++/**
++ * vim:tabstop=4:shiftwidth=4:expandtab:
++ */
+
+Modified: trunk/gaym/src/gaym.c
+===================================================================
+--- trunk/gaym/src/gaym.c	2005-06-16 15:03:22 UTC (rev 110)
++++ trunk/gaym/src/gaym.c	2005-06-16 23:26:08 UTC (rev 111)
+@@ -38,6 +38,7 @@
+ 
+ #include &quot;helpers.h&quot;
+ #include &quot;gaympriv.h&quot;
++#include &quot;configtxt.h&quot;
+ #include &quot;gaym.h&quot;
+ 
+ char *gaym_mask_bio(const char *biostring);
+@@ -353,6 +354,7 @@
+                                   const gchar * config_text, size_t len)
+ {
+     struct gaym_conn *gaym = (struct gaym_conn *) proto_data;
++    GaimConnection *gc = gaim_account_get_connection(gaym-&gt;account);
+ 
+     if (!config_text) {
+         return;
+@@ -365,6 +367,8 @@
+     if (!gaym-&gt;configtxt) {
+         gaim_debug(GAIM_DEBUG_ERROR, &quot;gaym&quot;,
+                    &quot;Could not convert config.txt to utf-8.\n&quot;);
++    } else {
++        process_configtxt(gc, gaym-&gt;configtxt);
+     }
+     return;
+ }
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000042.html">[Qrc-svn] r110 - trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000044.html">[Qrc-svn] r112 - trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#43">[ date ]</a>
+              <a href="thread.html#43">[ thread ]</a>
+              <a href="subject.html#43">[ subject ]</a>
+              <a href="author.html#43">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

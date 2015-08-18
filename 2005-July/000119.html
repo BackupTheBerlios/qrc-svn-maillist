@@ -1,0 +1,103 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r188 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r188%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507111458.j6BEwD2h023962%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000118.html">
+   <LINK REL="Next"  HREF="000120.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r188 - qrc/trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r188%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507111458.j6BEwD2h023962%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r188 - qrc/trunk/gaym/src">deckrider at berlios.de
+       </A><BR>
+    <I>Mon Jul 11 16:58:13 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000118.html">[Qrc-svn] r187 - qrc/trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000120.html">[Qrc-svn] r189 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#119">[ date ]</a>
+              <a href="thread.html#119">[ thread ]</a>
+              <a href="subject.html#119">[ subject ]</a>
+              <a href="author.html#119">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-11 16:58:12 +0200 (Mon, 11 Jul 2005)
+New Revision: 188
+
+Modified:
+   qrc/trunk/gaym/src/gaym.c
+Log:
+updated comments
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-11 13:50:40 UTC (rev 187)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-11 14:58:12 UTC (rev 188)
+@@ -286,7 +286,6 @@
+ 
+ static void gaym_set_info(GaimConnection * gc, const char *info)
+ {
+-
+     struct gaym_conn *gaym = gc-&gt;proto_data;
+     GaimAccount *account = gaim_connection_get_account(gc);
+     char *hostname = &quot;none&quot;;
+@@ -698,10 +697,19 @@
+         gc-&gt;away = NULL;
+     }
+ 
++    /**
++     * FIXME:  set the Bio to the away message; if the away message
++     * is NULL, then set the Bio to the original bio.
++     */
++
+     if (msg)
+         gc-&gt;away = g_strdup(msg);
+ 
+     /**
++     *  The following would be great, and gay.com's server supports
++     *  it, but gay.com's clients don't see the result.  So even though
++     *  we can see the result, we won't bother.
++     *
+      * args[0] = msg;
+      * gaym_cmd_away(gaym, &quot;away&quot;, NULL, args);
+      */
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000118.html">[Qrc-svn] r187 - qrc/trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000120.html">[Qrc-svn] r189 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#119">[ date ]</a>
+              <a href="thread.html#119">[ thread ]</a>
+              <a href="subject.html#119">[ subject ]</a>
+              <a href="author.html#119">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

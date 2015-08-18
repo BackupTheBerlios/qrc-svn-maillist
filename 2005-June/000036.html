@@ -1,0 +1,137 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r99 - trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r99%20-%20trunk/gaym/src&In-Reply-To=%3C200506122228.j5CMSn5W004682%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000035.html">
+   <LINK REL="Next"  HREF="000037.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r99 - trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r99%20-%20trunk/gaym/src&In-Reply-To=%3C200506122228.j5CMSn5W004682%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r99 - trunk/gaym/src">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Mon Jun 13 00:28:49 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000035.html">[Qrc-svn] r98 - trunk
+</A></li>
+        <LI>Next message: <A HREF="000037.html">[Qrc-svn] r100 - trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#36">[ date ]</a>
+              <a href="thread.html#36">[ thread ]</a>
+              <a href="subject.html#36">[ subject ]</a>
+              <a href="author.html#36">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-13 00:28:48 +0200 (Mon, 13 Jun 2005)
+New Revision: 99
+
+Modified:
+   trunk/gaym/src/gaympriv.c
+Log:
+Fixed Bot Challenger memory leaks and changed to only asking the
+once.
+
+
+Modified: trunk/gaym/src/gaympriv.c
+===================================================================
+--- trunk/gaym/src/gaympriv.c	2005-06-12 20:03:07 UTC (rev 98)
++++ trunk/gaym/src/gaympriv.c	2005-06-12 22:28:48 UTC (rev 99)
+@@ -259,39 +259,47 @@
+              * queue and ask the question
+              */
+             if (pos == 19) {    /* don't track more than 10 pending */
++                g_free(g_list_nth_data(challenge_q, 0));
+                 challenge_q =
+-                    g_list_remove(challenge_q,
+-                                  g_list_nth_data(challenge_q, 0));
++                    g_list_remove_link(challenge_q,
++                                       g_list_nth(challenge_q, 0));
++
++                g_free(g_list_nth_data(challenge_q, 0));
+                 challenge_q =
+-                    g_list_remove(challenge_q,
+-                                  g_list_nth_data(challenge_q, 0));
++                    g_list_remove_link(challenge_q,
++                                       g_list_nth(challenge_q, 0));
+             }
+             challenge_q = g_list_append(challenge_q, g_strdup(nick));
+             challenge_q = g_list_append(challenge_q, g_strdup(msg));
+-            args[1] = _(&quot;GayM Bot Challenger requires a correct answer:&quot;);
++            args[1] =
++                g_strdup_printf(_
++                                (&quot;GayM Bot Challenger engaged!  You are now on auto-ignore until you provide the correct answer:  %s&quot;),
++                                question);
+             gaym_cmd_privmsg(gc-&gt;proto_data, &quot;msg&quot;, NULL, args);
+-            args[1] = question;
+-            gaym_cmd_privmsg(gc-&gt;proto_data, &quot;msg&quot;, NULL, args);
++            g_free((gpointer) args[1]);
+             retval = FALSE;
+         } else {
+             if (gaim_utf8_strcasecmp(msg, answer)) {
+                 /**
+                  * Sorry, thanks for playing, please try again
+                  */
+-                args[1] = question;
+-                gaym_cmd_privmsg(gc-&gt;proto_data, &quot;msg&quot;, NULL, args);
+                 retval = FALSE;
+             } else {
+-                args[1] = _(&quot;Your answer was accepted&quot;);
++                args[1] =
++                    _
++                    (&quot;Bot Challenger accepted your answer and delivered your original message.  You may now speak freely.&quot;);
+                 gaym_cmd_privmsg(gc-&gt;proto_data, &quot;msg&quot;, NULL, args);
+ 
+                 GList *next = tmp-&gt;next;
+                 char *q_msg = next-&gt;data;
+                 serv_got_im(gc, nick, q_msg, 0, time(NULL));
+ 
+-                challenge_q = g_list_remove(challenge_q, next-&gt;data);
+-                challenge_q = g_list_remove(challenge_q, tmp-&gt;data);
++                g_free(next-&gt;data);
++                g_free(tmp-&gt;data);
+ 
++                challenge_q = g_list_remove_link(challenge_q, next);
++                challenge_q = g_list_remove_link(challenge_q, tmp);
++
+                 retval = FALSE;
+             }
+         }
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000035.html">[Qrc-svn] r98 - trunk
+</A></li>
+	<LI>Next message: <A HREF="000037.html">[Qrc-svn] r100 - trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#36">[ date ]</a>
+              <a href="thread.html#36">[ thread ]</a>
+              <a href="subject.html#36">[ subject ]</a>
+              <a href="author.html#36">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

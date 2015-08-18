@@ -1,0 +1,245 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r51 - gaym/trunk/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r51%20-%20gaym/trunk/src&In-Reply-To=%3C200506021817.j52IHRrQ007800%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000001.html">
+   <LINK REL="Next"  HREF="000003.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r51 - gaym/trunk/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r51%20-%20gaym/trunk/src&In-Reply-To=%3C200506021817.j52IHRrQ007800%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r51 - gaym/trunk/src">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Thu Jun  2 20:17:27 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000001.html">[Qrc-svn] r50 - gaym/trunk
+</A></li>
+        <LI>Next message: <A HREF="000003.html">[Qrc-svn] r52 - gaym/trunk/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2">[ date ]</a>
+              <a href="thread.html#2">[ thread ]</a>
+              <a href="subject.html#2">[ subject ]</a>
+              <a href="author.html#2">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-02 20:17:26 +0200 (Thu, 02 Jun 2005)
+New Revision: 51
+
+Modified:
+   gaym/trunk/src/gaym.c
+   gaym/trunk/src/helpers.c
+   gaym/trunk/src/helpers.h
+Log:
+- Make privacy a bit more efficient.
+- Do not allow adding of self to permit/deny lists.
+- Do not block/ignore self.
+- Spelling corrections in Preferences-&gt;GayM-&gt;Conversations (thanks
+  r0bby__).
+
+
+Modified: gaym/trunk/src/gaym.c
+===================================================================
+--- gaym/trunk/src/gaym.c	2005-06-01 02:09:19 UTC (rev 50)
++++ gaym/trunk/src/gaym.c	2005-06-02 18:17:26 UTC (rev 51)
+@@ -222,11 +222,13 @@
+         return;
+     }
+ }
++
+ static void gaym_show_set_info(GaimPluginAction * action)
+ {
+     GaimConnection *gc = (GaimConnection *) action-&gt;context;
+     gaim_account_request_change_user_info(gaim_connection_get_account(gc));
+ }
++
+ static GList *gaym_actions(GaimPlugin * plugin, gpointer context)
+ {
+     GList *list = NULL;
+@@ -600,7 +602,7 @@
+ 
+ static void gaym_add_permit(GaimConnection * gc, const char *name)
+ {
+-    gaym_privacy_change(gc);
++    gaym_privacy_change(gc, name);
+ }
+ 
+ static void gaym_add_deny(GaimConnection * gc, const char *name)
+@@ -617,12 +619,12 @@
+     // list=ignore
+     // command=add
+ 
+-    gaym_privacy_change(gc);
++    gaym_privacy_change(gc, name);
+ }
+ 
+ static void gaym_rem_permit(GaimConnection * gc, const char *name)
+ {
+-    gaym_privacy_change(gc);
++    gaym_privacy_change(gc, name);
+ }
+ 
+ static void gaym_rem_deny(GaimConnection * gc, const char *name)
+@@ -639,12 +641,12 @@
+     // list=ignore
+     // command=remove
+ 
+-    gaym_privacy_change(gc);
++    gaym_privacy_change(gc, name);
+ }
+ 
+ static void gaym_set_permit_deny(GaimConnection * gc)
+ {
+-    gaym_privacy_change(gc);
++    gaym_privacy_change(gc, NULL);
+ }
+ 
+ static void gaym_chat_join(GaimConnection * gc, GHashTable * data)
+@@ -944,13 +946,13 @@
+     ppref =
+         gaim_plugin_pref_new_with_name_and_label
+         (&quot;/plugins/prpl/gaym/show_join_leave_msgs&quot;,
+-         _(&quot;Show entance/exit messages&quot;));
++         _(&quot;Show entrance/exit messages&quot;));
+     gaim_plugin_pref_frame_add(frame, ppref);
+ 
+     ppref =
+         gaim_plugin_pref_new_with_name_and_label
+         (&quot;/plugins/prpl/gaym/show_bio_with_join&quot;,
+-         _(&quot;Show bio when entance messages are shown.&quot;));
++         _(&quot;Show bio when entrance messages are shown&quot;));
+     gaim_plugin_pref_frame_add(frame, ppref);
+ 
+     // ppref = gaim_plugin_pref_new_with_name_and_label(
+@@ -1011,7 +1013,6 @@
+     prpl_info.protocol_options =
+         g_list_append(prpl_info.protocol_options, option);
+ 
+-
+     option = gaim_account_option_string_new(_(&quot;Bio Line&quot;), &quot;bioline&quot;, &quot;&quot;);
+     prpl_info.protocol_options =
+         g_list_append(prpl_info.protocol_options, option);
+
+Modified: gaym/trunk/src/helpers.c
+===================================================================
+--- gaym/trunk/src/helpers.c	2005-06-01 02:09:19 UTC (rev 50)
++++ gaym/trunk/src/helpers.c	2005-06-02 18:17:26 UTC (rev 51)
+@@ -178,11 +178,35 @@
+         break;
+     }
+ 
++    // don't block/ignore self
++    if (!gaim_utf8_strcasecmp(gc-&gt;account-&gt;username, nick)) {
++        permitted = TRUE;
++        gaim_debug_info(&quot;gaym&quot;, &quot;declining to block/ignore self\n&quot;);
++        return permitted;
++    }
++
+     return permitted;
+ }
+ 
+-void gaym_privacy_change(GaimConnection * gc)
++// if name is NULL, then we reset all names, otherwise
++// only the name provided
++
++void gaym_privacy_change(GaimConnection * gc, const char *name)
+ {
++    // don't allow adding self to permit/deny lists
++
++    if (name) {
++        if (!gaim_utf8_strcasecmp(gc-&gt;account-&gt;username, name)) {
++            gaim_privacy_deny_remove(gc-&gt;account, gc-&gt;account-&gt;username,
++                                     TRUE);
++            gaim_privacy_permit_remove(gc-&gt;account, gc-&gt;account-&gt;username,
++                                       TRUE);
++            gaim_debug_info(&quot;gaym&quot;,
++                             &quot;declining to add self to permit/deny list\n&quot;);
++            return;
++        }
++    }
++
+     GSList *rooms = NULL;
+     for (rooms = gc-&gt;buddy_chats; rooms; rooms = rooms-&gt;next) {
+         GaimConversation *convo = rooms-&gt;data;
+@@ -192,12 +216,25 @@
+             GaimConvChatBuddy *buddy = people-&gt;data;
+             GaimConversationUiOps *ops =
+                 gaim_conversation_get_ui_ops(convo);
+-            if (gaym_privacy_check(gc, buddy-&gt;name)) {
+-                gaim_conv_chat_unignore(GAIM_CONV_CHAT(convo),
+-                                        buddy-&gt;name);
+-                ops-&gt;chat_update_user((convo), buddy-&gt;name);
++            if (name) {
++                if (!gaim_utf8_strcasecmp(name, buddy-&gt;name)) {
++                    if (gaym_privacy_check(gc, buddy-&gt;name)) {
++                        gaim_conv_chat_unignore(GAIM_CONV_CHAT(convo),
++                                                buddy-&gt;name);
++                    } else {
++                        gaim_conv_chat_ignore(GAIM_CONV_CHAT(convo),
++                                              buddy-&gt;name);
++                    }
++                    ops-&gt;chat_update_user((convo), buddy-&gt;name);
++                }
+             } else {
+-                gaim_conv_chat_ignore(GAIM_CONV_CHAT(convo), buddy-&gt;name);
++                if (gaym_privacy_check(gc, buddy-&gt;name)) {
++                    gaim_conv_chat_unignore(GAIM_CONV_CHAT(convo),
++                                            buddy-&gt;name);
++                } else {
++                    gaim_conv_chat_ignore(GAIM_CONV_CHAT(convo),
++                                          buddy-&gt;name);
++                }
+                 ops-&gt;chat_update_user((convo), buddy-&gt;name);
+             }
+         }
+
+Modified: gaym/trunk/src/helpers.h
+===================================================================
+--- gaym/trunk/src/helpers.h	2005-06-01 02:09:19 UTC (rev 50)
++++ gaym/trunk/src/helpers.h	2005-06-02 18:17:26 UTC (rev 51)
+@@ -18,6 +18,6 @@
+ 
+ gboolean gaym_privacy_check(GaimConnection * gc, const char *nick);
+ 
+-void gaym_privacy_change(GaimConnection * gc);
++void gaym_privacy_change(GaimConnection * gc, const char *name);
+ 
+ // vim:tabstop=4:shiftwidth=4:expandtab:
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000001.html">[Qrc-svn] r50 - gaym/trunk
+</A></li>
+	<LI>Next message: <A HREF="000003.html">[Qrc-svn] r52 - gaym/trunk/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#2">[ date ]</a>
+              <a href="thread.html#2">[ thread ]</a>
+              <a href="subject.html#2">[ subject ]</a>
+              <a href="author.html#2">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

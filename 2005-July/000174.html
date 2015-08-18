@@ -1,0 +1,224 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r244 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r244%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507251257.j6PCvXiK014559%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000173.html">
+   <LINK REL="Next"  HREF="000175.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r244 - qrc/trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r244%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507251257.j6PCvXiK014559%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r244 - qrc/trunk/gaym/src">deckrider at berlios.de
+       </A><BR>
+    <I>Mon Jul 25 14:57:33 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000173.html">[Qrc-svn] r243 - qrc/trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000175.html">[Qrc-svn] r245 - in qrc/trunk: gaym/src gaym-extras
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#174">[ date ]</a>
+              <a href="thread.html#174">[ thread ]</a>
+              <a href="subject.html#174">[ subject ]</a>
+              <a href="author.html#174">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-25 14:57:32 +0200 (Mon, 25 Jul 2005)
+New Revision: 244
+
+Modified:
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/helpers.c
+   qrc/trunk/gaym/src/helpers.h
+Log:
+Moved formatting of tooltip text to helpers.[ch] so that it can be
+consistently used from throughout qrc.
+
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-25 05:05:54 UTC (rev 243)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-25 12:57:32 UTC (rev 244)
+@@ -242,42 +242,7 @@
+         return NULL;
+     }
+ 
+-    char *escaped;
+-    GString *tooltip = g_string_new(&quot;&quot;);
+-
+-    if (ib-&gt;sex) {
+-        escaped = g_markup_escape_text(ib-&gt;sex, strlen(ib-&gt;sex));
+-        g_string_append_printf(tooltip, _(&quot;\n&lt;b&gt;%s:&lt;/b&gt; %s&quot;), _(&quot;Sex&quot;),
+-                               escaped);
+-        g_free(escaped);
+-    }
+-
+-    if (ib-&gt;age) {
+-        escaped = g_markup_escape_text(ib-&gt;age, strlen(ib-&gt;age));
+-        g_string_append_printf(tooltip, _(&quot;\n&lt;b&gt;%s:&lt;/b&gt; %s&quot;), _(&quot;Age&quot;),
+-                               escaped);
+-        g_free(escaped);
+-    }
+-
+-    if (ib-&gt;location) {
+-        escaped = g_markup_escape_text(ib-&gt;location, strlen(ib-&gt;location));
+-        g_string_append_printf(tooltip, _(&quot;\n&lt;b&gt;%s:&lt;/b&gt; %s&quot;),
+-                               _(&quot;Location&quot;), escaped);
+-        g_free(escaped);
+-    }
+-
+-    if (ib-&gt;bio) {
+-        escaped = g_markup_escape_text(ib-&gt;bio, strlen(ib-&gt;bio));
+-        g_string_append_printf(tooltip, _(&quot;\n&lt;b&gt;%s:&lt;/b&gt; %s&quot;), _(&quot;Bio&quot;),
+-                               escaped);
+-        g_free(escaped);
+-    }
+-
+-    if (tooltip-&gt;len == 0) {
+-        return g_string_free(tooltip, TRUE);
+-    }
+-
+-    return g_string_free(tooltip, FALSE);
++    return build_tooltip_text(ib);
+ }
+ 
+ static GList *gaym_away_states(GaimConnection * gc)
+@@ -1426,7 +1391,7 @@
+     if (conv-&gt;type == GAIM_CONV_CHAT) {
+         GaimConvChat *chat = gaim_conversation_get_chat_data(conv);
+         GaimConnection *gc = gaim_conversation_get_gc(conv);
+-	g_return_if_fail(gc != NULL);
++        g_return_if_fail(gc != NULL);
+         struct gaym_conn *gaym = gc-&gt;proto_data;
+         GList *users = gaim_conv_chat_get_users(chat);
+         gaim_debug_misc(&quot;gaym&quot;, &quot;got userlist %x length %i\n&quot;, users,
+@@ -1435,7 +1400,7 @@
+     } else if (conv-&gt;type == GAIM_CONV_IM) {
+         gaim_debug_misc(&quot;gaym&quot;, &quot;removing reference to %s\n&quot;, conv-&gt;name);
+         GaimConnection *gc = gaim_conversation_get_gc(conv);
+-	g_return_if_fail(gc != NULL);
++        g_return_if_fail(gc != NULL);
+         struct gaym_conn *gaym = gc-&gt;proto_data;
+ 
+         gaym_unreference_channel_member(gaym, conv-&gt;name);
+
+Modified: qrc/trunk/gaym/src/helpers.c
+===================================================================
+--- qrc/trunk/gaym/src/helpers.c	2005-07-25 05:05:54 UTC (rev 243)
++++ qrc/trunk/gaym/src/helpers.c	2005-07-25 12:57:32 UTC (rev 244)
+@@ -444,6 +444,47 @@
+     return flags;
+ }
+ 
++char *build_tooltip_text(struct gaym_buddy *ib)
++{
++    char *escaped;
++    GString *tooltip = g_string_new(&quot;&quot;);
++
++    g_return_val_if_fail(ib != NULL, NULL);
++
++    if (ib-&gt;sex) {
++        escaped = g_markup_escape_text(ib-&gt;sex, strlen(ib-&gt;sex));
++        g_string_append_printf(tooltip, _(&quot;\n&lt;b&gt;%s:&lt;/b&gt; %s&quot;), _(&quot;Sex&quot;),
++                               escaped);
++        g_free(escaped);
++    }
++
++    if (ib-&gt;age) {
++        escaped = g_markup_escape_text(ib-&gt;age, strlen(ib-&gt;age));
++        g_string_append_printf(tooltip, _(&quot;\n&lt;b&gt;%s:&lt;/b&gt; %s&quot;), _(&quot;Age&quot;),
++                               escaped);
++        g_free(escaped);
++    }
++    if (ib-&gt;location) {
++        escaped = g_markup_escape_text(ib-&gt;location, strlen(ib-&gt;location));
++        g_string_append_printf(tooltip, _(&quot;\n&lt;b&gt;%s:&lt;/b&gt; %s&quot;),
++                               _(&quot;Location&quot;), escaped);
++        g_free(escaped);
++    }
++
++    if (ib-&gt;bio) {
++        escaped = g_markup_escape_text(ib-&gt;bio, strlen(ib-&gt;bio));
++        g_string_append_printf(tooltip, _(&quot;\n&lt;b&gt;%s:&lt;/b&gt; %s&quot;), _(&quot;Bio&quot;),
++                               escaped);
++        g_free(escaped);
++    }
++
++    if (tooltip-&gt;len == 0) {
++        return g_string_free(tooltip, TRUE);
++    }
++
++    return g_string_free(tooltip, FALSE);
++}
++
+ GaimConvChatBuddyFlags include_chat_entry_order(GaimConvChatBuddyFlags
+                                                 flags, gint entry)
+ {
+
+Modified: qrc/trunk/gaym/src/helpers.h
+===================================================================
+--- qrc/trunk/gaym/src/helpers.h	2005-07-25 05:05:54 UTC (rev 243)
++++ qrc/trunk/gaym/src/helpers.h	2005-07-25 12:57:32 UTC (rev 244)
+@@ -28,6 +28,8 @@
+ 
+ #include &quot;roomlist.h&quot;
+ 
++#include &quot;gaym.h&quot;
++
+ char *return_string_between(const char *startbit, const char *endbit,
+                             const char *source);
+ 
+@@ -157,6 +159,15 @@
+  */
+ GaimConvChatBuddyFlags chat_pecking_order(const char *extra);
+ 
++/**
++ * Format and return the tooltip text for a buddy/user
++ *
++ * @param ib The stuct containing the information about the buddy
++ *
++ * @return   The correctly formatted tooltip text
++ */
++char *build_tooltip_text(struct gaym_buddy *ib);
++
+ GaimConvChatBuddyFlags include_chat_entry_order(GaimConvChatBuddyFlags
+                                                 flags, gint entry);
+ #endif                          /* _GAIM_GAYM_HELPERS_H_ */
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000173.html">[Qrc-svn] r243 - qrc/trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000175.html">[Qrc-svn] r245 - in qrc/trunk: gaym/src gaym-extras
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#174">[ date ]</a>
+              <a href="thread.html#174">[ thread ]</a>
+              <a href="subject.html#174">[ subject ]</a>
+              <a href="author.html#174">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

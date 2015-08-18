@@ -1,0 +1,741 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r71 - gaym/trunk/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r71%20-%20gaym/trunk/src&In-Reply-To=%3C200506081418.j58EIlXe006499%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000018.html">
+   <LINK REL="Next"  HREF="000020.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r71 - gaym/trunk/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r71%20-%20gaym/trunk/src&In-Reply-To=%3C200506081418.j58EIlXe006499%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r71 - gaym/trunk/src">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Wed Jun  8 16:18:47 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000018.html">[Qrc-svn] r70 - in gaym/trunk: . src
+</A></li>
+        <LI>Next message: <A HREF="000020.html">[Qrc-svn] r80 - in trunk: . chatsort gaym gaym/pixmaps roombrowse
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#19">[ date ]</a>
+              <a href="thread.html#19">[ thread ]</a>
+              <a href="subject.html#19">[ subject ]</a>
+              <a href="author.html#19">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-08 16:18:46 +0200 (Wed, 08 Jun 2005)
+New Revision: 71
+
+Added:
+   gaym/trunk/src/gaympriv.c
+   gaym/trunk/src/gaympriv.h
+Modified:
+   gaym/trunk/src/Makefile.am
+   gaym/trunk/src/Makefile.mingw
+   gaym/trunk/src/gaym.c
+   gaym/trunk/src/helpers.c
+   gaym/trunk/src/helpers.h
+   gaym/trunk/src/msgs.c
+Log:
+Moved all the privacy related stuff to src/gaympriv.[ch]
+
+
+Modified: gaym/trunk/src/Makefile.am
+===================================================================
+--- gaym/trunk/src/Makefile.am	2005-06-08 00:54:54 UTC (rev 70)
++++ gaym/trunk/src/Makefile.am	2005-06-08 14:18:46 UTC (rev 71)
+@@ -9,6 +9,8 @@
+ 	dcc_send.c \
+ 	gaym.c \
+ 	gaym.h \
++	gaympriv.c \
++	gaympriv.h \
+ 	helpers.c \
+ 	helpers.h \
+ 	msgs.c \
+
+Modified: gaym/trunk/src/Makefile.mingw
+===================================================================
+--- gaym/trunk/src/Makefile.mingw	2005-06-08 00:54:54 UTC (rev 70)
++++ gaym/trunk/src/Makefile.mingw	2005-06-08 14:18:46 UTC (rev 71)
+@@ -63,6 +63,7 @@
+ C_SRC =			cmds.c \
+ 			dcc_send.c \
+ 			gaym.c \
++			gaympriv.c \
+ 			helpers.c \
+ 			msgs.c \
+ 			parse.c \
+
+Modified: gaym/trunk/src/gaym.c
+===================================================================
+--- gaym/trunk/src/gaym.c	2005-06-08 00:54:54 UTC (rev 70)
++++ gaym/trunk/src/gaym.c	2005-06-08 14:18:46 UTC (rev 71)
+@@ -37,6 +37,7 @@
+ #include &quot;privacy.h&quot;
+ 
+ #include &quot;helpers.h&quot;
++#include &quot;gaympriv.h&quot;
+ #include &quot;gaym.h&quot;
+ 
+ char *gaym_mask_bio(const char *biostring);
+@@ -937,21 +938,6 @@
+     gaym_dccsend_send_file      /* send_file */
+ };
+ 
+-static int gaym_filter_join_leave_msgs(GaimConversation * conv, char *name)
+-{
+-    GaimConnection *gc = gaim_conversation_get_gc(conv);
+-    if (!gc) {
+-        return 1;
+-    }
+-    if (!gaim_prefs_get_bool(&quot;/plugins/prpl/gaym/show_join_leave_msgs&quot;)) {
+-        return 1;
+-    }
+-    if (!gaym_privacy_check(gc, name)) {
+-        return 1;
+-    }
+-    return 0;
+-}
+-
+ static void gaym_get_photo_info(GaimConversation * conv)
+ {
+     char *buf;
+@@ -1069,14 +1055,14 @@
+      */
+     gaim_signal_connect(gaim_conversations_get_handle(),
+                         &quot;chat-buddy-joining&quot;, plugin,
+-                        GAIM_CALLBACK(gaym_filter_join_leave_msgs), NULL);
++                        GAIM_CALLBACK(gaym_ignore_joining_leaving), NULL);
+ 
+     /**
+      * gaim doesn't support suppressing exit messages
+      */
+     gaim_signal_connect(gaim_conversations_get_handle(),
+                         &quot;chat-buddy-leaving&quot;, plugin,
+-                        GAIM_CALLBACK(gaym_filter_join_leave_msgs), NULL);
++                        GAIM_CALLBACK(gaym_ignore_joining_leaving), NULL);
+ 
+     /**
+      * We have to pull thumbnails, since they aren't pushed like with
+
+Added: gaym/trunk/src/gaympriv.c
+===================================================================
+--- gaym/trunk/src/gaympriv.c	2005-06-08 00:54:54 UTC (rev 70)
++++ gaym/trunk/src/gaympriv.c	2005-06-08 14:18:46 UTC (rev 71)
+@@ -0,0 +1,208 @@
++/**
++ * GayM
++ *
++ * GayM is the legal property of its developers, whose names are too numerous
++ * to list here.  Please refer to the COPYRIGHT file distributed with this
++ * source distribution.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
++#include &quot;internal.h&quot;
++#include &quot;debug.h&quot;
++#include &quot;privacy.h&quot;
++#include &quot;util.h&quot;
++
++#include &quot;gaympriv.h&quot;
++
++int gaym_ignore_joining_leaving(GaimConversation * conv, char *name)
++{
++    GaimConnection *gc = gaim_conversation_get_gc(conv);
++    if (!gc) {
++        return 1;
++    }
++    if (!gaim_prefs_get_bool(&quot;/plugins/prpl/gaym/show_join_leave_msgs&quot;)) {
++        return 1;
++    }
++    if (!gaym_privacy_check(gc, name)) {
++        return 1;
++    }
++    return 0;
++}
++
++gboolean gaym_privacy_check(GaimConnection * gc, const char *nick)
++{
++    /**
++     * returns TRUE if allowed through, FALSE otherwise
++     */
++    GSList *list;
++    gboolean permitted = FALSE;
++
++    switch (gc-&gt;account-&gt;perm_deny) {
++    case 0:
++        gaim_debug_warning(&quot;gaym&quot;, &quot;Privacy setting was 0.  If you can &quot;
++                           &quot;reproduce this, please file a bug report.\n&quot;);
++        permitted = TRUE;
++        break;
++
++    case GAIM_PRIVACY_ALLOW_ALL:
++        permitted = TRUE;
++        break;
++
++    case GAIM_PRIVACY_DENY_ALL:
++        gaim_debug_info(&quot;gaym&quot;,
++                        &quot;%s blocked data received from %s (GAIM_PRIVACY_DENY_ALL)\n&quot;,
++                        gc-&gt;account-&gt;username, nick);
++        break;
++
++    case GAIM_PRIVACY_ALLOW_USERS:
++        for (list = gc-&gt;account-&gt;permit; list != NULL; list = list-&gt;next) {
++            if (!gaim_utf8_strcasecmp
++                (nick, gaim_normalize(gc-&gt;account, (char *) list-&gt;data))) {
++                permitted = TRUE;
++                gaim_debug_info(&quot;gaym&quot;,
++                                &quot;%s allowed data received from %s (GAIM_PRIVACY_ALLOW_USERS)\n&quot;,
++                                gc-&gt;account-&gt;username, nick);
++                break;
++            }
++        }
++        break;
++
++    case GAIM_PRIVACY_DENY_USERS:
++        /* seeing we're letting everyone through, except the deny list */
++        permitted = TRUE;
++        for (list = gc-&gt;account-&gt;deny; list != NULL; list = list-&gt;next) {
++            if (!gaim_utf8_strcasecmp
++                (nick, gaim_normalize(gc-&gt;account, (char *) list-&gt;data))) {
++                permitted = FALSE;
++                gaim_debug_info(&quot;gaym&quot;,
++                                &quot;%s blocked data received from %s (GAIM_PRIVACY_DENY_USERS)\n&quot;,
++                                gc-&gt;account-&gt;username, nick);
++                break;
++            }
++        }
++        break;
++
++    case GAIM_PRIVACY_ALLOW_BUDDYLIST:
++        if (gaim_find_buddy(gc-&gt;account, nick) != NULL) {
++            permitted = TRUE;
++        } else {
++            gaim_debug_info(&quot;gaym&quot;,
++                            &quot;%s blocked data received from %s (GAIM_PRIVACY_ALLOW_BUDDYLIST)\n&quot;,
++                            gc-&gt;account-&gt;username, nick);
++        }
++        break;
++
++    default:
++        gaim_debug_warning(&quot;gaym&quot;,
++                           &quot;Privacy setting was unknown.  If you can &quot;
++                           &quot;reproduce this, please file a bug report.\n&quot;);
++        permitted = FALSE;
++        break;
++    }
++
++    /**
++     * don't block/ignore self
++     */
++    if (!gaim_utf8_strcasecmp(gc-&gt;account-&gt;username, nick)) {
++        permitted = TRUE;
++        gaim_debug_info(&quot;gaym&quot;, &quot;declining to block/ignore self\n&quot;);
++        return permitted;
++    }
++
++    return permitted;
++}
++
++void gaym_privacy_change(GaimConnection * gc, const char *name)
++{
++    /**
++     * don't allow adding self to permit/deny lists
++     */
++
++    if (name) {
++        if (!gaim_utf8_strcasecmp(gc-&gt;account-&gt;username, name)) {
++            gaim_privacy_deny_remove(gc-&gt;account, gc-&gt;account-&gt;username,
++                                     TRUE);
++            gaim_privacy_permit_remove(gc-&gt;account, gc-&gt;account-&gt;username,
++                                       TRUE);
++            gaim_debug_info(&quot;gaym&quot;,
++                            &quot;declining to add self to permit/deny list\n&quot;);
++            return;
++        }
++    }
++
++    GSList *rooms = NULL;
++    for (rooms = gc-&gt;buddy_chats; rooms; rooms = rooms-&gt;next) {
++        GaimConversation *convo = rooms-&gt;data;
++        GaimConvChat *chat = gaim_conversation_get_chat_data(convo);
++        GList *people = NULL;
++        for (people = chat-&gt;in_room; people; people = people-&gt;next) {
++            GaimConvChatBuddy *buddy = people-&gt;data;
++            GaimConversationUiOps *ops =
++                gaim_conversation_get_ui_ops(convo);
++            if (name) {
++                if (!gaim_utf8_strcasecmp(name, buddy-&gt;name)) {
++                    if (gaym_privacy_check(gc, buddy-&gt;name)) {
++                        gaim_conv_chat_unignore(GAIM_CONV_CHAT(convo),
++                                                buddy-&gt;name);
++                    } else {
++                        gaim_conv_chat_ignore(GAIM_CONV_CHAT(convo),
++                                              buddy-&gt;name);
++                    }
++                    ops-&gt;chat_update_user((convo), buddy-&gt;name);
++                }
++            } else {
++                if (gaym_privacy_check(gc, buddy-&gt;name)) {
++                    gaim_conv_chat_unignore(GAIM_CONV_CHAT(convo),
++                                            buddy-&gt;name);
++                } else {
++                    gaim_conv_chat_ignore(GAIM_CONV_CHAT(convo),
++                                          buddy-&gt;name);
++                }
++                ops-&gt;chat_update_user((convo), buddy-&gt;name);
++            }
++        }
++    }
++}
++
++gboolean gaym_im_check(GaimConnection * gc, const char *nick)
++{
++    gboolean retval = TRUE;
++
++    /* not good, but don't do anything */
++    if (!gc || !nick) {
++        return retval;
++    }
++
++    /* user wants to allow anyone */
++    if (!gaim_prefs_get_bool(&quot;/plugins/prpl/gaym/only_buddies_can_im&quot;)) {
++        return retval;
++    }
++
++    /* there is already an open conversation, so it must be allowed */
++    if (gaim_find_conversation_with_account(nick, gc-&gt;account)) {
++        return retval;
++    }
++
++    /* nick is not on the account's buddy list */
++    if (!gaim_find_buddy(gc-&gt;account, nick)) {
++        retval = FALSE;
++    }
++
++    return retval;
++}
++
++/**
++ * vim:tabstop=4:shiftwidth=4:expandtab:
++ */
+
+Added: gaym/trunk/src/gaympriv.h
+===================================================================
+--- gaym/trunk/src/gaympriv.h	2005-06-08 00:54:54 UTC (rev 70)
++++ gaym/trunk/src/gaympriv.h	2005-06-08 14:18:46 UTC (rev 71)
+@@ -0,0 +1,79 @@
++/**
++ * @file helpers.h GayM Helpers API
++ *
++ * GayM
++ *
++ * GayM is the legal property of its developers, whose names are too numerous
++ * to list here.  Please refer to the COPYRIGHT file distributed with this
++ * source distribution.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
++#ifndef _GAIM_GAYM_GAYMPRIV_H_
++#define _GAIM_GAYM_GAYMPRIV_H_
++
++#include &quot;connection.h&quot;
++
++#include &lt;glib.h&gt;
++
++/**
++ * Selectively ignores joining / leaving messages based on GayM
++ * preferences and Gaim privacy settings.
++ *
++ * @param gc   The connection.
++ * @param name The user joining or leaving.
++ *
++ * @return 0 to show the join/leave message, or @c 1 otherwise.
++ */
++int gaym_ignore_joining_leaving(GaimConversation * conv, char *name);
++
++/**
++ * Check if the account's privacy settings allow or block the user
++ * (shamelessly taken from the yahoo prpl).
++ *
++ * @param gc   The connection.
++ * @param nick The user to check.
++ *
++ * @return TRUE if the user is allowed, or @c FALSE otherwise.
++ */
++gboolean gaym_privacy_check(GaimConnection * gc, const char *nick);
++
++/**
++ * Respond to notification that the account's privacy settings have
++ * changed.
++ *
++ * @param         The connection.
++ * @param name    The user that was changed (added/removed from the
++ *                permit/deny lists).  If the privacy type has changed
++ *                this must be NULL so that all users are reset and
++ *                checked.
++ */
++void gaym_privacy_change(GaimConnection * gc, const char *name);
++
++/**
++ * Check if the plugin's settings allow or block an IM.
++ *
++ * @param gc   The connection.
++ * @param nick The user sending the IM.
++ *
++ * @return TRUE if the user is allowed, or @c FALSE otherwise.
++ */
++gboolean gaym_im_check(GaimConnection * gc, const char *nick);
++
++#endif                          /* _GAIM_GAYM_GAYMPRIV_H_ */
++
++/**
++ * vim:tabstop=4:shiftwidth=4:expandtab:
++ */
+
+Modified: gaym/trunk/src/helpers.c
+===================================================================
+--- gaym/trunk/src/helpers.c	2005-06-08 00:54:54 UTC (rev 70)
++++ gaym/trunk/src/helpers.c	2005-06-08 14:18:46 UTC (rev 71)
+@@ -20,10 +20,6 @@
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+  */
+ #include &quot;internal.h&quot;
+-#include &quot;debug.h&quot;
+-#include &quot;prefs.h&quot;
+-#include &quot;privacy.h&quot;
+-#include &quot;util.h&quot;
+ 
+ #include &quot;helpers.h&quot;
+ 
+@@ -147,141 +143,6 @@
+     return outstr;
+ }
+ 
+-gboolean gaym_privacy_check(GaimConnection * gc, const char *nick)
+-{
+-    /**
+-     * returns TRUE if allowed through, FALSE otherwise
+-     */
+-    GSList *list;
+-    gboolean permitted = FALSE;
+-
+-    switch (gc-&gt;account-&gt;perm_deny) {
+-    case 0:
+-        gaim_debug_warning(&quot;gaym&quot;, &quot;Privacy setting was 0.  If you can &quot;
+-                           &quot;reproduce this, please file a bug report.\n&quot;);
+-        permitted = TRUE;
+-        break;
+-
+-    case GAIM_PRIVACY_ALLOW_ALL:
+-        permitted = TRUE;
+-        break;
+-
+-    case GAIM_PRIVACY_DENY_ALL:
+-        gaim_debug_info(&quot;gaym&quot;,
+-                        &quot;%s blocked data received from %s (GAIM_PRIVACY_DENY_ALL)\n&quot;,
+-                        gc-&gt;account-&gt;username, nick);
+-        break;
+-
+-    case GAIM_PRIVACY_ALLOW_USERS:
+-        for (list = gc-&gt;account-&gt;permit; list != NULL; list = list-&gt;next) {
+-            if (!gaim_utf8_strcasecmp
+-                (nick, gaim_normalize(gc-&gt;account, (char *) list-&gt;data))) {
+-                permitted = TRUE;
+-                gaim_debug_info(&quot;gaym&quot;,
+-                                &quot;%s allowed data received from %s (GAIM_PRIVACY_ALLOW_USERS)\n&quot;,
+-                                gc-&gt;account-&gt;username, nick);
+-                break;
+-            }
+-        }
+-        break;
+-
+-    case GAIM_PRIVACY_DENY_USERS:
+-        /* seeing we're letting everyone through, except the deny list */
+-        permitted = TRUE;
+-        for (list = gc-&gt;account-&gt;deny; list != NULL; list = list-&gt;next) {
+-            if (!gaim_utf8_strcasecmp
+-                (nick, gaim_normalize(gc-&gt;account, (char *) list-&gt;data))) {
+-                permitted = FALSE;
+-                gaim_debug_info(&quot;gaym&quot;,
+-                                &quot;%s blocked data received from %s (GAIM_PRIVACY_DENY_USERS)\n&quot;,
+-                                gc-&gt;account-&gt;username, nick);
+-                break;
+-            }
+-        }
+-        break;
+-
+-    case GAIM_PRIVACY_ALLOW_BUDDYLIST:
+-        if (gaim_find_buddy(gc-&gt;account, nick) != NULL) {
+-            permitted = TRUE;
+-        } else {
+-            gaim_debug_info(&quot;gaym&quot;,
+-                            &quot;%s blocked data received from %s (GAIM_PRIVACY_ALLOW_BUDDYLIST)\n&quot;,
+-                            gc-&gt;account-&gt;username, nick);
+-        }
+-        break;
+-
+-    default:
+-        gaim_debug_warning(&quot;gaym&quot;,
+-                           &quot;Privacy setting was unknown.  If you can &quot;
+-                           &quot;reproduce this, please file a bug report.\n&quot;);
+-        permitted = FALSE;
+-        break;
+-    }
+-
+-    /**
+-     * don't block/ignore self
+-     */
+-    if (!gaim_utf8_strcasecmp(gc-&gt;account-&gt;username, nick)) {
+-        permitted = TRUE;
+-        gaim_debug_info(&quot;gaym&quot;, &quot;declining to block/ignore self\n&quot;);
+-        return permitted;
+-    }
+-
+-    return permitted;
+-}
+-
+-void gaym_privacy_change(GaimConnection * gc, const char *name)
+-{
+-    /**
+-     * don't allow adding self to permit/deny lists
+-     */
+-
+-    if (name) {
+-        if (!gaim_utf8_strcasecmp(gc-&gt;account-&gt;username, name)) {
+-            gaim_privacy_deny_remove(gc-&gt;account, gc-&gt;account-&gt;username,
+-                                     TRUE);
+-            gaim_privacy_permit_remove(gc-&gt;account, gc-&gt;account-&gt;username,
+-                                       TRUE);
+-            gaim_debug_info(&quot;gaym&quot;,
+-                            &quot;declining to add self to permit/deny list\n&quot;);
+-            return;
+-        }
+-    }
+-
+-    GSList *rooms = NULL;
+-    for (rooms = gc-&gt;buddy_chats; rooms; rooms = rooms-&gt;next) {
+-        GaimConversation *convo = rooms-&gt;data;
+-        GaimConvChat *chat = gaim_conversation_get_chat_data(convo);
+-        GList *people = NULL;
+-        for (people = chat-&gt;in_room; people; people = people-&gt;next) {
+-            GaimConvChatBuddy *buddy = people-&gt;data;
+-            GaimConversationUiOps *ops =
+-                gaim_conversation_get_ui_ops(convo);
+-            if (name) {
+-                if (!gaim_utf8_strcasecmp(name, buddy-&gt;name)) {
+-                    if (gaym_privacy_check(gc, buddy-&gt;name)) {
+-                        gaim_conv_chat_unignore(GAIM_CONV_CHAT(convo),
+-                                                buddy-&gt;name);
+-                    } else {
+-                        gaim_conv_chat_ignore(GAIM_CONV_CHAT(convo),
+-                                              buddy-&gt;name);
+-                    }
+-                    ops-&gt;chat_update_user((convo), buddy-&gt;name);
+-                }
+-            } else {
+-                if (gaym_privacy_check(gc, buddy-&gt;name)) {
+-                    gaim_conv_chat_unignore(GAIM_CONV_CHAT(convo),
+-                                            buddy-&gt;name);
+-                } else {
+-                    gaim_conv_chat_ignore(GAIM_CONV_CHAT(convo),
+-                                          buddy-&gt;name);
+-                }
+-                ops-&gt;chat_update_user((convo), buddy-&gt;name);
+-            }
+-        }
+-    }
+-}
+-
+ gboolean gaym_nick_check(const char *nick)
+ {
+     gboolean retval = FALSE;
+@@ -341,33 +202,6 @@
+     return retval;
+ }
+ 
+-gboolean gaym_im_check(GaimConnection * gc, const char *nick)
+-{
+-    gboolean retval = TRUE;
+-
+-    /* not good, but don't do anything */
+-    if (!gc || !nick) {
+-        return retval;
+-    }
+-
+-    /* user wants to allow anyone */
+-    if (!gaim_prefs_get_bool(&quot;/plugins/prpl/gaym/only_buddies_can_im&quot;)) {
+-        return retval;
+-    }
+-
+-    /* there is already an open conversation, so it must be allowed */
+-    if (gaim_find_conversation_with_account(nick, gc-&gt;account)) {
+-        return retval;
+-    }
+-
+-    /* nick is not on the account's buddy list */
+-    if (!gaim_find_buddy(gc-&gt;account, nick)) {
+-        retval = FALSE;
+-    }
+-
+-    return retval;
+-}
+-
+ /**
+  * vim:tabstop=4:shiftwidth=4:expandtab:
+  */
+
+Modified: gaym/trunk/src/helpers.h
+===================================================================
+--- gaym/trunk/src/helpers.h	2005-06-08 00:54:54 UTC (rev 70)
++++ gaym/trunk/src/helpers.h	2005-06-08 14:18:46 UTC (rev 71)
+@@ -24,8 +24,6 @@
+ #ifndef _GAIM_GAYM_HELPERS_H_
+ #define _GAIM_GAYM_HELPERS_H_
+ 
+-#include &quot;connection.h&quot;
+-
+ #include &lt;glib.h&gt;
+ 
+ char *return_string_between(const char *startbit, const char *endbit,
+@@ -46,29 +44,6 @@
+ gchar *ascii2native(const gchar * str);
+ 
+ /**
+- * Check if the account's privacy settings allow or block the user
+- * (shamelessly taken from the yahoo prpl).
+- *
+- * @param gc   The connection.
+- * @param nick The user to check.
+- *
+- * @return TRUE if the user is allowed, or @c FALSE otherwise.
+- */
+-gboolean gaym_privacy_check(GaimConnection * gc, const char *nick);
+-
+-/**
+- * Respond to notification that the account's privacy settings have
+- * changed.
+- *
+- * @param         The connection.
+- * @param name    The user that was changed (added/removed from the
+- *                permit/deny lists).  If the privacy type has changed
+- *                this must be NULL so that all users are reset and
+- *                checked.
+- */
+-void gaym_privacy_change(GaimConnection * gc, const char *name);
+-
+-/**
+  * Check if the string could be a valid user name.
+  *
+  * According to <A HREF="http://www.gay.com/members/join/">http://www.gay.com/members/join/</A> the member name is:
+@@ -85,16 +60,6 @@
+  */
+ gboolean gaym_nick_check(const char *nick);
+ 
+-/**
+- * Check if the plugin's settings allow or block an IM.
+- *
+- * @param gc   The connection.
+- * @param nick The user sending the IM.
+- *
+- * @return TRUE if the user is allowed, or @c FALSE otherwise.
+- */
+-gboolean gaym_im_check(GaimConnection * gc, const char *nick);
+-
+ #endif                          /* _GAIM_GAYM_HELPERS_H_ */
+ 
+ /**
+
+Modified: gaym/trunk/src/msgs.c
+===================================================================
+--- gaym/trunk/src/msgs.c	2005-06-08 00:54:54 UTC (rev 70)
++++ gaym/trunk/src/msgs.c	2005-06-08 14:18:46 UTC (rev 71)
+@@ -21,21 +21,22 @@
+ */
+ 
+ #include &quot;internal.h&quot;
+-
+ #include &quot;conversation.h&quot;
+ #include &quot;blist.h&quot;
+ #include &quot;notify.h&quot;
+ #include &quot;util.h&quot;
+ #include &quot;debug.h&quot;
+-#include &quot;gaym.h&quot;
+ #include &quot;imgstore.h&quot;
+-#include &quot;helpers.h&quot;
+ #include &quot;request.h&quot;
+ #include &quot;privacy.h&quot;
+ #include &quot;prefs.h&quot;
+ 
+ #include &lt;stdio.h&gt;
+ 
++#include &quot;helpers.h&quot;
++#include &quot;gaympriv.h&quot;
++#include &quot;gaym.h&quot;
++
+ // begin forward declarations
+ 
+ static char *gaym_mask_nick(const char *mask);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000018.html">[Qrc-svn] r70 - in gaym/trunk: . src
+</A></li>
+	<LI>Next message: <A HREF="000020.html">[Qrc-svn] r80 - in trunk: . chatsort gaym gaym/pixmaps roombrowse
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#19">[ date ]</a>
+              <a href="thread.html#19">[ thread ]</a>
+              <a href="subject.html#19">[ subject ]</a>
+              <a href="author.html#19">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

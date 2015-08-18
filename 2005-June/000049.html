@@ -1,0 +1,106 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r117 - trunk/bot-challenger
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r117%20-%20trunk/bot-challenger&In-Reply-To=%3C200506202028.j5KKS9QO002690%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000048.html">
+   <LINK REL="Next"  HREF="000050.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r117 - trunk/bot-challenger</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r117%20-%20trunk/bot-challenger&In-Reply-To=%3C200506202028.j5KKS9QO002690%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r117 - trunk/bot-challenger">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Mon Jun 20 22:28:09 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000048.html">[Qrc-svn] r116 - trunk
+</A></li>
+        <LI>Next message: <A HREF="000050.html">[Qrc-svn] r118 - trunk/bot-challenger
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#49">[ date ]</a>
+              <a href="thread.html#49">[ thread ]</a>
+              <a href="subject.html#49">[ subject ]</a>
+              <a href="author.html#49">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-20 22:28:08 +0200 (Mon, 20 Jun 2005)
+New Revision: 117
+
+Modified:
+   trunk/bot-challenger/bot-challenger.c
+Log:
+Fixed a major issue of bot-challenger that caused it not to allow new
+unknown people to speak to you unless you had enabled the &quot;add to permit
+list&quot; option.
+
+
+Modified: trunk/bot-challenger/bot-challenger.c
+===================================================================
+--- trunk/bot-challenger/bot-challenger.c	2005-06-20 12:47:17 UTC (rev 116)
++++ trunk/bot-challenger/bot-challenger.c	2005-06-20 20:28:08 UTC (rev 117)
+@@ -265,17 +265,23 @@
+                 }
+             }
+ 
+-            serv_got_im(connection, *sender, pending-&gt;message, 0,
+-                        time(NULL));
++            /**
++             * Free what is currently in the buffer (the correct answer)
++             * and replace it with the user's first message that was
++             * queued, pending the correct answer.  I think some other
++             * process is supposed to free the buffer after its sent.
++             */
++            g_free(*buffer);
++            *buffer = pending-&gt;message;
+ 
++            /* Clean up everything else except pending-&gt;message */
+             g_free(pending-&gt;protocol);
+             g_free(pending-&gt;username);
+             g_free(pending-&gt;sender);
+-            g_free(pending-&gt;message);
+             g_free(pending);
+             pending_list = g_slist_remove_link(pending_list, search);
+ 
+-            retval = TRUE;
++            retval = FALSE;     /* Don't block this message */
+         }
+     }
+     debug_pending_list();
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000048.html">[Qrc-svn] r116 - trunk
+</A></li>
+	<LI>Next message: <A HREF="000050.html">[Qrc-svn] r118 - trunk/bot-challenger
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#49">[ date ]</a>
+              <a href="thread.html#49">[ thread ]</a>
+              <a href="subject.html#49">[ subject ]</a>
+              <a href="author.html#49">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

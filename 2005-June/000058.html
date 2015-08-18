@@ -1,0 +1,463 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r126 - trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r126%20-%20trunk/gaym/src&In-Reply-To=%3C200506251721.j5PHLg6G030123%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000057.html">
+   <LINK REL="Next"  HREF="000059.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r126 - trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r126%20-%20trunk/gaym/src&In-Reply-To=%3C200506251721.j5PHLg6G030123%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r126 - trunk/gaym/src">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Sat Jun 25 19:21:42 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000057.html">[Qrc-svn] r125 - trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000059.html">[Qrc-svn] r127 - trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#58">[ date ]</a>
+              <a href="thread.html#58">[ thread ]</a>
+              <a href="subject.html#58">[ subject ]</a>
+              <a href="author.html#58">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-25 19:21:33 +0200 (Sat, 25 Jun 2005)
+New Revision: 126
+
+Added:
+   trunk/gaym/src/botfilter.c
+   trunk/gaym/src/botfilter.h
+Modified:
+   trunk/gaym/src/Makefile.am
+   trunk/gaym/src/gaym.c
+   trunk/gaym/src/gaympriv.c
+   trunk/gaym/src/msgs.c
+Log:
+Commit of &quot;Bio-Based Chat Room Activity Filtering&quot; patch as a temporary
+measure to facilitate a near-term interim release of qrc.
+
+
+Modified: trunk/gaym/src/Makefile.am
+===================================================================
+--- trunk/gaym/src/Makefile.am	2005-06-25 12:23:36 UTC (rev 125)
++++ trunk/gaym/src/Makefile.am	2005-06-25 17:21:33 UTC (rev 126)
+@@ -2,6 +2,8 @@
+ 	$(GAIM_LIBDIR)/gaim
+ 
+ GAYMSOURCES = \
++	botfilter.c \
++	botfilter.h \
+ 	cmds.c \
+ 	configtxt.c \
+ 	configtxt.h \
+
+Added: trunk/gaym/src/botfilter.c
+===================================================================
+--- trunk/gaym/src/botfilter.c	2005-06-25 12:23:36 UTC (rev 125)
++++ trunk/gaym/src/botfilter.c	2005-06-25 17:21:33 UTC (rev 126)
+@@ -0,0 +1,145 @@
++/**
++ * GayM
++ *
++ * GayM is the legal property of its developers, whose names are too numerous
++ * to list here.  Please refer to the COPYRIGHT file distributed with this
++ * source distribution.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
++#include &quot;prefs.h&quot;
++#include &quot;util.h&quot;
++#include &quot;debug.h&quot;
++
++#include &quot;botfilter.h&quot;
++
++typedef struct _FilteredBot FilteredBot;
++struct _FilteredBot {
++    char *username;
++    /**
++     * We may need the following later:
++     *
++     * char *bio;
++     */
++};
++static GSList *filtered_bots = NULL;    /* GSList of FilteredBot */
++
++void update_filtered_bots(const char *nick, gboolean permitted)
++{
++    GSList *search = NULL;
++    gboolean found = FALSE;
++    for (search = filtered_bots; search; search = search-&gt;next) {
++        FilteredBot *bot = search-&gt;data;
++        if (!gaim_utf8_strcasecmp(bot-&gt;username, nick)) {
++            found = TRUE;
++            break;
++        }
++    }
++
++    if (permitted) {
++        if (found) {
++            FilteredBot *bot = search-&gt;data;
++            g_free(bot-&gt;username);
++            g_free(bot);
++            filtered_bots = g_slist_remove_link(filtered_bots, search);
++        }
++    } else {
++        if (!found) {
++            FilteredBot *bot = g_new0(FilteredBot, 1);
++            bot-&gt;username = g_strdup(nick);
++            filtered_bots = g_slist_append(filtered_bots, bot);
++        }
++    }
++}
++
++gboolean gaym_botfilter_check(GaimConnection * gc, const char *nick,
++                              const char *text,
++                              gboolean gaym_privacy_change)
++{
++    /**
++     * returns TRUE if allowed through, FALSE otherwise
++     */
++    gboolean permitted = TRUE;
++    int i = 0;
++
++    if (!gaim_prefs_get_bool(&quot;/plugins/prpl/gaym/botfilter_enable&quot;)) {
++        permitted = TRUE;
++        update_filtered_bots(nick, permitted);
++        return permitted;
++    }
++
++    if (!gaim_utf8_strcasecmp(gc-&gt;account-&gt;username, nick)) {
++        permitted = TRUE;
++        gaim_debug_info(&quot;gaym&quot;, &quot;declining to block/ignore self\n&quot;);
++        update_filtered_bots(nick, permitted);
++        return permitted;
++    }
++
++    /**
++     * prevent gaim privacy changes from affecting previously
++     * filtered bots
++     */
++    if (gaym_privacy_change) {
++        permitted = TRUE;
++        GSList *search = NULL;
++        for (search = filtered_bots; search; search = search-&gt;next) {
++            FilteredBot *bot = search-&gt;data;
++            if (!gaim_utf8_strcasecmp(bot-&gt;username, nick)) {
++                permitted = FALSE;
++                break;
++            }
++        }
++        return permitted;
++    }
++
++    if (!text) {
++        if (gaim_prefs_get_bool
++            (&quot;/plugins/prpl/gaym/botfilter_ignore_null&quot;)) {
++            permitted = FALSE;
++        } else {
++            permitted = TRUE;
++        }
++        update_filtered_bots(nick, permitted);
++        return permitted;
++    }
++
++    const char *sep =
++        gaim_prefs_get_string(&quot;/plugins/prpl/gaym/botfilter_sep&quot;);
++    const char *patterns =
++        gaim_prefs_get_string(&quot;/plugins/prpl/gaym/botfilter_patterns&quot;);
++    if (!sep || !patterns) {
++        permitted = TRUE;
++        update_filtered_bots(nick, permitted);
++        return permitted;
++    }
++
++    gchar **pattern_list = g_strsplit(patterns, sep, 0);
++
++    for (i = 0; pattern_list[i] != NULL; i++) {
++        if (g_pattern_match_simple(pattern_list[i], text)) {
++            permitted = FALSE;
++            break;
++        }
++    }
++    g_strfreev(pattern_list);
++
++    update_filtered_bots(nick, permitted);
++
++    return permitted;
++}
++
++/**
++ * vim:tabstop=4:shiftwidth=4:expandtab:
++ */
+
+Added: trunk/gaym/src/botfilter.h
+===================================================================
+--- trunk/gaym/src/botfilter.h	2005-06-25 12:23:36 UTC (rev 125)
++++ trunk/gaym/src/botfilter.h	2005-06-25 17:21:33 UTC (rev 126)
+@@ -0,0 +1,49 @@
++/**
++ * @file botfilter.h GayM Bot Filter API
++ *
++ * GayM
++ *
++ * GayM is the legal property of its developers, whose names are too numerous
++ * to list here.  Please refer to the COPYRIGHT file distributed with this
++ * source distribution.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
++#ifndef _GAIM_GAYM_BOTFILTER_H_
++#define _GAIM_GAYM_BOTFILTER_H_
++
++#include &quot;connection.h&quot;
++
++#include &lt;glib.h&gt;
++
++/**
++ * Check if the account's botfilter settings allow or block the text
++ *
++ * @param gc                  The connection.
++ * @param nick                The user to check.
++ * @param text                The text to check.
++ * @param gaym_privacy_change Invoked from gaym_privacy_change().
++ *
++ * @return TRUE if the user is allowed, or @c FALSE otherwise.
++ */
++gboolean gaym_botfilter_check(GaimConnection * gc, const char *nick,
++                              const char *text,
++                              gboolean gaym_privacy_change);
++
++#endif                          /* _GAIM_GAYM_BOTFILTER_H_ */
++
++/**
++ * vim:tabstop=4:shiftwidth=4:expandtab:
++ */
+
+Modified: trunk/gaym/src/gaym.c
+===================================================================
+--- trunk/gaym/src/gaym.c	2005-06-25 12:23:36 UTC (rev 125)
++++ trunk/gaym/src/gaym.c	2005-06-25 17:21:33 UTC (rev 126)
+@@ -1069,6 +1069,36 @@
+ 
+     ppref =
+         gaim_plugin_pref_new_with_label(_
++                                        (&quot;Bio-Based Chat Room Activity Filtering&quot;));
++    gaim_plugin_pref_frame_add(frame, ppref);
++
++    ppref =
++        gaim_plugin_pref_new_with_name_and_label
++        (&quot;/plugins/prpl/gaym/botfilter_enable&quot;, _(&quot;Enable&quot;));
++    gaim_plugin_pref_frame_add(frame, ppref);
++
++    ppref =
++        gaim_plugin_pref_new_with_name_and_label
++        (&quot;/plugins/prpl/gaym/botfilter_ignore_null&quot;,
++         _(&quot;Ignore if bio is blank&quot;));
++    gaim_plugin_pref_frame_add(frame, ppref);
++
++    ppref =
++        gaim_plugin_pref_new_with_name_and_label
++        (&quot;/plugins/prpl/gaym/botfilter_patterns&quot;,
++         _
++         (&quot;Ignore if bio contains these patterns\n\t? = match any single character\n\t* = match zero, one, or more&quot;));
++    gaim_plugin_pref_frame_add(frame, ppref);
++
++    ppref =
++        gaim_plugin_pref_new_with_name_and_label
++        (&quot;/plugins/prpl/gaym/botfilter_sep&quot;,
++         _(&quot;Above patterns are separated by&quot;));
++    gaim_plugin_pref_set_max_length(ppref, 1);
++    gaim_plugin_pref_frame_add(frame, ppref);
++
++    ppref =
++        gaim_plugin_pref_new_with_label(_
+                                         (&quot;Instant Messages (stricter privacy settings override these)&quot;));
+     gaim_plugin_pref_frame_add(frame, ppref);
+ 
+@@ -1146,6 +1176,12 @@
+     gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/show_bio_with_join&quot;, TRUE);
+     gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/only_buddies_can_im&quot;, FALSE);
+ 
++    gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/botfilter_enable&quot;, FALSE);
++    gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/botfilter_ignore_null&quot;, FALSE);
++    gaim_prefs_add_string(&quot;/plugins/prpl/gaym/botfilter_sep&quot;, &quot;|&quot;);
++    gaim_prefs_add_string(&quot;/plugins/prpl/gaym/botfilter_patterns&quot;,
++                          &quot;NULL|MODE * -i|*dantcamboy*|*Free preview*|*epowerchat*|*Live gay sex cam show*|*camboiz*|*gaysplender.com*|*longschlong.com*|*levitra4all*|*facelink.ws*|*robofucker*|*ironflesh*|*bargaindujour*|*squiby.com*|*jc__32d*|*texaslonghorn21*|*gaycom.ws*|*h0rnydolls*|*allgaycom*|*hotnakedmen.com*|*gay-dar.net*|*twinks4you.com*|*toysanddildos.com*|*twinkplayground*|*hisrx.com*|*itrick.org*|*abelive.com*|*hornyd0lls*|*adultmodeling1.com*|*pornxxxporno.com*|*gayloves.com*|*gayonlinevideos.com*|*grandpaspup.4t.com*|*naughtysingles*|*ruckis.com*|*moan.at/*|*rainbowmeds.com*|*genxxxohio.com*|*deep.at*|*allgaycam.com*|*sweatyman.com*|*midwestxbois2003*|*fun4sale*|*wwwlookin-goodcom*|*sex3xsuperstore.com*|*turnedon.by/*|*hornyjock.com*|*camsguys.com*|*dirty-homepages.com*|*squirt.to*|*sugarboys*|*hairyfetishes.com*|*manzones.com*|*amateurstraightguys.com*|*funfirm.com*|*emil.virtue.nu*|*mywebpages.comcast.net/allaboutjae*|*guyshome.com*|*poppermart.com*|*assncoc!
+ ks.com*|*twinkvillage.com*|*beercancock.com*|*2n1.net*|*medicineville.com*|*1stoptoys.com*|*cheappornnow.com*|*sexvids.150m.com*|*lookin-good.com*|*phelan-reunites-lovers.com*|*cowboy-style.com*|*burn.at/mypage*|*xxxmalemodels.com*|*jeffreys-place.com*|*mygaystuff.com*|*hornydolls.com*|*gayfreepicture.com*|*gayadultdvds.com*|*dvds.ne1.net*|*www.hot-sex.virtue.nu*|*gaypornfilms.com*|*2r4.com*|*hotmuscleboy.com*|*gayandproud.cjb.net*|*match.20fr.com*|*callbois4hire*|*fantasyboynyc*|*celebrityboiz*|*ratefun.com*|*callboisforhire*|*hot-cop.150m.com*|*pornboismanagement*|*trip0d*|*poppers4sale*|*ohghurl.com*|*www.h0rnydo*|*hung-jock.com*|*queerkid.com*|*beachguys.com*|*gay-teens.com*|*cutelad-uk*|*dicknetwork*|*my-gay-site*|*bondage4u.com*|*sorta__differentt*|*jock_forhookup*|*bestispdeal*|*dude_withcam*|*blatinothugs*|*gaypornpictures*|*bi_jock*|*dudedormpictures*|*earthtwink*|*escorts4unorfolk*|*menchats.com*|*gayvideovillage.com*|*angelfire.com*|*justin19freshman@*|*ge0cities!
+ *|*freegaypix.com*|*cheap-gay-videos.com*|*man-sluts.com*|*sla!
+ terreed.
+com*|*boysoncam*|*gaypornopalace.com*|*gayzgood*|*fastdental*|*gayamateurworld*|*contax.150m*|*tekknick.com/itrick*|*onlinegayvideo*|*gay-connectdotnet*|*southernguyz*|*horny_stud_923*|*jock_for_hookup_9284*|*1stopcommunication*|*godsit*|*hung_meat_3796*|*big_collegecock_*|*aaronklinestudios*|*brownbuns*|*gayavenue*|*ukguyz*|*ozneworleans*|*bestviagra*|*bryanmartinonline*|*trafficsurvivor*|*wc1_18rentboy*|*fit-guy-n15*|*babyfacedtop*|*cameran23*|*hardick.co.uk*|*poppersexpress*|*dudepages*|*earthtwinks*|*wayofthemaster*|*outpersonals*|*pegasuspittsburgh*|*damienstevens*|*everythingundertherainbow*|*barebackflix*|*knightboyz*|*bbppv*|*biz-wise*|*boysonwebcam*|*xtremelygay*|*nudewebcamboys*|*czechboys*|*roksworld*|*4genericdrugs*|*justgay*|*<A HREF="http://home.bellsouth.net/p/s/community.dll?ep=16&amp;groupid=237194&amp;ck=*|*ddlworld*|*istarthere*|*igetnet*|*sahagent*|*bigebonystuds*|*bigasscock*|*4genericdrug*|*pigsinc*|*cknoway*|*m-cams*|*Orlandoflaboi80.4t.com*|*mailboxcocks.com*|*gaystre!">http://home.bellsouth.net/p/s/community.dll?ep=16&amp;groupid=237194&amp;ck=*|*ddlworld*|*istarthere*|*igetnet*|*sahagent*|*bigebonystuds*|*bigasscock*|*4genericdrug*|*pigsinc*|*cknoway*|*m-cams*|*Orlandoflaboi80.4t.com*|*mailboxcocks.com*|*gaystre!</A>
+ amingvideos*|*bigmanmeat.com*|*bryanbanks*|*want2vote*|*icamsonline.com*|*successfulpeople.com*|*cockoncam*|*terra.es*|*fastsizenow*|*camsonline*|*tripod*|*freemuscledvd.com*|*gayxxxdvds*|*last36hours*|*sacbodymud.com*|*corycam*|*ryanproject*|*blackgaymen.net*|*xxxgaysuperstore*|*male4malesex.com*&quot;);
++
+     _gaym_plugin = plugin;
+ 
+     gaym_register_commands();
+
+Modified: trunk/gaym/src/gaympriv.c
+===================================================================
+--- trunk/gaym/src/gaympriv.c	2005-06-25 12:23:36 UTC (rev 125)
++++ trunk/gaym/src/gaympriv.c	2005-06-25 17:21:33 UTC (rev 126)
+@@ -25,6 +25,7 @@
+ #include &quot;util.h&quot;
+ 
+ #include &quot;gaympriv.h&quot;
++#include &quot;botfilter.h&quot;
+ #include &quot;gaym.h&quot;
+ 
+ gboolean gaym_privacy_check(GaimConnection * gc, const char *nick)
+@@ -139,7 +140,9 @@
+                 gaim_conversation_get_ui_ops(convo);
+             if (name) {
+                 if (!gaim_utf8_strcasecmp(name, buddy-&gt;name)) {
+-                    if (gaym_privacy_check(gc, buddy-&gt;name)) {
++                    if (gaym_privacy_check(gc, buddy-&gt;name)
++                        &amp;&amp; gaym_botfilter_check(gc, buddy-&gt;name, NULL,
++                                                TRUE)) {
+                         gaim_conv_chat_unignore(GAIM_CONV_CHAT(convo),
+                                                 buddy-&gt;name);
+                     } else {
+@@ -149,7 +152,8 @@
+                     ops-&gt;chat_update_user((convo), buddy-&gt;name);
+                 }
+             } else {
+-                if (gaym_privacy_check(gc, buddy-&gt;name)) {
++                if (gaym_privacy_check(gc, buddy-&gt;name)
++                    &amp;&amp; gaym_botfilter_check(gc, buddy-&gt;name, NULL, TRUE)) {
+                     gaim_conv_chat_unignore(GAIM_CONV_CHAT(convo),
+                                             buddy-&gt;name);
+                 } else {
+
+Modified: trunk/gaym/src/msgs.c
+===================================================================
+--- trunk/gaym/src/msgs.c	2005-06-25 12:23:36 UTC (rev 125)
++++ trunk/gaym/src/msgs.c	2005-06-25 17:21:33 UTC (rev 126)
+@@ -35,6 +35,7 @@
+ 
+ #include &quot;helpers.h&quot;
+ #include &quot;gaympriv.h&quot;
++#include &quot;botfilter.h&quot;
+ #include &quot;gaym.h&quot;
+ 
+ /**
+@@ -1064,6 +1065,8 @@
+     }
+ 
+     bio = gaym_mask_bio(args[1]);
++    gboolean gaym_botfilter_permit =
++        gaym_botfilter_check(gc, nick, bio, FALSE);
+ 
+     if (bio) {
+         bio_markedup = gaim_markup_linkify(bio);
+@@ -1081,17 +1084,19 @@
+ 
+     if (gaim_prefs_get_bool(&quot;/plugins/prpl/gaym/show_bio_with_join&quot;)) {
+         gaim_conv_chat_add_user(GAIM_CONV_CHAT(convo), nick, bio_markedup,
+-                                flags, gaym_privacy_permit);
++                                flags, (gaym_privacy_permit
++                                        &amp;&amp; gaym_botfilter_permit));
+     } else {
+         gaim_conv_chat_add_user(GAIM_CONV_CHAT(convo), nick, NULL,
+-                                flags, gaym_privacy_permit);
++                                flags, (gaym_privacy_permit
++                                        &amp;&amp; gaym_botfilter_permit));
+     }
+ 
+     /**
+      * Make the ignore.png icon appear next to the nick.
+      */
+     GaimConversationUiOps *ops = gaim_conversation_get_ui_ops(convo);
+-    if (gaym_privacy_permit) {
++    if (gaym_privacy_permit &amp;&amp; gaym_botfilter_permit) {
+         gaim_conv_chat_unignore(GAIM_CONV_CHAT(convo), nick);
+     } else {
+         gaim_conv_chat_ignore(GAIM_CONV_CHAT(convo), nick);
+@@ -1591,10 +1596,13 @@
+ 
+     convo = gaim_find_conversation_with_account(channel, gaym-&gt;account);
+ 
+-    /**
+-     * gaym_bot_detect(gaym_mask_bio(extra), convo, nick);
+-     */
++    char *masked_bio = gaym_mask_bio(extra);
+ 
++    gboolean gaym_botfilter_permit =
++        gaym_botfilter_check(gc, nick, masked_bio, FALSE);
++
++    g_free(masked_bio);
++
+     if (convo == NULL) {
+         gaim_debug(GAIM_DEBUG_ERROR, &quot;gaym&quot;, &quot;690 for %s failed\n&quot;,
+                    args[1]);
+@@ -1614,7 +1622,7 @@
+      * Make the ignore.png icon appear next to the nick.
+      */
+     GaimConversationUiOps *ops = gaim_conversation_get_ui_ops(convo);
+-    if (gaym_privacy_check(gc, nick)) {
++    if (gaym_privacy_check(gc, nick) &amp;&amp; gaym_botfilter_permit) {
+         gaim_conv_chat_unignore(GAIM_CONV_CHAT(convo), nick);
+     } else {
+         gaim_conv_chat_ignore(GAIM_CONV_CHAT(convo), nick);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000057.html">[Qrc-svn] r125 - trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000059.html">[Qrc-svn] r127 - trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#58">[ date ]</a>
+              <a href="thread.html#58">[ thread ]</a>
+              <a href="subject.html#58">[ subject ]</a>
+              <a href="author.html#58">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

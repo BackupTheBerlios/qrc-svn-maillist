@@ -1,0 +1,145 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r156 - qrc/trunk
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r156%20-%20qrc/trunk&In-Reply-To=%3C200507052043.j65KhGDJ009762%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000087.html">
+   <LINK REL="Next"  HREF="000089.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r156 - qrc/trunk</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r156%20-%20qrc/trunk&In-Reply-To=%3C200507052043.j65KhGDJ009762%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r156 - qrc/trunk">deckrider at berlios.de
+       </A><BR>
+    <I>Tue Jul  5 22:43:16 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000087.html">[Qrc-svn] r155 - debian/gaim-qrc/tags
+</A></li>
+        <LI>Next message: <A HREF="000089.html">[Qrc-svn] r157 - debian/gaim-qrc/trunk/debian
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#88">[ date ]</a>
+              <a href="thread.html#88">[ thread ]</a>
+              <a href="subject.html#88">[ subject ]</a>
+              <a href="author.html#88">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-05 22:43:15 +0200 (Tue, 05 Jul 2005)
+New Revision: 156
+
+Modified:
+   qrc/trunk/ChangeLog
+   qrc/trunk/README
+   qrc/trunk/configure.ac
+Log:
+Prepare for new development cycle.
+Remove obsolete text from README.
+
+Modified: qrc/trunk/ChangeLog
+===================================================================
+--- qrc/trunk/ChangeLog	2005-07-05 17:17:22 UTC (rev 155)
++++ qrc/trunk/ChangeLog	2005-07-05 20:43:15 UTC (rev 156)
+@@ -1,3 +1,13 @@
++0.34.0+svn:
++	New Features:
++	- none
++
++	Bug Fixes:
++	- none
++
++	Preference Changes:
++	- none
++
+ 0.34.0:
+ 	New Features:
+ 	- Full win32 support for autotools and packaging
+
+Modified: qrc/trunk/README
+===================================================================
+--- qrc/trunk/README	2005-07-05 17:17:22 UTC (rev 155)
++++ qrc/trunk/README	2005-07-05 20:43:15 UTC (rev 156)
+@@ -8,10 +8,6 @@
+    Tools-&gt;Privacy-&gt;Block all users
+    Tools-&gt;Privacy-&gt;Block only the users below (deny list)
+ 
+-GayM Preferences that enhance privacy settings (enable/disable):
+-
+-   G1 = Preferences-&gt;GayM-&gt;Only buddies may open an IM session to me
+-
+ Widgets that interact with privacy settings:
+ 
+    Chat Room-&gt;Ignore the user (ignore/unignore toggle)
+@@ -23,22 +19,6 @@
+    from them, either any chat rooms or in an instant message.  GayM
+    Preferences will not override it.
+ 
+-GayM Preferences (Only buddies may open an IM session to me):
+-
+-   When enabled, only members of your Gaim buddy list may INITIATE an IM
+-   session with you.  However, you may initiate an IM session with
+-   someone who is not on your buddy list, and then they will be able to
+-   IM you.
+-
+-   An IM session is defined as a visibly open Instant Message window.
+-   To initiate an IM session, simply double-click on the user to open
+-   the IM window.  If you both have GayM and neither are on the other's
+-   buddy list, agree in the chat room that you want to IM each other,
+-   both open an IM window, and you both may begin speaking.
+-
+-   However, if Gaim Privacy already blocks a member, that member will
+-   still not be able to communicate with you in any way.
+-
+ Chat Room-&gt;Ignore the user
+ 
+    This will ignore the user in that chat room only, and only while that
+
+Modified: qrc/trunk/configure.ac
+===================================================================
+--- qrc/trunk/configure.ac	2005-07-05 17:17:22 UTC (rev 155)
++++ qrc/trunk/configure.ac	2005-07-05 20:43:15 UTC (rev 156)
+@@ -2,7 +2,7 @@
+ # Process this file with autoconf to produce a configure script.
+ 
+ AC_PREREQ(2.59)
+-AC_INIT([qrc],[0.34.0],[<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">gaymplugin at yahoogroups.com</A>])
++AC_INIT([qrc],[0.34.0+svn],[<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">gaymplugin at yahoogroups.com</A>])
+ AC_CANONICAL_TARGET([])
+ AM_INIT_AUTOMAKE([1.9.5 no-dist-gzip dist-bzip2])
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000087.html">[Qrc-svn] r155 - debian/gaim-qrc/tags
+</A></li>
+	<LI>Next message: <A HREF="000089.html">[Qrc-svn] r157 - debian/gaim-qrc/trunk/debian
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#88">[ date ]</a>
+              <a href="thread.html#88">[ thread ]</a>
+              <a href="subject.html#88">[ subject ]</a>
+              <a href="author.html#88">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

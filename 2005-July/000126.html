@@ -1,0 +1,206 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r195 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r195%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507121358.j6CDwxmx032264%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000125.html">
+   <LINK REL="Next"  HREF="000127.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r195 - qrc/trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r195%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507121358.j6CDwxmx032264%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r195 - qrc/trunk/gaym/src">deckrider at berlios.de
+       </A><BR>
+    <I>Tue Jul 12 15:58:59 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000125.html">[Qrc-svn] r194 - qrc/trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000127.html">[Qrc-svn] r196 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#126">[ date ]</a>
+              <a href="thread.html#126">[ thread ]</a>
+              <a href="subject.html#126">[ subject ]</a>
+              <a href="author.html#126">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-12 15:58:56 +0200 (Tue, 12 Jul 2005)
+New Revision: 195
+
+Modified:
+   qrc/trunk/gaym/src/gaym.c
+Log:
+Fix memory leak.
+
+Fix problem of setting bio while away causing away message to be
+overruled.
+
+The approach was to move more of the logic to gaym_set_info() instead
+of setting the info in two places.  However, this did require
+gaym_set_info to be aware of gaym-&gt;away.
+
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-12 06:22:10 UTC (rev 194)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-12 13:58:56 UTC (rev 195)
+@@ -291,28 +291,37 @@
+     char *hostname = &quot;none&quot;;
+     char *buf, *bioline;
+ 
+-    if (gaym-&gt;bio)
+-        g_free(gaym-&gt;bio);
+-
+-    if (info &amp;&amp; strlen(info) &gt; 2) {
+-        gaim_debug_misc(&quot;gaym&quot;, &quot;option1, info=%x\n&quot;, info);
+-        gaym-&gt;bio = g_strdup_printf(&quot;%s&quot;, info);
+-    } else if (gaym-&gt;server_bioline &amp;&amp; strlen(gaym-&gt;server_bioline) &gt; 2) {
+-        gaim_debug_misc(&quot;gaym&quot;, &quot;option2\n&quot;);
+-        gaym-&gt;bio = gaym_bio_strdup(gaym-&gt;server_bioline);
++    if (gc-&gt;away &amp;&amp; !info) {
++        /**
++         * don't change any bio settings, since this is just
++         * setting an away message
++         */
+     } else {
+-        gaim_debug_misc(&quot;gaym&quot;, &quot;option3\n&quot;);
+-        gaym-&gt;bio = g_strdup(&quot;Gaim User&quot;);
++        if (gaym-&gt;bio) {
++            g_free(gaym-&gt;bio);
++        }
++        if (info &amp;&amp; strlen(info) &gt; 2) {
++            gaim_debug_misc(&quot;gaym&quot;, &quot;option1, info=%x\n&quot;, info);
++            gaym-&gt;bio = g_strdup_printf(&quot;%s&quot;, info);
++        } else if (gaym-&gt;server_bioline
++                   &amp;&amp; strlen(gaym-&gt;server_bioline) &gt; 2) {
++            gaim_debug_misc(&quot;gaym&quot;, &quot;option2\n&quot;);
++            gaym-&gt;bio = gaym_bio_strdup(gaym-&gt;server_bioline);
++        } else {
++            gaim_debug_misc(&quot;gaym&quot;, &quot;option3\n&quot;);
++            gaym-&gt;bio = g_strdup(&quot;Gaim User&quot;);
++        }
++        gaim_account_set_user_info(account, gaym-&gt;bio);
++        gaim_account_set_string(account, &quot;bioline&quot;, gaym-&gt;bio);
++        gaim_debug_info(&quot;gaym&quot;, &quot;INFO=%x BIO=%x\n&quot;, info, gaym-&gt;bio);
++        gaim_debug_misc(&quot;gaym&quot;, &quot;In login_cb, gc-&gt;account=%x\n&quot;,
++                        gc-&gt;account);
+     }
+ 
+-    gaim_account_set_user_info(account, gaym-&gt;bio);
+-    gaim_account_set_string(account, &quot;bioline&quot;, gaym-&gt;bio);
+-    gaim_debug_info(&quot;gaym&quot;, &quot;INFO=%x BIO=%x\n&quot;, info, gaym-&gt;bio);
+-    gaim_debug_misc(&quot;gaym&quot;, &quot;In login_cb, gc-&gt;account=%x\n&quot;, gc-&gt;account);
+     bioline =
+         g_strdup_printf(&quot;%s#%s\001%s&quot;,
+                         gaym-&gt;thumbnail ? gaym-&gt;thumbnail : &quot;&quot;,
+-                        gaym-&gt;bio ? gaym-&gt;bio : &quot;&quot;,
++                        gc-&gt;away ? gc-&gt;away : (gaym-&gt;bio ? gaym-&gt;bio : &quot;&quot;),
+                         gaym-&gt;server_stats ? gaym-&gt;server_stats : &quot;&quot;);
+ 
+     buf = gaym_format(gaym, &quot;vvvv:&quot;, &quot;USER&quot;,
+@@ -320,12 +329,15 @@
+                       hostname, gaym-&gt;server, bioline);
+ 
+     gaim_debug_misc(&quot;gaym&quot;, &quot;BIO=%x\n&quot;, bioline);
+-    g_free(bioline);
+ 
+     if (gaym_send(gaym, buf) &lt; 0) {
+         gaim_connection_error(gc, &quot;Error registering with server&quot;);
+-        return;
+     }
++
++    g_free(bioline);
++    g_free(buf);
++
++    return;
+ }
+ 
+ static void gaym_show_set_info(GaimPluginAction * action)
+@@ -694,9 +706,7 @@
+ static void gaym_set_away(GaimConnection * gc, const char *state,
+                           const char *msg)
+ {
+-    char *bioline = NULL;
+-    char *buf = NULL;
+-    char *hostname = &quot;none&quot;;
++    char *bio = NULL;
+     struct gaym_conn *gaym = gc-&gt;proto_data;
+ 
+     if (gc-&gt;away) {
+@@ -709,30 +719,20 @@
+      * away message; if the away message is NULL, then set the Bio
+      * to the original bio.
+      */
++
+     if (msg) {
+         gc-&gt;away = g_strdup(msg);
+-        bioline =
+-            g_strdup_printf(&quot;%s#%s\001%s&quot;,
+-                            gaym-&gt;thumbnail ? gaym-&gt;thumbnail : &quot;&quot;,
+-                            msg,
+-                            gaym-&gt;server_stats ? gaym-&gt;server_stats : &quot;&quot;);
++        gaym_set_info(gc, NULL);
+     } else {
+-        bioline =
+-            g_strdup_printf(&quot;%s#%s\001%s&quot;,
+-                            gaym-&gt;thumbnail ? gaym-&gt;thumbnail : &quot;&quot;,
+-                            gaym-&gt;bio ? gaym-&gt;bio : &quot;&quot;,
+-                            gaym-&gt;server_stats ? gaym-&gt;server_stats : &quot;&quot;);
+-
++        if (gaym &amp;&amp; gaym-&gt;bio) {
++            bio = g_strdup(gaym-&gt;bio);
++            gaym_set_info(gc, bio);
++            g_free(bio);
++        } else {
++            gaym_set_info(gc, NULL);
++        }
+     }
+ 
+-    buf = gaym_format(gaym, &quot;vvvv:&quot;, &quot;USER&quot;,
+-                      gaim_account_get_username(gc-&gt;account),
+-                      hostname, gaym-&gt;server, bioline);
+-
+-    g_free(bioline);
+-    gaym_send(gaym, buf);
+-    g_free(buf);
+-
+     /**
+      *  The following would be great, and gay.com's server supports
+      *  it, but gay.com's clients don't see the result.  So even though
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000125.html">[Qrc-svn] r194 - qrc/trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000127.html">[Qrc-svn] r196 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#126">[ date ]</a>
+              <a href="thread.html#126">[ thread ]</a>
+              <a href="subject.html#126">[ subject ]</a>
+              <a href="author.html#126">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

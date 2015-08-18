@@ -1,0 +1,225 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r212 - in qrc/trunk: bot-challenger gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r212%20-%20in%20qrc/trunk%3A%20bot-challenger%20gaym/src&In-Reply-To=%3C200507161246.j6GCkTxF004942%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000142.html">
+   <LINK REL="Next"  HREF="000144.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r212 - in qrc/trunk: bot-challenger gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r212%20-%20in%20qrc/trunk%3A%20bot-challenger%20gaym/src&In-Reply-To=%3C200507161246.j6GCkTxF004942%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r212 - in qrc/trunk: bot-challenger gaym/src">deckrider at berlios.de
+       </A><BR>
+    <I>Sat Jul 16 14:46:29 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000142.html">[Qrc-svn] r211 - qrc/trunk
+</A></li>
+        <LI>Next message: <A HREF="000144.html">[Qrc-svn] r213 - in qrc/trunk: . gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#143">[ date ]</a>
+              <a href="thread.html#143">[ thread ]</a>
+              <a href="subject.html#143">[ subject ]</a>
+              <a href="author.html#143">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-16 14:46:27 +0200 (Sat, 16 Jul 2005)
+New Revision: 212
+
+Modified:
+   qrc/trunk/bot-challenger/bot-challenger.c
+   qrc/trunk/gaym/src/botfilter.c
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/msgs.c
+Log:
+g_list_append() and g_slist_append() get slower (in linear fashion)
+as the size of the list increases.  Change to g_list_prepend() or
+g_slist_prepend() and use g_list_reverse() or g_slist_reverse() if
+the order is important (as in the case of gaym_msg_names()).  Else
+change the logic to work in reverse.
+
+
+Modified: qrc/trunk/bot-challenger/bot-challenger.c
+===================================================================
+--- qrc/trunk/bot-challenger/bot-challenger.c	2005-07-15 22:53:09 UTC (rev 211)
++++ qrc/trunk/bot-challenger/bot-challenger.c	2005-07-16 12:46:27 UTC (rev 212)
+@@ -256,7 +256,7 @@
+         newpend-&gt;username = g_strdup(account-&gt;username);
+         newpend-&gt;sender = g_strdup(*sender);
+         newpend-&gt;message = g_strdup(*buffer);
+-        pending_list = g_slist_append(pending_list, newpend);
++        pending_list = g_slist_prepend(pending_list, newpend);
+ 
+         botmsg =
+             g_strdup_printf(_
+
+Modified: qrc/trunk/gaym/src/botfilter.c
+===================================================================
+--- qrc/trunk/gaym/src/botfilter.c	2005-07-15 22:53:09 UTC (rev 211)
++++ qrc/trunk/gaym/src/botfilter.c	2005-07-16 12:46:27 UTC (rev 212)
+@@ -62,7 +62,7 @@
+         if (!found) {
+             FilteredBot *bot = g_new0(FilteredBot, 1);
+             bot-&gt;username = g_strdup(nick);
+-            filtered_bots = g_slist_append(filtered_bots, bot);
++            filtered_bots = g_slist_prepend(filtered_bots, bot);
+         }
+     }
+ }
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-15 22:53:09 UTC (rev 211)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-16 12:46:27 UTC (rev 212)
+@@ -280,7 +280,7 @@
+ 
+ static GList *gaym_away_states(GaimConnection * gc)
+ {
+-    return g_list_append(NULL, (gpointer) GAIM_AWAY_CUSTOM);
++    return g_list_prepend(NULL, (gpointer) GAIM_AWAY_CUSTOM);
+ }
+ 
+ static void gaym_set_info(GaimConnection * gc, const char *info)
+@@ -367,7 +367,7 @@
+     GaimPluginAction *act = NULL;
+ 
+     act = gaim_plugin_action_new(_(&quot;Change Bio&quot;), gaym_show_set_info);
+-    list = g_list_append(list, act);
++    list = g_list_prepend(list, act);
+ 
+     return list;
+ }
+@@ -412,14 +412,14 @@
+ 
+     int max = gaim_prefs_get_int(&quot;/plugins/prpl/gaym/chat_room_instances&quot;);
+ 
+-    for (i = 1; i &lt;= max; i++) {
++    for (i = max; i &gt; 0; i--) {
+         label = g_strdup_printf(_(&quot;Join Room %d&quot;), i);
+         instance =
+             g_strdup_printf(&quot;%.*s%d&quot;, strlen(channel) - 1, channel, i);
+         act =
+             gaim_blist_node_action_new(label, gaym_blist_join_chat_cb,
+                                        instance);
+-        m = g_list_append(m, act);
++        m = g_list_prepend(m, act);
+     }
+     return m;
+ }
+@@ -432,7 +432,7 @@
+     pce = g_new0(struct proto_chat_entry, 1);
+     pce-&gt;label = _(&quot;_Room:&quot;);
+     pce-&gt;identifier = &quot;channel&quot;;
+-    m = g_list_append(m, pce);
++    m = g_list_prepend(m, pce);
+ 
+     return m;
+ }
+@@ -1130,14 +1130,14 @@
+ 
+     gaym-&gt;roomlist = gaim_roomlist_new(gaim_connection_get_account(gc));
+ 
++    f = gaim_roomlist_field_new(GAIM_ROOMLIST_FIELD_STRING, _(&quot;Channel&quot;),
++                                &quot;channel&quot;, FALSE);
++    fields = g_list_prepend(fields, f);
++
+     f = gaim_roomlist_field_new(GAIM_ROOMLIST_FIELD_STRING, &quot;&quot;,
+                                 &quot;description&quot;, TRUE);
+-    fields = g_list_append(fields, f);
++    fields = g_list_prepend(fields, f);
+ 
+-    f = gaim_roomlist_field_new(GAIM_ROOMLIST_FIELD_STRING, _(&quot;Channel&quot;),
+-                                &quot;channel&quot;, FALSE);
+-    fields = g_list_append(fields, f);
+-
+     gaim_roomlist_set_fields(gaym-&gt;roomlist, fields);
+ 
+     /**
+@@ -1390,20 +1390,20 @@
+ 
+     GaimAccountOption *option;
+ 
+-    option =
+-        gaim_account_option_string_new(_(&quot;Server&quot;), &quot;server&quot;,
+-                                       IRC_DEFAULT_SERVER);
++    option = gaim_account_option_string_new(_(&quot;Bio Line&quot;), &quot;bioline&quot;, &quot;&quot;);
+     prpl_info.protocol_options =
+-        g_list_append(prpl_info.protocol_options, option);
++        g_list_prepend(prpl_info.protocol_options, option);
+ 
+     option =
+         gaim_account_option_int_new(_(&quot;Port&quot;), &quot;port&quot;, IRC_DEFAULT_PORT);
+     prpl_info.protocol_options =
+-        g_list_append(prpl_info.protocol_options, option);
++        g_list_prepend(prpl_info.protocol_options, option);
+ 
+-    option = gaim_account_option_string_new(_(&quot;Bio Line&quot;), &quot;bioline&quot;, &quot;&quot;);
++    option =
++        gaim_account_option_string_new(_(&quot;Server&quot;), &quot;server&quot;,
++                                       IRC_DEFAULT_SERVER);
+     prpl_info.protocol_options =
+-        g_list_append(prpl_info.protocol_options, option);
++        g_list_prepend(prpl_info.protocol_options, option);
+ 
+     /**
+      * We have to pull thumbnails, since they aren't pushed like with
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-07-15 22:53:09 UTC (rev 211)
++++ qrc/trunk/gaym/src/msgs.c	2005-07-16 12:46:27 UTC (rev 212)
+@@ -461,12 +461,14 @@
+                     cur++;
+                 }
+                 tmp = g_strndup(cur, end - cur);
+-                users = g_list_append(users, tmp);
+-                flags = g_list_append(flags, GINT_TO_POINTER(f));
++                users = g_list_prepend(users, tmp);
++                flags = g_list_prepend(flags, GINT_TO_POINTER(f));
+                 cur = end;
+                 if (*cur)
+                     cur++;
+             }
++            users = g_list_reverse(users);
++            flags = g_list_reverse(flags);
+ 
+             if (users != NULL) {
+                 GList *l;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000142.html">[Qrc-svn] r211 - qrc/trunk
+</A></li>
+	<LI>Next message: <A HREF="000144.html">[Qrc-svn] r213 - in qrc/trunk: . gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#143">[ date ]</a>
+              <a href="thread.html#143">[ thread ]</a>
+              <a href="subject.html#143">[ subject ]</a>
+              <a href="author.html#143">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

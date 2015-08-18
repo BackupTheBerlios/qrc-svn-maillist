@@ -1,0 +1,791 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r61 - in gaym/trunk: . nsis
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r61%20-%20in%20gaym/trunk%3A%20.%20nsis&In-Reply-To=%3C200506040616.j546GHG5031654%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000010.html">
+   <LINK REL="Next"  HREF="000012.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r61 - in gaym/trunk: . nsis</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r61%20-%20in%20gaym/trunk%3A%20.%20nsis&In-Reply-To=%3C200506040616.j546GHG5031654%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r61 - in gaym/trunk: . nsis">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Sat Jun  4 08:16:17 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000010.html">[Qrc-svn] r60 - in gaym/trunk: . nsis nsis/locale nsis/pixmaps pixmaps
+</A></li>
+        <LI>Next message: <A HREF="000012.html">[Qrc-svn] r62 - gaym/trunk/nsis
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11">[ date ]</a>
+              <a href="thread.html#11">[ thread ]</a>
+              <a href="subject.html#11">[ subject ]</a>
+              <a href="author.html#11">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-04 08:16:05 +0200 (Sat, 04 Jun 2005)
+New Revision: 61
+
+Added:
+   gaym/trunk/nsis/installer.nsi
+Removed:
+   gaym/trunk/nsis/gaim-gaym.nsi
+   gaym/trunk/nsis/pixmaps/
+Modified:
+   gaym/trunk/Makefile.mingw
+   gaym/trunk/configure.ac
+   gaym/trunk/nsis/Makefile.am
+Log:
+More windows packaging updates.  Trying to simplify a bit.
+
+
+Modified: gaym/trunk/Makefile.mingw
+===================================================================
+--- gaym/trunk/Makefile.mingw	2005-06-03 22:29:11 UTC (rev 60)
++++ gaym/trunk/Makefile.mingw	2005-06-04 06:16:05 UTC (rev 61)
+@@ -10,7 +10,7 @@
+ 	$(MAKENSIS) \
+ 		-DGAYM_VERSION=&quot;$(GAYM_VERSION)&quot; \
+ 		-DGAIM_VERSION=&quot;$(GAIM_VERSION)&quot; \
+-		-DGAIM_TOP=&quot;$(GAIM_TOP)&quot; nsis/gaim-gaym.nsi
++		-DGAIM_TOP=&quot;$(GAIM_TOP)&quot; nsis/installer.nsi
+ 
+ clean:
+ 	$(MAKE) -C src -f Makefile.mingw clean
+
+Modified: gaym/trunk/configure.ac
+===================================================================
+--- gaym/trunk/configure.ac	2005-06-03 22:29:11 UTC (rev 60)
++++ gaym/trunk/configure.ac	2005-06-04 06:16:05 UTC (rev 61)
+@@ -58,7 +58,6 @@
+ AC_CONFIG_FILES([Makefile
+                  nsis/Makefile
+ 		 nsis/locale/Makefile
+-		 nsis/pixmaps/Makefile
+                  pixmaps/Makefile
+                  src/Makefile])
+ AC_OUTPUT
+
+Modified: gaym/trunk/nsis/Makefile.am
+===================================================================
+--- gaym/trunk/nsis/Makefile.am	2005-06-03 22:29:11 UTC (rev 60)
++++ gaym/trunk/nsis/Makefile.am	2005-06-04 06:16:05 UTC (rev 61)
+@@ -1,6 +1,5 @@
+ EXTRA_DIST = \
+-	gaim-gaym.nsi
++	installer.nsi
+ 
+ SUBDIRS = \
+-	locale \
+-	pixmaps
++	locale
+
+Deleted: gaym/trunk/nsis/gaim-gaym.nsi
+===================================================================
+--- gaym/trunk/nsis/gaim-gaym.nsi	2005-06-03 22:29:11 UTC (rev 60)
++++ gaym/trunk/nsis/gaim-gaym.nsi	2005-06-04 06:16:05 UTC (rev 61)
+@@ -1,333 +0,0 @@
+-; NSIS Script For Gaim-GayM Plugin
+-; Author Don Seiler
+-; Based on the Gaim-BNET installer by Daniel Atallah
+-; Uses NSIS v2.0
+-
+-Name &quot;Gaim-GayM ${GAYM_VERSION}&quot;
+-
+-; Registry keys:
+-!define GAYM_REG_KEY        &quot;SOFTWARE\gaim-gaym&quot;
+-!define GAYM_UNINSTALL_KEY  &quot;SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\gaim-gaym&quot;
+-!define GAYM_UNINST_EXE     &quot;gaim-gaym-uninst.exe&quot;
+-!define GAYM_DLL            &quot;libgaym.dll&quot;
+-!define GAYM_PNG            &quot;gaym.png&quot;
+-!define GAYM_UNINSTALL_LNK  &quot;Gaim-GayM Uninstall.lnk&quot;
+-
+-!include &quot;MUI.nsh&quot;
+-
+-;Do A CRC Check
+-CRCCheck On
+-
+-;Output File Name
+-OutFile &quot;..\gaim-gaym-${GAYM_VERSION}.exe&quot;
+-
+-ShowInstDetails show
+-ShowUnInstDetails show
+-SetCompressor lzma
+-
+-; Translations
+-!include &quot;locale\english.nsh&quot;
+-
+-; Gaim Plugin installer helper stuff
+-
+-!addincludedir &quot;${GAIM_TOP}\src\win32\nsis&quot;
+-!include &quot;gaim-plugin.nsh&quot;
+-
+-; Modern UI Configuration
+-
+-!define MUI_ICON &quot;pixmaps\gaym.ico&quot;
+-!define MUI_UNICON &quot;pixmaps\gaym.ico&quot;
+-!define MUI_HEADERIMAGE
+-!define MUI_HEADERIMAGE_BITMAP &quot;pixmaps\gaym.bmp&quot;
+-
+-
+-; Pages
+-!define MUI_WELCOMEPAGE_TITLE $(WELCOME_TITLE)
+-!define MUI_WELCOMEPAGE_TEXT $(WELCOME_TEXT)
+-!insertmacro MUI_PAGE_WELCOME
+-
+-!insertmacro MUI_PAGE_LICENSE  &quot;..\COPYING&quot;
+-
+-!define MUI_DIRECTORYPAGE_TEXT_TOP $(DIR_SUBTITLE)
+-!define MUI_DIRECTORYPAGE_TEXT_DESTINATION $(DIR_INNERTEXT)
+-!insertmacro MUI_PAGE_DIRECTORY
+-
+-!insertmacro MUI_PAGE_INSTFILES
+-
+-!define MUI_FINISHPAGE_TITLE $(FINISH_TITLE)
+-!define MUI_FINISHPAGE_TEXT $(FINISH_TEXT)
+-!insertmacro MUI_PAGE_FINISH
+-
+-; MUI Config
+-
+-!define MUI_CUSTOMFUNCTION_GUIINIT gaym_checkGaimVersion
+-!define MUI_ABORTWARNING
+-!define MUI_UNINSTALLER
+-!define MUI_PROGRESSBAR smooth
+-!define MUI_INSTALLCOLORS /windows
+-
+-!insertmacro MUI_LANGUAGE &quot;English&quot;
+-
+-!define MUI_LICENSEPAGE_RADIOBUTTONS
+-
+-
+-;The Default Installation Directory
+-InstallDir &quot;$PROGRAMFILES\gaim&quot;
+-InstallDirRegKey HKLM SOFTWARE\gaim &quot;&quot;
+-
+-Section -SecUninstallOldPlugin
+-  ; Check install rights..
+-  Call CheckUserInstallRights
+-  Pop $R0
+-
+-  StrCmp $R0 &quot;HKLM&quot; rights_hklm
+-  StrCmp $R0 &quot;HKCU&quot; rights_hkcu done
+-
+-  rights_hkcu:
+-      ReadRegStr $R1 HKCU &quot;${GAYM_REG_KEY}&quot; &quot;&quot;
+-      ReadRegStr $R2 HKCU &quot;${GAYM_REG_KEY}&quot; &quot;Version&quot;
+-      ReadRegStr $R3 HKCU &quot;${GAYM_UNINSTALL_KEY}&quot; &quot;UninstallString&quot;
+-      Goto try_uninstall
+-
+-  rights_hklm:
+-      ReadRegStr $R1 HKLM &quot;${GAYM_REG_KEY}&quot; &quot;&quot;
+-      ReadRegStr $R2 HKLM &quot;${GAYM_REG_KEY}&quot; &quot;Version&quot;
+-      ReadRegStr $R3 HKLM &quot;${GAYM_UNINSTALL_KEY}&quot; &quot;UninstallString&quot;
+-
+-  ; If previous version exists .. remove
+-  try_uninstall:
+-    StrCmp $R1 &quot;&quot; done
+-      StrCmp $R2 &quot;&quot; uninstall_problem
+-        IfFileExists $R3 0 uninstall_problem
+-          ; Have uninstall string.. go ahead and uninstall.
+-          SetOverwrite on
+-          ; Need to copy uninstaller outside of the install dir
+-          ClearErrors
+-          CopyFiles /SILENT $R3 &quot;$TEMP\${GAYM_UNINST_EXE}&quot;
+-          SetOverwrite off
+-          IfErrors uninstall_problem
+-            ; Ready to uninstall..
+-            ClearErrors
+-            ExecWait '&quot;$TEMP\${GAYM_UNINST_EXE}&quot; /S _?=$R1'
+-            IfErrors exec_error
+-              Delete &quot;$TEMP\${GAYM_UNINST_EXE}&quot;
+-              Goto done
+-
+-            exec_error:
+-              Delete &quot;$TEMP\${GAYM_UNINST_EXE}&quot;
+-              Goto uninstall_problem
+-
+-        uninstall_problem:
+-            ; Just delete the plugin and uninstaller, and remove Registry key
+-             MessageBox MB_YESNO $(GAYM_PROMPT_WIPEOUT) IDYES do_wipeout IDNO cancel_install
+-          cancel_install:
+-            Quit
+-
+-          do_wipeout:
+-            StrCmp $R0 &quot;HKLM&quot; del_lm_reg del_cu_reg
+-            del_cu_reg:
+-              DeleteRegKey HKCU ${GAYM_REG_KEY}
+-              Goto uninstall_prob_cont
+-            del_lm_reg:
+-              DeleteRegKey HKLM ${GAYM_REG_KEY}
+-
+-            uninstall_prob_cont:
+-              ; plugin DLL
+-              Delete &quot;$R1\plugins\${GAYM_DLL}&quot;
+-              ; pixmaps
+-              Delete &quot;$R1\pixmaps\gaim\status\default\${GAYM_PNG}&quot;
+-              Delete &quot;$R3&quot;
+-
+-  done:
+-
+-SectionEnd
+-
+-
+-Section &quot;Install&quot;
+-  Call CheckUserInstallRights
+-  Pop $R0
+-
+-  StrCmp $R0 &quot;NONE&quot; instrights_none
+-  StrCmp $R0 &quot;HKLM&quot; instrights_hklm instrights_hkcu
+-
+-  instrights_hklm:
+-    ; Write the version registry keys:
+-    WriteRegStr HKLM ${GAYM_REG_KEY} &quot;&quot; &quot;$INSTDIR&quot;
+-    WriteRegStr HKLM ${GAYM_REG_KEY} &quot;Version&quot; &quot;${GAYM_VERSION}&quot;
+-
+-    ; Write the uninstall keys for Windows
+-    WriteRegStr HKLM ${GAYM_UNINSTALL_KEY} &quot;DisplayName&quot; &quot;$(GAYM_UNINSTALL_DESC)&quot;
+-    WriteRegStr HKLM ${GAYM_UNINSTALL_KEY} &quot;UninstallString&quot; &quot;$INSTDIR\${GAYM_UNINST_EXE}&quot;
+-    SetShellVarContext &quot;all&quot;
+-    Goto install_files
+-
+-  instrights_hkcu:
+-    ; Write the version registry keys:
+-    WriteRegStr HKCU ${GAYM_REG_KEY} &quot;&quot; &quot;$INSTDIR&quot;
+-    WriteRegStr HKCU ${GAYM_REG_KEY} &quot;Version&quot; &quot;${GAYM_VERSION}&quot;
+-
+-    ; Write the uninstall keys for Windows
+-    WriteRegStr HKCU ${GAYM_UNINSTALL_KEY} &quot;DisplayName&quot; &quot;$(GAYM_UNINSTALL_DESC)&quot;
+-    WriteRegStr HKCU ${GAYM_UNINSTALL_KEY} &quot;UninstallString&quot; &quot;$INSTDIR\${GAYM_UNINST_EXE}&quot;
+-    Goto install_files
+-  
+-  instrights_none:
+-    ; No registry keys for us...
+-    
+-  install_files:
+-    SetOutPath &quot;$INSTDIR\plugins&quot;
+-    SetCompress Auto
+-    SetOverwrite on
+-    File &quot;..\src\${GAYM_DLL}&quot;
+-    
+-    SetOutPath &quot;$INSTDIR\pixmaps\gaim\status\default&quot;
+-    File &quot;..\pixmaps\${GAYM_PNG}&quot;
+-    
+-    StrCmp $R0 &quot;NONE&quot; done
+-    CreateShortCut &quot;$SMPROGRAMS\Gaim\${GAYM_UNINSTALL_LNK}&quot; &quot;$INSTDIR\${GAYM_UNINST_EXE}&quot;
+-    WriteUninstaller &quot;$INSTDIR\${GAYM_UNINST_EXE}&quot;
+-    SetOverWrite off
+-
+-  done:
+-SectionEnd
+-
+-Section Uninstall
+-  Call un.CheckUserInstallRights
+-  Pop $R0
+-  StrCmp $R0 &quot;NONE&quot; no_rights
+-  StrCmp $R0 &quot;HKCU&quot; try_hkcu try_hklm
+-
+-  try_hkcu:
+-    ReadRegStr $R0 HKCU &quot;${GAYM_REG_KEY}&quot; &quot;&quot;
+-    StrCmp $R0 $INSTDIR 0 cant_uninstall
+-      ; HKCU install path matches our INSTDIR.. so uninstall
+-      DeleteRegKey HKCU &quot;${GAYM_REG_KEY}&quot;
+-      DeleteRegKey HKCU &quot;${GAYM_UNINSTALL_KEY}&quot;
+-      Goto cont_uninstall
+-
+-  try_hklm:
+-    ReadRegStr $R0 HKLM &quot;${GAYM_REG_KEY}&quot; &quot;&quot;
+-    StrCmp $R0 $INSTDIR 0 try_hkcu
+-      ; HKLM install path matches our INSTDIR.. so uninstall
+-      DeleteRegKey HKLM &quot;${GAYM_REG_KEY}&quot;
+-      DeleteRegKey HKLM &quot;${GAYM_UNINSTALL_KEY}&quot;
+-      ; Sets start menu and desktop scope to all users..
+-      SetShellVarContext &quot;all&quot;
+-
+-  cont_uninstall:
+-    ; plugin 
+-    Delete &quot;$INSTDIR\plugins\${GAYM_DLL}&quot;
+-    ; pixmaps
+-    Delete &quot;$INSTDIR\pixmaps\gaim\status\default\${GAYM_PNG}&quot;
+-    ; uninstaller
+-    Delete &quot;$INSTDIR\${GAYM_UNINST_EXE}&quot;
+-    ; uninstaller shortcut
+-    Delete &quot;$SMPROGRAMS\Gaim\${GAYM_UNINSTALL_LNK}&quot;
+-    
+-    ; try to delete the Gaim directories, in case it has already uninstalled
+-    RMDir &quot;$INSTDIR\plugins&quot;
+-    RMDir &quot;$INSTDIR&quot;
+-    RMDir &quot;$SMPROGRAMS\Gaim&quot;
+-
+-    Goto done
+-
+-  cant_uninstall:
+-    MessageBox MB_OK $(un.GAYM_UNINSTALL_ERROR_1) IDOK
+-    Quit
+-
+-  no_rights:
+-    MessageBox MB_OK $(un.GAYM_UNINSTALL_ERROR_2) IDOK
+-    Quit
+-
+-  done:
+-SectionEnd
+-
+-Function .onVerifyInstDir
+-  IfFileExists $INSTDIR\gaim.exe Good1
+-    Abort
+-  Good1:
+-FunctionEnd
+-
+-Function gaym_checkGaimVersion
+-  Push $R0
+-
+-  Push ${GAIM_VERSION}
+-  Call CheckGaimVersion
+-  Pop $R0
+-
+-  StrCmp $R0 ${GAIM_VERSION_OK} gaym_checkGaimVersion_OK
+-  StrCmp $R0 ${GAIM_VERSION_INCOMPATIBLE} +1 +6
+-    Call GetGaimVersion
+-    IfErrors +3
+-    Pop $R0
+-    MessageBox MB_OK|MB_ICONSTOP &quot;$(BAD_GAIM_VERSION_1) $R0 $(BAD_GAIM_VERSION_2)&quot;
+-    goto +2
+-    MessageBox MB_OK|MB_ICONSTOP &quot;$(NO_GAIM_VERSION)&quot;
+-    Quit
+-
+-  gaym_checkGaimVersion_OK:
+-  Pop $R0
+-FunctionEnd
+-
+-Function CheckUserInstallRights
+-        ClearErrors
+-        UserInfo::GetName
+-        IfErrors Win9x
+-        Pop $0
+-        UserInfo::GetAccountType
+-        Pop $1
+-
+-        StrCmp $1 &quot;Admin&quot; 0 +3
+-                StrCpy $1 &quot;HKLM&quot;
+-                Goto done
+-        StrCmp $1 &quot;Power&quot; 0 +3
+-                StrCpy $1 &quot;HKLM&quot;
+-                Goto done
+-        StrCmp $1 &quot;User&quot; 0 +3
+-                StrCpy $1 &quot;HKCU&quot;
+-                Goto done
+-        StrCmp $1 &quot;Guest&quot; 0 +3
+-                StrCpy $1 &quot;NONE&quot;
+-                Goto done
+-        ; Unknown error
+-        StrCpy $1 &quot;NONE&quot;
+-        Goto done
+-
+-        Win9x:
+-                StrCpy $1 &quot;HKLM&quot;
+-
+-        done:
+-        Push $1
+-FunctionEnd
+-
+-Function un.CheckUserInstallRights
+-        ClearErrors
+-        UserInfo::GetName
+-        IfErrors Win9x
+-        Pop $0
+-        UserInfo::GetAccountType
+-        Pop $1
+-        StrCmp $1 &quot;Admin&quot; 0 +3
+-                StrCpy $1 &quot;HKLM&quot;
+-                Goto done
+-        StrCmp $1 &quot;Power&quot; 0 +3
+-                StrCpy $1 &quot;HKLM&quot;
+-                Goto done
+-        StrCmp $1 &quot;User&quot; 0 +3
+-                StrCpy $1 &quot;HKCU&quot;
+-                Goto done
+-        StrCmp $1 &quot;Guest&quot; 0 +3
+-                StrCpy $1 &quot;NONE&quot;
+-                Goto done
+-        ; Unknown error
+-        StrCpy $1 &quot;NONE&quot;
+-        Goto done
+-
+-        Win9x:
+-                StrCpy $1 &quot;HKLM&quot;
+-
+-        done:
+-        Push $1
+-FunctionEnd
+-
+-
+
+Added: gaym/trunk/nsis/installer.nsi
+===================================================================
+--- gaym/trunk/nsis/installer.nsi	2005-06-03 22:29:11 UTC (rev 60)
++++ gaym/trunk/nsis/installer.nsi	2005-06-04 06:16:05 UTC (rev 61)
+@@ -0,0 +1,327 @@
++; NSIS Script For Gaim-GayM Plugin
++; Uses NSIS v2.0
++
++Name &quot;Gaim-GayM ${GAYM_VERSION}&quot;
++
++; Registry keys:
++!define GAYM_REG_KEY        &quot;SOFTWARE\gaim-gaym&quot;
++!define GAYM_UNINSTALL_KEY  &quot;SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\gaim-gaym&quot;
++!define GAYM_UNINST_EXE     &quot;gaim-gaym-uninst.exe&quot;
++!define GAYM_DLL            &quot;libgaym.dll&quot;
++!define GAYM_PNG            &quot;gaym.png&quot;
++!define GAYM_UNINSTALL_LNK  &quot;Gaim-GayM Uninstall.lnk&quot;
++
++!include &quot;MUI.nsh&quot;
++
++;Do A CRC Check
++CRCCheck On
++
++;Output File Name
++OutFile &quot;..\gaim-gaym-${GAYM_VERSION}.exe&quot;
++
++ShowInstDetails show
++ShowUnInstDetails show
++SetCompressor lzma
++
++; Translations
++!include &quot;locale\english.nsh&quot;
++
++; Gaim Plugin installer helper stuff
++
++!addincludedir &quot;${GAIM_TOP}\src\win32\nsis&quot;
++!include &quot;gaim-plugin.nsh&quot;
++
++; Modern UI Configuration
++!define MUI_HEADERIMAGE
++
++; Pages
++!define MUI_WELCOMEPAGE_TITLE $(WELCOME_TITLE)
++!define MUI_WELCOMEPAGE_TEXT $(WELCOME_TEXT)
++!insertmacro MUI_PAGE_WELCOME
++
++!insertmacro MUI_PAGE_LICENSE  &quot;..\COPYING&quot;
++
++!define MUI_DIRECTORYPAGE_TEXT_TOP $(DIR_SUBTITLE)
++!define MUI_DIRECTORYPAGE_TEXT_DESTINATION $(DIR_INNERTEXT)
++!insertmacro MUI_PAGE_DIRECTORY
++
++!define MUI_FINISHPAGE_NOAUTOCLOSE
++!insertmacro MUI_PAGE_INSTFILES
++
++!define MUI_FINISHPAGE_TITLE $(FINISH_TITLE)
++!define MUI_FINISHPAGE_TEXT $(FINISH_TEXT)
++!insertmacro MUI_PAGE_FINISH
++
++; MUI Config
++
++!define MUI_CUSTOMFUNCTION_GUIINIT gaym_checkGaimVersion
++!define MUI_ABORTWARNING
++!define MUI_UNINSTALLER
++!define MUI_PROGRESSBAR smooth
++!define MUI_INSTALLCOLORS /windows
++
++!insertmacro MUI_LANGUAGE &quot;English&quot;
++
++!define MUI_LICENSEPAGE_RADIOBUTTONS
++
++
++;The Default Installation Directory
++InstallDir &quot;$PROGRAMFILES\gaim&quot;
++InstallDirRegKey HKLM SOFTWARE\gaim &quot;&quot;
++
++Section -SecUninstallOldPlugin
++  ; Check install rights..
++  Call CheckUserInstallRights
++  Pop $R0
++
++  StrCmp $R0 &quot;HKLM&quot; rights_hklm
++  StrCmp $R0 &quot;HKCU&quot; rights_hkcu done
++
++  rights_hkcu:
++      ReadRegStr $R1 HKCU &quot;${GAYM_REG_KEY}&quot; &quot;&quot;
++      ReadRegStr $R2 HKCU &quot;${GAYM_REG_KEY}&quot; &quot;Version&quot;
++      ReadRegStr $R3 HKCU &quot;${GAYM_UNINSTALL_KEY}&quot; &quot;UninstallString&quot;
++      Goto try_uninstall
++
++  rights_hklm:
++      ReadRegStr $R1 HKLM &quot;${GAYM_REG_KEY}&quot; &quot;&quot;
++      ReadRegStr $R2 HKLM &quot;${GAYM_REG_KEY}&quot; &quot;Version&quot;
++      ReadRegStr $R3 HKLM &quot;${GAYM_UNINSTALL_KEY}&quot; &quot;UninstallString&quot;
++
++  ; If previous version exists .. remove
++  try_uninstall:
++    StrCmp $R1 &quot;&quot; done
++      StrCmp $R2 &quot;&quot; uninstall_problem
++        IfFileExists $R3 0 uninstall_problem
++          ; Have uninstall string.. go ahead and uninstall.
++          SetOverwrite on
++          ; Need to copy uninstaller outside of the install dir
++          ClearErrors
++          CopyFiles /SILENT $R3 &quot;$TEMP\${GAYM_UNINST_EXE}&quot;
++          SetOverwrite off
++          IfErrors uninstall_problem
++            ; Ready to uninstall..
++            ClearErrors
++            ExecWait '&quot;$TEMP\${GAYM_UNINST_EXE}&quot; /S _?=$R1'
++            IfErrors exec_error
++              Delete &quot;$TEMP\${GAYM_UNINST_EXE}&quot;
++              Goto done
++
++            exec_error:
++              Delete &quot;$TEMP\${GAYM_UNINST_EXE}&quot;
++              Goto uninstall_problem
++
++        uninstall_problem:
++            ; Just delete the plugin and uninstaller, and remove Registry key
++             MessageBox MB_YESNO $(GAYM_PROMPT_WIPEOUT) IDYES do_wipeout IDNO cancel_install
++          cancel_install:
++            Quit
++
++          do_wipeout:
++            StrCmp $R0 &quot;HKLM&quot; del_lm_reg del_cu_reg
++            del_cu_reg:
++              DeleteRegKey HKCU ${GAYM_REG_KEY}
++              Goto uninstall_prob_cont
++            del_lm_reg:
++              DeleteRegKey HKLM ${GAYM_REG_KEY}
++
++            uninstall_prob_cont:
++              ; plugin DLL
++              Delete &quot;$R1\plugins\${GAYM_DLL}&quot;
++              ; pixmaps
++              Delete &quot;$R1\pixmaps\gaim\status\default\${GAYM_PNG}&quot;
++              Delete &quot;$R3&quot;
++
++  done:
++
++SectionEnd
++
++
++Section &quot;Install&quot;
++  Call CheckUserInstallRights
++  Pop $R0
++
++  StrCmp $R0 &quot;NONE&quot; instrights_none
++  StrCmp $R0 &quot;HKLM&quot; instrights_hklm instrights_hkcu
++
++  instrights_hklm:
++    ; Write the version registry keys:
++    WriteRegStr HKLM ${GAYM_REG_KEY} &quot;&quot; &quot;$INSTDIR&quot;
++    WriteRegStr HKLM ${GAYM_REG_KEY} &quot;Version&quot; &quot;${GAYM_VERSION}&quot;
++
++    ; Write the uninstall keys for Windows
++    WriteRegStr HKLM ${GAYM_UNINSTALL_KEY} &quot;DisplayName&quot; &quot;$(GAYM_UNINSTALL_DESC)&quot;
++    WriteRegStr HKLM ${GAYM_UNINSTALL_KEY} &quot;UninstallString&quot; &quot;$INSTDIR\${GAYM_UNINST_EXE}&quot;
++    SetShellVarContext &quot;all&quot;
++    Goto install_files
++
++  instrights_hkcu:
++    ; Write the version registry keys:
++    WriteRegStr HKCU ${GAYM_REG_KEY} &quot;&quot; &quot;$INSTDIR&quot;
++    WriteRegStr HKCU ${GAYM_REG_KEY} &quot;Version&quot; &quot;${GAYM_VERSION}&quot;
++
++    ; Write the uninstall keys for Windows
++    WriteRegStr HKCU ${GAYM_UNINSTALL_KEY} &quot;DisplayName&quot; &quot;$(GAYM_UNINSTALL_DESC)&quot;
++    WriteRegStr HKCU ${GAYM_UNINSTALL_KEY} &quot;UninstallString&quot; &quot;$INSTDIR\${GAYM_UNINST_EXE}&quot;
++    Goto install_files
++  
++  instrights_none:
++    ; No registry keys for us...
++    
++  install_files:
++    SetOutPath &quot;$INSTDIR\plugins&quot;
++    SetCompress Auto
++    SetOverwrite on
++    File &quot;..\src\${GAYM_DLL}&quot;
++    
++    SetOutPath &quot;$INSTDIR\pixmaps\gaim\status\default&quot;
++    File &quot;..\pixmaps\${GAYM_PNG}&quot;
++    
++    StrCmp $R0 &quot;NONE&quot; done
++    CreateShortCut &quot;$SMPROGRAMS\Gaim\${GAYM_UNINSTALL_LNK}&quot; &quot;$INSTDIR\${GAYM_UNINST_EXE}&quot;
++    WriteUninstaller &quot;$INSTDIR\${GAYM_UNINST_EXE}&quot;
++    SetOverWrite off
++
++  done:
++SectionEnd
++
++Section Uninstall
++  Call un.CheckUserInstallRights
++  Pop $R0
++  StrCmp $R0 &quot;NONE&quot; no_rights
++  StrCmp $R0 &quot;HKCU&quot; try_hkcu try_hklm
++
++  try_hkcu:
++    ReadRegStr $R0 HKCU &quot;${GAYM_REG_KEY}&quot; &quot;&quot;
++    StrCmp $R0 $INSTDIR 0 cant_uninstall
++      ; HKCU install path matches our INSTDIR.. so uninstall
++      DeleteRegKey HKCU &quot;${GAYM_REG_KEY}&quot;
++      DeleteRegKey HKCU &quot;${GAYM_UNINSTALL_KEY}&quot;
++      Goto cont_uninstall
++
++  try_hklm:
++    ReadRegStr $R0 HKLM &quot;${GAYM_REG_KEY}&quot; &quot;&quot;
++    StrCmp $R0 $INSTDIR 0 try_hkcu
++      ; HKLM install path matches our INSTDIR.. so uninstall
++      DeleteRegKey HKLM &quot;${GAYM_REG_KEY}&quot;
++      DeleteRegKey HKLM &quot;${GAYM_UNINSTALL_KEY}&quot;
++      ; Sets start menu and desktop scope to all users..
++      SetShellVarContext &quot;all&quot;
++
++  cont_uninstall:
++    ; plugin 
++    Delete &quot;$INSTDIR\plugins\${GAYM_DLL}&quot;
++    ; pixmaps
++    Delete &quot;$INSTDIR\pixmaps\gaim\status\default\${GAYM_PNG}&quot;
++    ; uninstaller
++    Delete &quot;$INSTDIR\${GAYM_UNINST_EXE}&quot;
++    ; uninstaller shortcut
++    Delete &quot;$SMPROGRAMS\Gaim\${GAYM_UNINSTALL_LNK}&quot;
++    
++    ; try to delete the Gaim directories, in case it has already uninstalled
++    RMDir &quot;$INSTDIR\plugins&quot;
++    RMDir &quot;$INSTDIR&quot;
++    RMDir &quot;$SMPROGRAMS\Gaim&quot;
++
++    Goto done
++
++  cant_uninstall:
++    MessageBox MB_OK $(un.GAYM_UNINSTALL_ERROR_1) IDOK
++    Quit
++
++  no_rights:
++    MessageBox MB_OK $(un.GAYM_UNINSTALL_ERROR_2) IDOK
++    Quit
++
++  done:
++SectionEnd
++
++Function .onVerifyInstDir
++  IfFileExists $INSTDIR\gaim.exe Good1
++    Abort
++  Good1:
++FunctionEnd
++
++Function gaym_checkGaimVersion
++  Push $R0
++
++  Push ${GAIM_VERSION}
++  Call CheckGaimVersion
++  Pop $R0
++
++  StrCmp $R0 ${GAIM_VERSION_OK} gaym_checkGaimVersion_OK
++  StrCmp $R0 ${GAIM_VERSION_INCOMPATIBLE} +1 +6
++    Call GetGaimVersion
++    IfErrors +3
++    Pop $R0
++    MessageBox MB_OK|MB_ICONSTOP &quot;$(BAD_GAIM_VERSION_1) $R0 $(BAD_GAIM_VERSION_2)&quot;
++    goto +2
++    MessageBox MB_OK|MB_ICONSTOP &quot;$(NO_GAIM_VERSION)&quot;
++    Quit
++
++  gaym_checkGaimVersion_OK:
++  Pop $R0
++FunctionEnd
++
++Function CheckUserInstallRights
++        ClearErrors
++        UserInfo::GetName
++        IfErrors Win9x
++        Pop $0
++        UserInfo::GetAccountType
++        Pop $1
++
++        StrCmp $1 &quot;Admin&quot; 0 +3
++                StrCpy $1 &quot;HKLM&quot;
++                Goto done
++        StrCmp $1 &quot;Power&quot; 0 +3
++                StrCpy $1 &quot;HKLM&quot;
++                Goto done
++        StrCmp $1 &quot;User&quot; 0 +3
++                StrCpy $1 &quot;HKCU&quot;
++                Goto done
++        StrCmp $1 &quot;Guest&quot; 0 +3
++                StrCpy $1 &quot;NONE&quot;
++                Goto done
++        ; Unknown error
++        StrCpy $1 &quot;NONE&quot;
++        Goto done
++
++        Win9x:
++                StrCpy $1 &quot;HKLM&quot;
++
++        done:
++        Push $1
++FunctionEnd
++
++Function un.CheckUserInstallRights
++        ClearErrors
++        UserInfo::GetName
++        IfErrors Win9x
++        Pop $0
++        UserInfo::GetAccountType
++        Pop $1
++        StrCmp $1 &quot;Admin&quot; 0 +3
++                StrCpy $1 &quot;HKLM&quot;
++                Goto done
++        StrCmp $1 &quot;Power&quot; 0 +3
++                StrCpy $1 &quot;HKLM&quot;
++                Goto done
++        StrCmp $1 &quot;User&quot; 0 +3
++                StrCpy $1 &quot;HKCU&quot;
++                Goto done
++        StrCmp $1 &quot;Guest&quot; 0 +3
++                StrCpy $1 &quot;NONE&quot;
++                Goto done
++        ; Unknown error
++        StrCpy $1 &quot;NONE&quot;
++        Goto done
++
++        Win9x:
++                StrCpy $1 &quot;HKLM&quot;
++
++        done:
++        Push $1
++FunctionEnd
++
++
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000010.html">[Qrc-svn] r60 - in gaym/trunk: . nsis nsis/locale nsis/pixmaps pixmaps
+</A></li>
+	<LI>Next message: <A HREF="000012.html">[Qrc-svn] r62 - gaym/trunk/nsis
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#11">[ date ]</a>
+              <a href="thread.html#11">[ thread ]</a>
+              <a href="subject.html#11">[ subject ]</a>
+              <a href="author.html#11">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,30 @@
+From jblebrun at mail.berlios.de  Thu Aug  9 03:06:08 2007
+From: jblebrun at mail.berlios.de (jblebrun at BerliOS)
+Date: Thu, 09 Aug 2007 01:06:08 -0000
+Subject: [Qrc-svn] r302 - qrc/trunk/gaym/src
+Message-ID: <200708090105.l7915nab018147@sheep.berlios.de>
+
+Author: jblebrun
+Date: 2007-08-09 03:05:47 +0200 (Thu, 09 Aug 2007)
+New Revision: 302
+
+Modified:
+   qrc/trunk/gaym/src/gaym.c
+Log:
+Fixed a null pointer issue with away msgs
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2007-07-15 06:27:10 UTC (rev 301)
++++ qrc/trunk/gaym/src/gaym.c	2007-08-09 01:05:47 UTC (rev 302)
+@@ -768,6 +768,7 @@
+     if (flags & PURPLE_MESSAGE_AUTO_RESP) {
+         automsg = g_strdup_printf("<AUTO-REPLY> %s", stripped_msg);
+         g_free(stripped_msg);
++        stripped_msg=NULL;
+         args[1] = automsg;
+ 
+     } else {
+
+
+

@@ -1,0 +1,91 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r129 - trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r129%20-%20trunk/gaym/src&In-Reply-To=%3C200506281404.j5SE4FYZ006287%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000060.html">
+   <LINK REL="Next"  HREF="000062.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r129 - trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r129%20-%20trunk/gaym/src&In-Reply-To=%3C200506281404.j5SE4FYZ006287%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r129 - trunk/gaym/src">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Tue Jun 28 16:04:15 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000060.html">[Qrc-svn] r128 - trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000062.html">[Qrc-svn] r130 - trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#61">[ date ]</a>
+              <a href="thread.html#61">[ thread ]</a>
+              <a href="subject.html#61">[ subject ]</a>
+              <a href="author.html#61">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-28 16:04:13 +0200 (Tue, 28 Jun 2005)
+New Revision: 129
+
+Modified:
+   trunk/gaym/src/botfilter.c
+Log:
+Fix a race condition for downloading GayBoi's spam list that is
+triggered when simultaneously logging into two gay.com usernames.
+
+
+Modified: trunk/gaym/src/botfilter.c
+===================================================================
+--- trunk/gaym/src/botfilter.c	2005-06-27 13:49:20 UTC (rev 128)
++++ trunk/gaym/src/botfilter.c	2005-06-28 14:04:13 UTC (rev 129)
+@@ -220,12 +220,9 @@
+ 
+     int last_check =
+         gaim_prefs_get_int(&quot;/plugins/prpl/gaym/botfilter_url_last_check&quot;);
+-    const char *result =
+-        gaim_prefs_get_string(&quot;/plugins/prpl/gaym/botfilter_url_result&quot;);
+ 
+ 
+-    if (!last_check || !result || !gaim_utf8_strcasecmp(result, &quot;&quot;)
+-        || time(NULL) - last_check &gt; MIN_CHECK_INTERVAL) {
++    if (!last_check || time(NULL) - last_check &gt; MIN_CHECK_INTERVAL) {
+         gaim_prefs_set_int(&quot;/plugins/prpl/gaym/botfilter_url_last_check&quot;,
+                            time(NULL));
+         gaim_url_fetch(url, FALSE, user_agent, FALSE,
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000060.html">[Qrc-svn] r128 - trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000062.html">[Qrc-svn] r130 - trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#61">[ date ]</a>
+              <a href="thread.html#61">[ thread ]</a>
+              <a href="subject.html#61">[ subject ]</a>
+              <a href="author.html#61">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

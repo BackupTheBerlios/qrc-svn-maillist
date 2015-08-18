@@ -1,0 +1,233 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r221 - in qrc/trunk: . chatsort
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r221%20-%20in%20qrc/trunk%3A%20.%20chatsort&In-Reply-To=%3C200507220422.j6M4MY99027956%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000150.html">
+   <LINK REL="Next"  HREF="000152.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r221 - in qrc/trunk: . chatsort</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r221%20-%20in%20qrc/trunk%3A%20.%20chatsort&In-Reply-To=%3C200507220422.j6M4MY99027956%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r221 - in qrc/trunk: . chatsort">jblebrun at berlios.de
+       </A><BR>
+    <I>Fri Jul 22 06:22:34 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000150.html">[Qrc-svn] r220 - in qrc/trunk: . chaticon
+</A></li>
+        <LI>Next message: <A HREF="000152.html">[Qrc-svn] r222 - in qrc/trunk: . chaticon
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#151">[ date ]</a>
+              <a href="thread.html#151">[ thread ]</a>
+              <a href="subject.html#151">[ subject ]</a>
+              <a href="author.html#151">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-07-22 06:22:19 +0200 (Fri, 22 Jul 2005)
+New Revision: 221
+
+Modified:
+   qrc/trunk/chatsort/chatsort.c
+   qrc/trunk/configure.ac
+Log:
+Added chaticon option to the configure script.
+Cleaned up chatsort code.
+
+
+
+Modified: qrc/trunk/chatsort/chatsort.c
+===================================================================
+--- qrc/trunk/chatsort/chatsort.c	2005-07-22 04:15:45 UTC (rev 220)
++++ qrc/trunk/chatsort/chatsort.c	2005-07-22 04:22:19 UTC (rev 221)
+@@ -1,6 +1,4 @@
+-/* Puts last 4k of log in new conversations a la Everybuddy (and then
+- * stolen by Trillian &quot;Pro&quot;) */
+-
++/* Attempt to sort chat users by entry order, instead of alpha */
+ #include &quot;internal.h&quot;
+ #include &quot;gtkgaim.h&quot;
+ 
+@@ -17,10 +15,9 @@
+ #include &quot;gtkplugin.h&quot;
+ 
+ #define CHATSORT_PLUGIN_ID &quot;gtk-chatsort&quot;
+-#define CHATSORT_USERS_COLUMNS 4
+-#define CHATSORT_USERS_ENTRY_COLUMN 4
+ 
+-gint entry_id=0;
++
++//A dummy sort function... don't sort at all!
+ static gint sort_chat_users(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer userdata) {
+ return 1;
+ }
+@@ -28,82 +25,33 @@
+ //This gets called BEFORE a chatlist is populated... just creates a new type of chat window.
+ static void redochatwindow(GaimConversation *c) {
+ 
+-	GtkListStore *ls;
+-	/**
+-	 * Unused variables:
+-	 *
+-	 * GtkCellRenderer *rend;
+-	 * GtkTreeViewColumn *col;
+-	 */
+ 	GtkTreeModel *oldls;
++	GtkTreeSelection *select;
+ 	GtkTreeIter iter;
+-	
++
+ 	//Get a handle to the chat pane for the conversation
+ 	GaimGtkConversation* gtkconv = GAIM_GTK_CONVERSATION(c);
+ 	GaimGtkChatPane* gtkchat = gtkconv-&gt;u.chat;
+ 
+ 	
+-	//Remember the list in case the plugin is unloaded.
+ 	oldls = gtk_tree_view_get_model(GTK_TREE_VIEW(gtkchat-&gt;list));
++	select = gtk_tree_view_get_selection(GTK_TREE_VIEW(gtkchat-&gt;list));
+ 
+-	//Make a new tree list
+-
+-	//Columns: Icon, Name, Flags, Entry order
+-	ls = gtk_list_store_new(CHATSORT_USERS_COLUMNS, GDK_TYPE_PIXBUF, G_TYPE_STRING,
+-                                                        G_TYPE_INT, G_TYPE_INT);
+-	gtk_list_store_append(ls, &amp;iter);
+-        gtk_list_store_set(ls, &amp;iter, CHAT_USERS_NAME_COLUMN, &quot;ChatSort&quot;, CHATSORT_USERS_ENTRY_COLUMN, 1, -1);
+-	//Eventually, should have an entry for default.
+-        gtk_tree_sortable_set_sort_func(GTK_TREE_SORTABLE(ls), CHAT_USERS_NAME_COLUMN, sort_chat_users, NULL, NULL);
++	//This is a dummy &quot;root&quot; item. If it's not here,
++	//then the first name entered into the list gets &quot;stucK&quot; at the
++	//top. This is a hack.
++	gtk_list_store_append(GTK_LIST_STORE(oldls), &amp;iter);
++	gtk_list_store_set(GTK_LIST_STORE(oldls), &amp;iter, CHAT_USERS_NAME_COLUMN, &quot; &quot;, -1);
++        gtk_tree_sortable_set_sort_func(GTK_TREE_SORTABLE(oldls), CHAT_USERS_NAME_COLUMN, sort_chat_users, NULL, NULL);
+ 	
+-	gtk_tree_sortable_set_sort_column_id(GTK_TREE_SORTABLE(ls), CHAT_USERS_NAME_COLUMN,
+-                                                                               GTK_SORT_DESCENDING);
+-
+-        gtk_tree_view_set_model(GTK_TREE_VIEW(gtkchat-&gt;list), GTK_TREE_MODEL(ls));
+-
+-	//rend = gtk_cell_renderer_pixbuf_new();
+-        //col = gtk_tree_view_column_new_with_attributes(NULL, rend, &quot;pixbuf&quot;, CHAT_USERS_ICON_COLUMN, NULL);
+-        //gtk_tree_view_column_set_clickable(GTK_TREE_VIEW_COLUMN(col), TRUE);
+-        //gtk_tree_view_append_column(GTK_TREE_VIEW(list), col);
+-
+-	//Maybe eventually make our own menu.
+-	//g_signal_connect(G_OBJECT(list), &quot;button_press_event&quot;,
+-        //                                 G_CALLBACK(right_click_chat_cb), conv);
+-        //g_signal_connect(G_OBJECT(list), &quot;popup-menu&quot;,
+-        //                 G_CALLBACK(gtkconv_chat_popup_menu_cb), conv);
+-
+-        //rend = gtk_cell_renderer_text_new();
+-        //col = gtk_tree_view_column_new_with_attributes(NULL, rend, &quot;text&quot;, CHAT_USERS_NAME_COLUMN, NULL); 
+-        //gtk_tree_view_column_set_clickable(GTK_TREE_VIEW_COLUMN(col), TRUE);
+-        //gtk_tree_view_append_column(GTK_TREE_VIEW(list), col);
+-       
+-       //gtk_widget_set_size_request(list, 150, -1);
+-        //gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(list), FALSE);
+-
+-	gaim_debug_misc(&quot;chatsort&quot;,&quot;redo window\n&quot;);
+-
+-	
+-
+ }
+ 
+-static void joined(GaimConversation *c, const char* name, GaimConvChatBuddyFlags flags) {
+-
+-	gaim_debug_misc(&quot;chatsort&quot;,&quot;Joined: %s\n&quot;,name);
+-	gaim_debug_misc(&quot;chatsort&quot;,&quot;Flags: %x\n&quot;,flags);
+-	
+-}
+-
+ static gboolean plugin_load(GaimPlugin *plugin)
+ {
+ 	gaim_signal_connect(gaim_conversations_get_handle(),
+ 						&quot;chat-joined&quot;,
+ 						plugin, GAIM_CALLBACK(redochatwindow), NULL);
+ 	
+-	gaim_signal_connect(gaim_conversations_get_handle(),
+-						&quot;chat-buddy-joined&quot;,
+-						plugin, GAIM_CALLBACK(joined), NULL);
+-	
+-
+ 	return TRUE;
+ }
+ 
+
+Modified: qrc/trunk/configure.ac
+===================================================================
+--- qrc/trunk/configure.ac	2005-07-22 04:15:45 UTC (rev 220)
++++ qrc/trunk/configure.ac	2005-07-22 04:22:19 UTC (rev 221)
+@@ -63,6 +63,10 @@
+ 	enable_chatsort=&quot;no&quot;
+ fi
+ 
++if test &quot;$enable_chaticon&quot; != &quot;yes&quot; ; then
++	enable_chaticon=&quot;no&quot;
++fi
++
+ if test &quot;$enable_gaym&quot; != &quot;yes&quot; ; then
+ 	enable_gaym=&quot;no&quot;
+ fi
+@@ -73,7 +77,7 @@
+ 
+ # Checks for libraries.
+ PKG_PROG_PKG_CONFIG([$REQUIRED_PKG_CONFIG])
+-if test &quot;$enable_chatsort&quot; = &quot;yes&quot; -o &quot;$enable_roombrowse&quot; = &quot;yes&quot; ; then
++if test &quot;$enable_chatsort&quot; = &quot;yes&quot; -o &quot;$enable_roombrowse&quot; = &quot;yes&quot; -o &quot;$enable_chaticon&quot; = &quot;yes&quot;; then
+ 	PKG_CHECK_MODULES([GTK], [$REQUIRED_GTK],
+ 		[
+ 		AC_SUBST(GTK_CFLAGS)
+@@ -127,6 +131,7 @@
+ AC_CONFIG_FILES([Makefile
+                  bot-challenger/Makefile
+                  chatsort/Makefile
++                 chaticon/Makefile
+                  gaym/Makefile
+                  gaym/pixmaps/Makefile
+                  gaym/src/Makefile
+@@ -140,6 +145,7 @@
+ echo
+ echo Build bot-challenger plugin...... : $enable_bot_challenger
+ echo Build chatsort plugin............ : $enable_chatsort
++echo Build chaticon plugin............ : $enable_chaticon
+ echo Build gaym plugin................ : $enable_gaym
+ echo Build roombrowse plugin.......... : $enable_roombrowse
+ echo
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000150.html">[Qrc-svn] r220 - in qrc/trunk: . chaticon
+</A></li>
+	<LI>Next message: <A HREF="000152.html">[Qrc-svn] r222 - in qrc/trunk: . chaticon
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#151">[ date ]</a>
+              <a href="thread.html#151">[ thread ]</a>
+              <a href="subject.html#151">[ subject ]</a>
+              <a href="author.html#151">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

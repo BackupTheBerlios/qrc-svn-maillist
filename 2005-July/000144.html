@@ -1,0 +1,227 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r213 - in qrc/trunk: . gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r213%20-%20in%20qrc/trunk%3A%20.%20gaym/src&In-Reply-To=%3C200507170311.j6H3BItE013176%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000143.html">
+   <LINK REL="Next"  HREF="000145.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r213 - in qrc/trunk: . gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r213%20-%20in%20qrc/trunk%3A%20.%20gaym/src&In-Reply-To=%3C200507170311.j6H3BItE013176%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r213 - in qrc/trunk: . gaym/src">deckrider at berlios.de
+       </A><BR>
+    <I>Sun Jul 17 05:11:18 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000143.html">[Qrc-svn] r212 - in qrc/trunk: bot-challenger gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000145.html">[Qrc-svn] r214 - in qrc/trunk: . gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#144">[ date ]</a>
+              <a href="thread.html#144">[ thread ]</a>
+              <a href="subject.html#144">[ subject ]</a>
+              <a href="author.html#144">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-17 05:10:48 +0200 (Sun, 17 Jul 2005)
+New Revision: 213
+
+Modified:
+   qrc/trunk/ChangeLog
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/helpers.c
+   qrc/trunk/gaym/src/msgs.c
+Log:
+Room List performance fixes.  Added roomlist_expand_category() to deal
+with the individual room instances.
+
+
+Modified: qrc/trunk/ChangeLog
+===================================================================
+--- qrc/trunk/ChangeLog	2005-07-16 12:46:27 UTC (rev 212)
++++ qrc/trunk/ChangeLog	2005-07-17 03:10:48 UTC (rev 213)
+@@ -10,6 +10,7 @@
+ 
+ 	Bug Fixes:
+ 	- Better refreshing of stale buddy list photos
++	- Room List performance fixes
+ 	- Bio no longer replaces sex, age, and location values
+ 	- Less hard-coded information, more use of Gay.com's own
+ 	  configuration file (less susceptible to breakage if Gay.com
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-16 12:46:27 UTC (rev 212)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-17 03:10:48 UTC (rev 213)
+@@ -1153,7 +1153,7 @@
+     return gaym-&gt;roomlist;
+ }
+ 
+-static void gaym_roomlist_cancel(GaimRoomlist * list)
++static void gaym_roomlist_cancel(struct _GaimRoomlist *list)
+ {
+     GaimConnection *gc = gaim_account_get_connection(list-&gt;account);
+     struct gaym_conn *gaym;
+@@ -1172,6 +1172,43 @@
+     }
+ }
+ 
++void gaym_roomlist_expand_category(struct _GaimRoomlist *list,
++                                   struct _GaimRoomlistRoom *category)
++{
++    GaimRoomlistRoom *room = NULL;
++    gchar *altname = NULL;
++    gchar *altchan = NULL;
++    int i = 0;
++
++    if (category-&gt;type &amp; GAIM_ROOMLIST_ROOMTYPE_ROOM
++        &amp;&amp; !category-&gt;expanded_once) {
++
++        category-&gt;expanded_once = TRUE;
++
++        int max =
++            gaim_prefs_get_int(&quot;/plugins/prpl/gaym/chat_room_instances&quot;);
++
++        gchar *name = category-&gt;fields-&gt;data;
++        gchar *chan = category-&gt;fields-&gt;next-&gt;data;
++
++        for (i = 1; i &lt;= max; i++) {
++            altname = g_strdup_printf(&quot;%.*s%d&quot;, strlen(name) - 1, name, i);
++            altchan = g_strdup_printf(&quot;%.*s%d&quot;, strlen(chan) - 1, chan, i);
++
++            room =
++                gaim_roomlist_room_new(GAIM_ROOMLIST_ROOMTYPE_ROOM,
++                                       altname, category);
++
++            gaim_roomlist_room_add_field(list, room, altname);
++            gaim_roomlist_room_add_field(list, room, altchan);
++            gaim_roomlist_room_add(list, room);
++            g_free(altname);
++            g_free(altchan);
++        }
++    }
++    gaim_roomlist_set_in_progress(list, FALSE);
++}
++
+ static GaimPluginProtocolInfo prpl_info = {
+     0,                          /* options */
+     NULL,                       /* user_splits */
+@@ -1228,7 +1265,7 @@
+     gaym_find_blist_chat,       /* find_blist_chat */
+     gaym_roomlist_get_list,     /* roomlist_get_list */
+     gaym_roomlist_cancel,       /* roomlist_cancel */
+-    NULL,                       /* roomlist_expand_category */
++    gaym_roomlist_expand_category,      /* roomlist_expand_category */
+     NULL,                       /* can_receive_file */
+     gaym_dccsend_send_file      /* send_file */
+ };
+
+Modified: qrc/trunk/gaym/src/helpers.c
+===================================================================
+--- qrc/trunk/gaym/src/helpers.c	2005-07-16 12:46:27 UTC (rev 212)
++++ qrc/trunk/gaym/src/helpers.c	2005-07-17 03:10:48 UTC (rev 213)
+@@ -342,11 +342,9 @@
+ {
+     gchar **roominst = NULL;
+     gchar *altname = NULL;
+-    gchar *altchan = NULL;
+     int level = 0;
+     int old_level = 0;
+     int i = 0;
+-    int j = 0;
+     GaimRoomlistRoom *room = NULL;
+     GaimRoomlistRoom *parent = NULL;
+ 
+@@ -391,30 +389,6 @@
+             gaim_roomlist_room_add(roomlist, room);
+             g_free(altname);
+             old_level = level;
+-
+-            /**
+-             * And finally add the 999=1, 999=2, ... instances
+-             * as children of the above room, based on the user's
+-             * configuration of how many instances need to be
+-             * represented
+-             */
+-            if (max &gt; 0) {
+-                level++;
+-                parent = find_parent(level, old_level, room);
+-            }
+-            for (j = 1; j &lt;= max; j++) {
+-                altname = g_strdup_printf(&quot;%s:%d&quot;, roominst[1], j);
+-                altchan =
+-                    g_strdup_printf(&quot;%.*s%d&quot;, strlen(roominst[0]) - 1,
+-                                    roominst[0], j);
+-                room = gaim_roomlist_room_new(GAIM_ROOMLIST_ROOMTYPE_ROOM,
+-                                              altname, parent);
+-                gaim_roomlist_room_add_field(roomlist, room, altname);
+-                gaim_roomlist_room_add_field(roomlist, room, altchan);
+-                gaim_roomlist_room_add(roomlist, room);
+-                g_free(altname);
+-                g_free(altchan);
+-            }
+             g_strfreev(roominst);
+         } else {
+             /**
+@@ -431,6 +405,8 @@
+         old_level = level;
+     }
+     g_strfreev(roomarr);
++    gaim_roomlist_set_in_progress(roomlist, FALSE);
++
+ }
+ 
+ GaimConvChatBuddyFlags chat_pecking_order(const char *extra)
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-07-16 12:46:27 UTC (rev 212)
++++ qrc/trunk/gaym/src/msgs.c	2005-07-17 03:10:48 UTC (rev 213)
+@@ -378,9 +378,7 @@
+      * This is our trigger to add the static rooms
+      */
+     if (!strcmp(name, &quot;323&quot;)) {
+-        gaim_roomlist_set_in_progress(gaym-&gt;roomlist, TRUE);
+         build_roomlist_from_config(gaym-&gt;roomlist, gaym-&gt;confighash);
+-        gaim_roomlist_set_in_progress(gaym-&gt;roomlist, FALSE);
+         return;
+     }
+ }
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000143.html">[Qrc-svn] r212 - in qrc/trunk: bot-challenger gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000145.html">[Qrc-svn] r214 - in qrc/trunk: . gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#144">[ date ]</a>
+              <a href="thread.html#144">[ thread ]</a>
+              <a href="subject.html#144">[ subject ]</a>
+              <a href="author.html#144">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

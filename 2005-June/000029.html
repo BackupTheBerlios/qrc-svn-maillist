@@ -1,0 +1,90 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r91 - trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r91%20-%20trunk/gaym/src&In-Reply-To=%3C200506111452.j5BEquXu008991%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000028.html">
+   <LINK REL="Next"  HREF="000030.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r91 - trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r91%20-%20trunk/gaym/src&In-Reply-To=%3C200506111452.j5BEquXu008991%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r91 - trunk/gaym/src">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Sat Jun 11 16:52:56 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000028.html">[Qrc-svn] r90 - trunk
+</A></li>
+        <LI>Next message: <A HREF="000030.html">[Qrc-svn] r93 - trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#29">[ date ]</a>
+              <a href="thread.html#29">[ thread ]</a>
+              <a href="subject.html#29">[ subject ]</a>
+              <a href="author.html#29">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-11 16:52:55 +0200 (Sat, 11 Jun 2005)
+New Revision: 91
+
+Modified:
+   trunk/gaym/src/gaympriv.c
+Log:
+Added debug message to show the pending bot challenger queue
+
+
+Modified: trunk/gaym/src/gaympriv.c
+===================================================================
+--- trunk/gaym/src/gaympriv.c	2005-06-11 12:39:16 UTC (rev 90)
++++ trunk/gaym/src/gaympriv.c	2005-06-11 14:52:55 UTC (rev 91)
+@@ -285,7 +285,13 @@
+                 retval = FALSE;
+             }
+         }
++        for (tmp = challenge_q; tmp; tmp = tmp-&gt;next) {
++            char *debug = tmp-&gt;data;
++            gaim_debug_info(&quot;gaym&quot;, &quot;Bot Challenge Queue Item: %s\n&quot;,
++                            debug);
++        }
+     }
++
+     return retval;
+ }
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000028.html">[Qrc-svn] r90 - trunk
+</A></li>
+	<LI>Next message: <A HREF="000030.html">[Qrc-svn] r93 - trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#29">[ date ]</a>
+              <a href="thread.html#29">[ thread ]</a>
+              <a href="subject.html#29">[ subject ]</a>
+              <a href="author.html#29">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

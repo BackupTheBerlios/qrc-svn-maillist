@@ -1,0 +1,1071 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r290 - in qrc/branches/fork-for-gaim-2: . gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2006-November/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r290%20-%20in%20qrc/branches/fork-for-gaim-2%3A%20.%20gaym/src&In-Reply-To=%3C200611040756.kA47uSrN029224%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   
+   <LINK REL="Next"  HREF="000221.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r290 - in qrc/branches/fork-for-gaim-2: . gaym/src</H1>
+    <B>jblebrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r290%20-%20in%20qrc/branches/fork-for-gaim-2%3A%20.%20gaym/src&In-Reply-To=%3C200611040756.kA47uSrN029224%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r290 - in qrc/branches/fork-for-gaim-2: . gaym/src">jblebrun at mail.berlios.de
+       </A><BR>
+    <I>Sat Nov  4 08:57:14 CET 2006</I>
+    <P><UL>
+        
+        <LI>Next message: <A HREF="000221.html">[Qrc-svn] r291 - qrc/branches/fork-for-gaim-2/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#220">[ date ]</a>
+              <a href="thread.html#220">[ thread ]</a>
+              <a href="subject.html#220">[ subject ]</a>
+              <a href="author.html#220">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2006-11-04 08:56:27 +0100 (Sat, 04 Nov 2006)
+New Revision: 290
+
+Modified:
+   qrc/branches/fork-for-gaim-2/Makefile.am
+   qrc/branches/fork-for-gaim-2/configure.ac
+   qrc/branches/fork-for-gaim-2/gaym/src/Makefile.am
+   qrc/branches/fork-for-gaim-2/gaym/src/botfilter.c
+   qrc/branches/fork-for-gaim-2/gaym/src/botfilter.h
+   qrc/branches/fork-for-gaim-2/gaym/src/cmds.c
+   qrc/branches/fork-for-gaim-2/gaym/src/dcc_send.c
+   qrc/branches/fork-for-gaim-2/gaym/src/gaym.c
+   qrc/branches/fork-for-gaim-2/gaym/src/gaym.h
+   qrc/branches/fork-for-gaim-2/gaym/src/gayminfo.c
+   qrc/branches/fork-for-gaim-2/gaym/src/gayminfo.h
+   qrc/branches/fork-for-gaim-2/gaym/src/gaympriv.c
+   qrc/branches/fork-for-gaim-2/gaym/src/gaympriv.h
+   qrc/branches/fork-for-gaim-2/gaym/src/helpers.c
+   qrc/branches/fork-for-gaim-2/gaym/src/msgs.c
+   qrc/branches/fork-for-gaim-2/gaym/src/parse.c
+   qrc/branches/fork-for-gaim-2/gaym/src/weblogin.c
+Log:
+Changes to compile with the latest Gaim 2.0.0 (beta4)
+
+
+Modified: qrc/branches/fork-for-gaim-2/Makefile.am
+===================================================================
+--- qrc/branches/fork-for-gaim-2/Makefile.am	2006-02-18 22:34:25 UTC (rev 289)
++++ qrc/branches/fork-for-gaim-2/Makefile.am	2006-11-04 07:56:27 UTC (rev 290)
+@@ -16,7 +16,6 @@
+ 
+ SUBDIRS = \
+ 	nsis \
+-	$(MAYBE_BOT_CHALLENGER) \
+ 	$(MAYBE_CHATICON) \
+ 	$(MAYBE_GAYM) \
+ 	$(MAYBE_GAYM_EXTRAS) 
+
+Modified: qrc/branches/fork-for-gaim-2/configure.ac
+===================================================================
+--- qrc/branches/fork-for-gaim-2/configure.ac	2006-02-18 22:34:25 UTC (rev 289)
++++ qrc/branches/fork-for-gaim-2/configure.ac	2006-11-04 07:56:27 UTC (rev 290)
+@@ -1,11 +1,13 @@
+ #                                               -*- Autoconf -*-
+ # Process this file with autoconf to produce a configure script.
+ 
+-AC_PREREQ(2.59)
+ AC_INIT([qrc],[2.0],[<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">gaymplugin at yahoogroups.com</A>])
+-AC_CANONICAL_TARGET([])
+-AM_INIT_AUTOMAKE([1.9.5 no-dist-gzip dist-bzip2])
++AC_CANONICAL_SYSTEM
++AM_CONFIG_HEADER(config.h)
++AM_INIT_AUTOMAKE(AC_PACKAGE_NAME, AC_PACKAGE_VERSION)
+ 
++AC_PREREQ([2.50])
++
+ REQUIRED_PKG_CONFIG=&quot;0.15.0&quot;
+ AC_SUBST(REQUIRED_PKG_CONFIG)
+ 
+@@ -16,9 +18,7 @@
+ AC_SUBST(REQUIRED_GTK)
+ 
+ AC_CONFIG_SRCDIR([gaym/src/gaym.h])
+-AC_CONFIG_HEADER([config.h])
+ 
+-AC_DEFINE(GAIM_PLUGINS, 1, [Define if plugins are enabled.])
+ 
+ # Checks for programs.
+ AC_PROG_CC
+@@ -39,7 +39,7 @@
+ 	
+ AC_ARG_ENABLE([bot-challenger],
+ 	[AS_HELP_STRING(--enable-bot-challenger,build the bot-challenger plugin @&lt;:@default=yes@:&gt;@)],,
+-	[enable_bot_challenger=&quot;yes&quot;])
++	[enable_bot_challenger=&quot;no&quot;])
+ 
+ AC_ARG_ENABLE([gaym],
+ 	[AS_HELP_STRING(--enable-gaym,build the gaym plugin @&lt;:@default=yes@:&gt;@)],,
+@@ -49,7 +49,7 @@
+ 	[AS_HELP_STRING(--enable-gaym-extras,build the gaym-extras plugin @&lt;:@default=yes@:&gt;@)],,
+ 	[enable_gaym_extras=&quot;yes&quot;])
+ 
+-AM_CONDITIONAL([COND_BOT_CHALLENGER], [test &quot;$enable_bot_challenger&quot; = &quot;yes&quot;])
++AM_CONDITIONAL([COND_BOT_CHALLENGER], [test &quot;$enable_bot_challenger&quot; = &quot;no&quot;])
+ AM_CONDITIONAL([COND_DISPLAY_OPTIONS], [test &quot;$enable_display_options&quot; = &quot;yes&quot;])
+ AM_CONDITIONAL([COND_GAYM], [test &quot;$enable_gaym&quot; = &quot;yes&quot;])
+ AM_CONDITIONAL([COND_GAYM_EXTRAS], [test &quot;$enable_gaym_extras&quot; = &quot;yes&quot;])
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/Makefile.am
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/Makefile.am	2006-02-18 22:34:25 UTC (rev 289)
++++ qrc/branches/fork-for-gaim-2/gaym/src/Makefile.am	2006-11-04 07:56:27 UTC (rev 290)
+@@ -5,7 +5,6 @@
+ 	botfilter.c \
+ 	botfilter.h \
+ 	cmds.c \
+-	dcc_send.c \
+ 	gaym.c \
+ 	gaym.h \
+ 	gayminfo.c \
+@@ -34,4 +33,6 @@
+ 
+ AM_CPPFLAGS = \
+ 	$(DEBUG_CFLAGS) \
+-	$(GAIM_CFLAGS)
++	$(GAIM_CFLAGS) \
++	$(GLIB_CFLAGS) \
++	-DGAIM_PLUGINS
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/botfilter.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/botfilter.c	2006-02-18 22:34:25 UTC (rev 289)
++++ qrc/branches/fork-for-gaim-2/gaym/src/botfilter.c	2006-11-04 07:56:27 UTC (rev 290)
+@@ -181,8 +181,8 @@
+     return permitted;
+ }
+ 
+-void process_spamlist_from_web_cb(void *data, const char *result,
+-                                  size_t len)
++void process_spamlist_from_web_cb(GaimUtilFetchUrlData *url_data, void *data, const gchar *result,
++                                  gsize len, const gchar* error_message)
+ {
+     if (!result) {
+         gaim_prefs_set_string(&quot;/plugins/prpl/gaym/botfilter_url_result&quot;,
+@@ -252,7 +252,7 @@
+     if (!last_check || time(NULL) - last_check &gt; MIN_CHECK_INTERVAL) {
+         gaim_prefs_set_int(&quot;/plugins/prpl/gaym/botfilter_url_last_check&quot;,
+                            time(NULL));
+-        gaim_url_fetch(url, FALSE, user_agent, FALSE,
++        gaim_util_fetch_url(url, FALSE, user_agent, FALSE,
+                        process_spamlist_from_web_cb, NULL);
+     }
+ 
+@@ -260,7 +260,7 @@
+ }
+ 
+ void botfilter_url_changed_cb(const char *name, GaimPrefType type,
+-                              gpointer value, gpointer data)
++                              gconstpointer value, gpointer data)
+ {
+     gaim_prefs_set_int(&quot;/plugins/prpl/gaym/botfilter_url_last_check&quot;, 0);
+ }
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/botfilter.h
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/botfilter.h	2006-02-18 22:34:25 UTC (rev 289)
++++ qrc/branches/fork-for-gaim-2/gaym/src/botfilter.h	2006-11-04 07:56:27 UTC (rev 290)
+@@ -50,7 +50,7 @@
+ void get_spamlist_from_web(void);
+ 
+ void botfilter_url_changed_cb(const char *name, GaimPrefType type,
+-                              gpointer value, gpointer data);
++                              gconstpointer value, gpointer data);
+ 
+ #endif                          /* _GAIM_GAYM_BOTFILTER_H_ */
+ 
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/cmds.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/cmds.c	2006-02-18 22:34:25 UTC (rev 289)
++++ qrc/branches/fork-for-gaim-2/gaym/src/cmds.c	2006-11-04 07:56:27 UTC (rev 290)
+@@ -20,7 +20,6 @@
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+  */
+ 
+-#include &quot;internal.h&quot;
+ 
+ #include &quot;conversation.h&quot;
+ #include &quot;debug.h&quot;
+@@ -433,8 +432,7 @@
+         buf =
+             gaym_format(gaym, &quot;v:&quot;, &quot;QUIT&quot;,
+                         (args
+-                         &amp;&amp; args[0]) ? args[0] : &quot;Download Gaim: &quot;
+-                        GAIM_WEBSITE);
++                         &amp;&amp; args[0]) ? args[0] : &quot;Leaving&quot;);
+         gaym_send(gaym, buf);
+         g_free(buf);
+ 
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/dcc_send.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/dcc_send.c	2006-02-18 22:34:25 UTC (rev 289)
++++ qrc/branches/fork-for-gaim-2/gaym/src/dcc_send.c	2006-11-04 07:56:27 UTC (rev 290)
+@@ -21,7 +21,6 @@
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+  */
+ 
+-#include &quot;internal.h&quot;
+ 
+ #include &quot;gaym.h&quot;
+ #include &quot;debug.h&quot;
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/gaym.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/gaym.c	2006-02-18 22:34:25 UTC (rev 289)
++++ qrc/branches/fork-for-gaim-2/gaym/src/gaym.c	2006-11-04 07:56:27 UTC (rev 290)
+@@ -23,7 +23,6 @@
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+  */
+ 
+-#include &quot;internal.h&quot;
+ #include &quot;accountopt.h&quot;
+ #include &quot;blist.h&quot;
+ #include &quot;conversation.h&quot;
+@@ -51,8 +50,7 @@
+ static GList *gaym_actions(GaimPlugin * plugin, gpointer context);
+ /* static GList *gaym_chat_info(GaimConnection *gc); */
+ static void gaym_login(GaimAccount * account);
+-static void gaym_login_cb(gpointer data, gint source,
+-                          GaimInputCondition cond);
++static void gaym_login_cb(gpointer data, gint source, const gchar* error_message);
+ static void gaym_close(GaimConnection * gc);
+ static int gaym_im_send(GaimConnection * gc, const char *who,
+                         const char *what, GaimMessageFlags flags);
+@@ -460,7 +458,6 @@
+     struct gaym_conn *gaym;
+     char *buf;
+     const char *username = gaim_account_get_username(account);
+-    int err;
+ 
+     gc = gaim_account_get_connection(account);
+     gaym = gc-&gt;proto_data;
+@@ -469,14 +466,14 @@
+     gaim_connection_update_progress(gc, buf, 5, 6);
+     g_free(buf);
+     gaim_debug_misc(&quot;gaym&quot;, &quot;Trying login to %s\n&quot;, gaym-&gt;server);
+-    err = gaim_proxy_connect(account, gaym-&gt;server,
+-                             gaim_account_get_int(account, &quot;port&quot;,
+-                                                  IRC_DEFAULT_PORT),
+-                             gaym_login_cb, gc);
+-    if (err || !account-&gt;gc) {
++    GaimProxyConnectData* pdata = gaim_proxy_connect(account, 
++			     gaym-&gt;server,
++                             gaim_account_get_int(account, &quot;port&quot;, IRC_DEFAULT_PORT),
++                             *gaym_login_cb, 
++			     gc);
++    if (!pdata || !account-&gt;gc) {
+         gaim_connection_error(gc, _(&quot;Couldn't create socket&quot;));
+-        gaim_debug_misc(&quot;gaym&quot;, &quot;err: %d, account-&gt;gc: %x\n&quot;, err,
+-                        account-&gt;gc);
++        gaim_debug_misc(&quot;gaym&quot;, &quot;account-&gt;gc: %x\n&quot;, account-&gt;gc);
+         return;
+     }
+ 
+@@ -579,10 +576,10 @@
+ }
+ 
+ 
+-static void gaym_get_configtxt_cb(gpointer proto_data,
+-                                  const gchar * config_text, size_t len)
++static void gaym_get_configtxt_cb(GaimUtilFetchUrlData* data, gpointer proto_data,
++                                  const gchar * config_text, size_t len, const gchar* error_message)
+ {
+-    struct gaym_conn *gaym = (struct gaym_conn *) proto_data;
++    struct gaym_conn *gaym = (struct gaym_conn*)proto_data;
+     // GaimConnection *gc = gaim_account_get_connection(gaym-&gt;account);
+ 
+     g_return_if_fail(config_text != NULL);
+@@ -596,8 +593,7 @@
+ 
+     return;
+ }
+-static void gaym_login_cb(gpointer data, gint source,
+-                          GaimInputCondition cond)
++static void gaym_login_cb(gpointer data, gint source, const gchar *error_message)
+ {
+     GaimConnection *gc = data;
+     struct gaym_conn *gaym = gc-&gt;proto_data;
+@@ -689,7 +685,7 @@
+         char *user_agent = &quot;Mozilla/4.0&quot;;
+ 
+         get_spamlist_from_web();
+-        gaim_url_fetch(url, FALSE, user_agent, FALSE,
++        gaim_util_fetch_url(url, FALSE, user_agent, FALSE,
+                        gaym_get_configtxt_cb, gaym);
+ 
+         g_free(url);
+@@ -1433,7 +1429,11 @@
+     gaym_roomlist_cancel,       /* roomlist_cancel */
+     gaym_roomlist_expand_category,      /* roomlist_expand_category */
+     NULL,                       /* can_receive_file */
+-    gaym_dccsend_send_file      /* send_file */
++    NULL,      /* send_file */
++    NULL,	/*new_xfr */
++    NULL,	/* offline_mode */
++    NULL,	/* whiteboard_prpl_ops */
++    NULL,	/* send_raw */
+ };
+ 
+ void deref_one_user(gpointer * user, gpointer * data)
+@@ -1622,7 +1622,7 @@
+     NULL,                                                 /**&lt; destroy        */
+     NULL,                                                  /**&lt; ui_info        */
+     &amp;prpl_info,                                           /**&lt; extra_info     */
+-    &amp;prefs_info,
++    NULL,//&amp;prefs_info,
+     gaym_actions
+ };
+ 
+@@ -1687,6 +1687,7 @@
+ static void _init_plugin(GaimPlugin * plugin)
+ {
+ 
++    printf(&quot;INIT PLUGIN DAMMIT!\n&quot;);
+     GaimAccountOption *option;
+ 
+     option = gaim_account_option_string_new(_(&quot;Bio Line&quot;), &quot;bioline&quot;, &quot;&quot;);
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/gaym.h
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/gaym.h	2006-02-18 22:34:25 UTC (rev 289)
++++ qrc/branches/fork-for-gaim-2/gaym/src/gaym.h	2006-11-04 07:56:27 UTC (rev 290)
+@@ -23,10 +23,23 @@
+ #ifndef _GAIM_GAYM_H
+ #define _GAIM_GAYM_H
+ 
+-#include &quot;internal.h&quot;
++#ifdef HAVE_CONFIG_H
++#include &quot;config.h&quot;
++#endif
+ 
++//#include &quot;internal.h&quot;
++
+ #include &lt;glib.h&gt;
++#include &lt;string.h&gt;
++#include &lt;ctype.h&gt;
++#include &lt;errno.h&gt;
++#include &lt;stdlib.h&gt;
++#include &lt;unistd.h&gt;
++#include &lt;sys/types.h&gt;
++#include &lt;fcntl.h&gt;
+ 
++#include &lt;glib-2.0/glib/gi18n.h&gt;
++
+ #include &quot;roomlist.h&quot;
+ 
+ #define IRC_DEFAULT_SERVER &quot;www.gay.com&quot;
+@@ -256,10 +269,6 @@
+     // 
+     // (during names pass)
+ } GaymNamelist;
+-void gaym_dccsend_send_file(GaimConnection * gc, const char *who,
+-                            const char *file);
+-void gaym_dccsend_recv(struct gaym_conn *gaym, const char *from,
+-                       const char *msg);
+ void gaym_get_chat_key_from_weblogin(GaimAccount * account,
+                                      void (*callback) (GaimAccount *));
+ 
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/gayminfo.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/gayminfo.c	2006-02-18 22:34:25 UTC (rev 289)
++++ qrc/branches/fork-for-gaim-2/gaym/src/gayminfo.c	2006-11-04 07:56:27 UTC (rev 290)
+@@ -128,8 +128,8 @@
+ 
+     }
+ }
+-void gaym_fetch_thumbnail_cb(void *user_data, const char *pic_data,
+-                             size_t len)
++void gaym_fetch_thumbnail_cb(GaimUtilFetchUrlData *url_data, void *user_data, const gchar *pic_data,
++                             gsize len, const gchar* error_message)
+ {
+     if (!user_data)
+         return;
+@@ -154,9 +154,9 @@
+ 	else {
+ 	    gaim_buddy_icon_new(d-&gt;gc-&gt;account, d-&gt;who, (void*)pic_data, len);
+ 	}
+-	GaimBuddyIcon *icon=gaim_buddy_icons_find(d-&gt;gc-&gt;account,d-&gt;who);
+-	guint len;
+-	const guchar* data=gaim_buddy_icon_get_data(icon, &amp;len);
++	//GaimBuddyIcon *icon=gaim_buddy_icons_find(d-&gt;gc-&gt;account,d-&gt;who);
++	//guint len;
++	//const guchar* data=gaim_buddy_icon_get_data(icon, &amp;len);
+     }
+     if (GAIM_CONNECTION_IS_VALID(d-&gt;gc) &amp;&amp; len) {
+         gaim_signal_emit(gaim_accounts_get_handle(), &quot;info-updated&quot;,
+@@ -240,7 +240,7 @@
+                 gaim_debug_misc(&quot;gayminfo&quot;, &quot;Found filename: %s\n&quot;,
+                                 data-&gt;filename);
+                 url = g_strdup_printf(&quot;%s%s&quot;, hashurl, thumbnail);
+-                gaim_url_fetch(url, FALSE, &quot;Mozilla/4.0&quot;, FALSE,
++                gaim_util_fetch_url(url, FALSE, &quot;Mozilla/4.0&quot;, FALSE,
+                                gaym_fetch_thumbnail_cb, data);
+                 g_free(url);
+ 
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/gayminfo.h
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/gayminfo.h	2006-02-18 22:34:25 UTC (rev 289)
++++ qrc/branches/fork-for-gaim-2/gaym/src/gayminfo.h	2006-11-04 07:56:27 UTC (rev 290)
+@@ -27,6 +27,7 @@
+ #include &lt;glib.h&gt;
+ 
+ #include &quot;gaym.h&quot;
++#include &quot;util.h&quot;
+ 
+ /**
+  * Begin temporary, pending further refactoring
+@@ -42,8 +43,8 @@
+     // gint pic_data_len;
+ };
+ 
+-void gaym_fetch_thumbnail_cb(void *user_data, const char *pic_data,
+-                             size_t len);
++void gaym_fetch_thumbnail_cb(GaimUtilFetchUrlData *url_data, void *user_data, const gchar *pic_data,
++                             gsize len, const gchar* error_message);
+ /**
+  * End temporary, pending further refactoring
+  */
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/gaympriv.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/gaympriv.c	2006-02-18 22:34:25 UTC (rev 289)
++++ qrc/branches/fork-for-gaim-2/gaym/src/gaympriv.c	2006-11-04 07:56:27 UTC (rev 290)
+@@ -178,8 +178,8 @@
+     }
+ }
+ 
+-void gaym_server_change_deny_status_cb(void *data, const char *result,
+-                                       size_t len)
++void gaym_server_change_deny_status_cb(GaimUtilFetchUrlData *url_data, void *data, const gchar *result,
++                                       gsize len, const gchar* error_message)
+ {
+     gaim_debug_info(&quot;gaym&quot;, &quot;gaym_server_change_deny_status_cb:\n%s\n&quot;,
+                     result);
+@@ -208,7 +208,7 @@
+ 
+     char *user_agent = &quot;Mozilla/4.0&quot;;
+ 
+-    gaim_url_fetch(url, FALSE, user_agent, FALSE,
++    gaim_util_fetch_url(url, FALSE, user_agent, FALSE,
+                    gaym_server_change_deny_status_cb, NULL);
+ 
+     g_free(url);
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/gaympriv.h
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/gaympriv.h	2006-02-18 22:34:25 UTC (rev 289)
++++ qrc/branches/fork-for-gaim-2/gaym/src/gaympriv.h	2006-11-04 07:56:27 UTC (rev 290)
+@@ -60,8 +60,8 @@
+  * @param result The information fetched by the http GET.
+  * @param len    The length of the result.
+  */
+-void gaym_server_change_deny_status_cb(void *data, const char *result,
+-                                       size_t len);
++void gaym_server_change_deny_status_cb(GaimUtilFetchUrlData *url_data, void *data, const gchar *result,
++                                       gsize len, const gchar* error_message);
+ 
+ /**
+  * Add a name to (or remove a name from) the Gay.com server's deny list.
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/helpers.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/helpers.c	2006-02-18 22:34:25 UTC (rev 289)
++++ qrc/branches/fork-for-gaim-2/gaym/src/helpers.c	2006-11-04 07:56:27 UTC (rev 290)
+@@ -19,7 +19,6 @@
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+  */
+-#include &quot;internal.h&quot;
+ #include &quot;debug.h&quot;
+ #include &quot;helpers.h&quot;
+ 
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/msgs.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/msgs.c	2006-02-18 22:34:25 UTC (rev 289)
++++ qrc/branches/fork-for-gaim-2/gaym/src/msgs.c	2006-11-04 07:56:27 UTC (rev 290)
+@@ -22,7 +22,6 @@
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+  */
+ 
+-#include &quot;internal.h&quot;
+ #include &quot;conversation.h&quot;
+ #include &quot;blist.h&quot;
+ #include &quot;notify.h&quot;
+@@ -85,8 +84,8 @@
+     serv_got_im(gc, args[1], args[2], GAIM_MESSAGE_AUTO_RESP, time(NULL));
+ }
+ 
+-static void gaym_fetch_photo_cb(void *user_data, const char *info_data,
+-                                size_t len)
++static void gaym_fetch_photo_cb(GaimUtilFetchUrlData *url_data, void *user_data, const gchar *info_data,
++                                gsize len, const gchar* err)
+ {
+     if (!info_data || !user_data) {
+         return;
+@@ -149,8 +148,8 @@
+     gaim_imgstore_unref(id);
+ }
+ 
+-static void gaym_fetch_info_cb(void *user_data, const char *info_data,
+-                               size_t len)
++static void gaym_fetch_info_cb(GaimUtilFetchUrlData *url_data, void *user_data, const gchar *info_data,
++                               gsize len, const gchar* error_message)
+ {
+     struct gaym_fetch_thumbnail_data *d = user_data;
+     char *picpath;
+@@ -203,7 +202,7 @@
+ 
+     picurl = g_strdup_printf(&quot;<A HREF="http://www.gay.com%s">http://www.gay.com%s</A>&quot;, picpath);
+     if (picurl) {
+-        gaim_url_fetch(picurl, FALSE, &quot;Mozilla/4.0 (compatible; MSIE 5.0)&quot;,
++        gaim_util_fetch_url(picurl, FALSE, &quot;Mozilla/4.0 (compatible; MSIE 5.0)&quot;,
+                        FALSE, gaym_fetch_photo_cb, user_data);
+         return;
+     }
+@@ -293,7 +292,7 @@
+         char *infourl = g_strdup_printf(&quot;%s?pw=%s&amp;name=%s&quot;, hashurl,
+                                         gaym-&gt;chat_key, args[1]);
+         if (infourl) {
+-            gaim_url_fetch(infourl, FALSE,
++            gaim_util_fetch_url(infourl, FALSE,
+                            &quot;Mozilla/4.0 (compatible; MSIE 5.0)&quot;, FALSE,
+                            gaym_fetch_info_cb, data);
+             g_free(infourl);
+@@ -1129,7 +1128,7 @@
+                       const char *from, char **args)
+ {
+     GaimConversation *convo;
+-    char *tmp, *msg;
++    char *tmp=0, *msg=0;
+     int notice = 0;
+ 
+     GaimConnection *gc = gaim_account_get_connection(gaym-&gt;account);
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/parse.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/parse.c	2006-02-18 22:34:25 UTC (rev 289)
++++ qrc/branches/fork-for-gaim-2/gaym/src/parse.c	2006-11-04 07:56:27 UTC (rev 290)
+@@ -20,8 +20,6 @@
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+  */
+ 
+-#include &quot;internal.h&quot;
+-
+ #include &quot;accountopt.h&quot;
+ #include &quot;conversation.h&quot;
+ #include &quot;notify.h&quot;
+@@ -369,7 +367,7 @@
+         gaym_send(gaym, buf);
+         g_free(buf);
+     } else if (!strncmp(cur, &quot;DCC SEND &quot;, 9)) {
+-        gaym_dccsend_recv(gaym, from, msg + 10);
++        //gaym_dccsend_recv(gaym, from, msg + 10);
+         return NULL;
+     }
+ 
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/weblogin.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/weblogin.c	2006-02-18 22:34:25 UTC (rev 289)
++++ qrc/branches/fork-for-gaim-2/gaym/src/weblogin.c	2006-11-04 07:56:27 UTC (rev 290)
+@@ -20,7 +20,6 @@
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+  */
+-#include &quot;internal.h&quot;
+ 
+ #include &quot;conversation.h&quot;
+ #include &quot;debug.h&quot;
+@@ -32,37 +31,7 @@
+ 
+ #include &quot;helpers.h&quot;
+ 
+-typedef struct {
+-    void (*callback) (void *, const char *, size_t);
+-    void *user_data;
+ 
+-    struct {
+-        char *user;
+-        char *passwd;
+-        char *address;
+-        int port;
+-        char *page;
+-
+-    } website;
+-
+-    char *url;
+-    gboolean full;
+-    char *user_agent;
+-    gboolean http11;
+-
+-    int inpa;
+-
+-    gboolean sentreq;
+-    gboolean newline;
+-    gboolean startsaving;
+-    gboolean has_explicit_data_len;
+-    char *webdata;
+-    unsigned long len;
+-    unsigned long data_len;
+-    GaimUrlSession *session;
+-
+-} GaimFetchUrlData;
+-
+ static void gaym_session_destroy(GaimUrlSession * session)
+ {
+     if (session-&gt;cookies)
+@@ -88,110 +57,8 @@
+     return string;
+ }
+ 
+-static void destroy_fetch_url_data(GaimFetchUrlData * gfud)
+-{
+-    if (gfud-&gt;webdata != NULL)
+-        g_free(gfud-&gt;webdata);
+-    if (gfud-&gt;url != NULL)
+-        g_free(gfud-&gt;url);
+-    if (gfud-&gt;user_agent != NULL)
+-        g_free(gfud-&gt;user_agent);
+-    if (gfud-&gt;website.address != NULL)
+-        g_free(gfud-&gt;website.address);
+-    if (gfud-&gt;website.page != NULL)
+-        g_free(gfud-&gt;website.page);
+-    if (gfud-&gt;website.user != NULL)
+-        g_free(gfud-&gt;website.user);
+-    if (gfud-&gt;website.passwd != NULL)
+-        g_free(gfud-&gt;website.passwd);
+ 
+-    g_free(gfud);
+-}
+ 
+-static gboolean
+-parse_redirect(const char *data, size_t data_len, gint sock,
+-               GaimFetchUrlData * gfud)
+-{
+-    gchar *s;
+-
+-    if ((s = g_strstr_len(data, data_len, &quot;Location: &quot;)) != NULL) {
+-        gchar *new_url, *temp_url, *end;
+-        gboolean full;
+-        int len;
+-
+-        s += strlen(&quot;Location: &quot;);
+-        end = strchr(s, '\r');
+-
+-        /* Just in case :) */
+-        if (end == NULL)
+-            end = strchr(s, '\n');
+-
+-        len = end - s;
+-
+-        new_url = g_malloc(len + 1);
+-        strncpy(new_url, s, len);
+-        new_url[len] = '\0';
+-
+-        full = gfud-&gt;full;
+-
+-        if (*new_url == '/' || g_strstr_len(new_url, len, &quot;://&quot;) == NULL) {
+-            temp_url = new_url;
+-
+-            new_url = g_strdup_printf(&quot;%s:%d%s&quot;, gfud-&gt;website.address,
+-                                      gfud-&gt;website.port, temp_url);
+-
+-            g_free(temp_url);
+-
+-            full = FALSE;
+-        }
+-
+-        /* Close the existing stuff. */
+-        gaim_input_remove(gfud-&gt;inpa);
+-        close(sock);
+-
+-        gaim_debug_info(&quot;gaim_url_fetch&quot;, &quot;Redirecting to %s\n&quot;, new_url);
+-
+-        /* Try again, with this new location. */
+-        gaim_url_fetch(new_url, full, gfud-&gt;user_agent, gfud-&gt;http11,
+-                       gfud-&gt;callback, gfud-&gt;user_data);
+-
+-        /* Free up. */
+-        g_free(new_url);
+-        destroy_fetch_url_data(gfud);
+-
+-        return TRUE;
+-    }
+-
+-    return FALSE;
+-}
+-
+-static size_t parse_content_len(const char *data, size_t data_len)
+-{
+-    size_t content_len = 0;
+-    const char *p = NULL;
+-
+-    /* This is still technically wrong, since headers are case-insensitive
+-       [RFC 2616, section 4.2], though this ought to catch the normal case.
+-       Note: data is _not_ nul-terminated. */
+-    if (data_len &gt; 16) {
+-        p = strncmp(data, &quot;Content-Length: &quot;, 16) == 0 ? data : NULL;
+-        if (!p) {
+-            p = g_strstr_len(data, data_len, &quot;\nContent-Length: &quot;);
+-            if (p)
+-                p += 1;
+-        }
+-    }
+-
+-    /* If we can find a Content-Length header at all, try to sscanf it.
+-       Response headers should end with at least \r\n, so sscanf is safe,
+-       if we make sure that there is indeed a \n in our header. */
+-    if (p &amp;&amp; g_strstr_len(p, data_len - (p - data), &quot;\n&quot;)) {
+-        sscanf(p, &quot;Content-Length: %zu&quot;, &amp;content_len);
+-    }
+-
+-    return content_len;
+-}
+-
+ // This looks for Set-cookie: fields in headers, and adds those cookies
+ // To the session struct.
+ static void add_cookie(gpointer key, gpointer value, gpointer data)
+@@ -206,6 +73,7 @@
+     g_free(cookies);
+ 
+ }
++
+ static void parse_cookies(const char *webdata, GaimUrlSession * session,
+                           size_t len)
+ {
+@@ -231,213 +99,26 @@
+ 
+ }
+ 
+-
+-/* This is a modified version of gaim's url_fetched_cb function. It has
+-   been modified to pass cookies during requests. The cookies are set in
+-   user_data, cast as a GaimUrlSession item. Any cookies in the response
+-   are added to this structure, as well. */
+-static void
+-session_fetched_cb(gpointer url_data, gint sock, GaimInputCondition cond)
++gchar* gaym_build_session_request(gchar* url, GaimUrlSession* session)
+ {
++	    if(!url || !session)
++		return 0;
+ 
+-    GaimFetchUrlData *gfud = url_data;
+-    char data;
+-    gboolean got_eof = FALSE;
+-    if (sock == -1) {
+-        gfud-&gt;callback(gfud-&gt;user_data, NULL, 0);
+-
+-        destroy_fetch_url_data(gfud);
+-
+-        return;
+-    }
+-
+-    if (!gfud-&gt;sentreq) {
+-        char buf[2048];
+-
+-        if (gfud-&gt;session-&gt;cookies == NULL)
+-            gfud-&gt;session-&gt;cookies = g_strdup(&quot;&quot;);
+-
+-        if (gfud-&gt;user_agent) {
+-            /* Host header is not forbidden in HTTP/1.0 requests, and
+-               HTTP/1.1 clients must know how to handle the &quot;chunked&quot;
+-               transfer encoding. Gaim doesn't know how to handle
+-               &quot;chunked&quot;, so should always send the Host header
+-               regardless, to get around some observed problems */
+-            g_snprintf(buf, sizeof(buf),
+-                       &quot;GET %s%s HTTP/%s\r\n&quot; &quot;User-Agent: %s\r\n&quot;
+-                       &quot;Host: %s\r\n&quot; &quot;Cookie: %s\r\n&quot;,
+-                       (gfud-&gt;full ? &quot;&quot; : &quot;/&quot;),
+-                       (gfud-&gt;full ? gfud-&gt;url : gfud-&gt;website.page),
+-                       (gfud-&gt;http11 ? &quot;1.1&quot; : &quot;1.0&quot;), gfud-&gt;user_agent,
+-                       gfud-&gt;website.address, gfud-&gt;session-&gt;cookies);
+-        } else {
+-            g_snprintf(buf, sizeof(buf),
+-                       &quot;GET %s%s HTTP/%s\r\n&quot; &quot;Host: %s\r\n&quot;
+-                       &quot;Accept-Encoding: identity\r\n&quot; &quot;Cookie: %s\r\n&quot;,
+-                       (gfud-&gt;full ? &quot;&quot; : &quot;/&quot;),
+-                       (gfud-&gt;full ? gfud-&gt;url : gfud-&gt;website.page),
+-                       (gfud-&gt;http11 ? &quot;1.1&quot; : &quot;1.0&quot;),
+-                       gfud-&gt;website.address, gfud-&gt;session-&gt;cookies);
+-        }
+-        if (gfud-&gt;session-&gt;hasFormData)
+-            strcat(buf,
+-                   &quot;Content-Type: application/x-www-form-urlencoded\r\n\r\n&quot;);
+-        else
+-            strcat(buf, &quot;\r\n&quot;);
+-        gaim_debug_misc(&quot;gaim_url_fetch&quot;, &quot;Request: %s\n&quot;, buf);
+-
+-        write(sock, buf, strlen(buf));
+-        fcntl(sock, F_SETFL, O_NONBLOCK);
+-        gfud-&gt;sentreq = TRUE;
+-        gfud-&gt;inpa = gaim_input_add(sock, GAIM_INPUT_READ,
+-                                    session_fetched_cb, url_data);
+-        gfud-&gt;data_len = 4096;
+-        gfud-&gt;webdata = g_malloc(gfud-&gt;data_len);
+-
+-        return;
+-    }
+-
+-    if (read(sock, &amp;data, 1) &gt; 0 || errno == EWOULDBLOCK) {
+-        if (errno == EWOULDBLOCK) {
+-            errno = 0;
+-
+-            return;
+-        }
+-
+-        gfud-&gt;len++;
+-
+-        if (gfud-&gt;len == gfud-&gt;data_len + 1) {
+-            gfud-&gt;data_len += (gfud-&gt;data_len) / 2;
+-
+-            gfud-&gt;webdata = g_realloc(gfud-&gt;webdata, gfud-&gt;data_len);
+-        }
+-
+-        gfud-&gt;webdata[gfud-&gt;len - 1] = data;
+-
+-        if (!gfud-&gt;startsaving) {
+-            if (data == '\r')
+-                return;
+-
+-            if (data == '\n') {
+-                if (gfud-&gt;newline) {
+-                    size_t content_len;
+-                    gfud-&gt;startsaving = TRUE;
+-
+-                    // JBL 10-16-2004: Put cookies into session
+-
+-                    parse_cookies(gfud-&gt;webdata, gfud-&gt;session, gfud-&gt;len);
+-
+-                    /* See if we can find a redirect. */
+-                    if (parse_redirect
+-                        (gfud-&gt;webdata, gfud-&gt;len, sock, gfud))
+-                        return;
+-
+-                    /* No redirect. See if we can find a content length. */
+-                    content_len =
+-                        parse_content_len(gfud-&gt;webdata, gfud-&gt;len);
+-
+-                    if (content_len == 0) {
+-                        /* We'll stick with an initial 8192 */
+-                        content_len = 8192;
+-                    } else {
+-                        gfud-&gt;has_explicit_data_len = TRUE;
+-                    }
+-
+-                    /* Out with the old... */
+-                    gfud-&gt;len = 0;
+-                    g_free(gfud-&gt;webdata);
+-                    gfud-&gt;webdata = NULL;
+-
+-                    /* In with the new. */
+-                    gfud-&gt;data_len = content_len;
+-                    gfud-&gt;webdata = g_try_malloc(gfud-&gt;data_len);
+-                    if (gfud-&gt;webdata == NULL) {
+-                        gaim_debug_error(&quot;gaim_url_fetch&quot;,
+-                                         &quot;Failed to allocate %u bytes: %s\n&quot;,
+-                                         gfud-&gt;data_len, strerror(errno));
+-                        gaim_input_remove(gfud-&gt;inpa);
+-                        close(sock);
+-                        gfud-&gt;callback(gfud-&gt;user_data, NULL, 0);
+-                        destroy_fetch_url_data(gfud);
+-                    }
+-                } else
+-                    gfud-&gt;newline = TRUE;
+-
+-                return;
+-            }
+-
+-            gfud-&gt;newline = FALSE;
+-        } else if (gfud-&gt;has_explicit_data_len
+-                   &amp;&amp; gfud-&gt;len == gfud-&gt;data_len) {
+-            got_eof = TRUE;
+-        }
+-    } else if (errno != ETIMEDOUT) {
+-        got_eof = TRUE;
+-    } else {
+-        gaim_input_remove(gfud-&gt;inpa);
+-        close(sock);
+-
+-        gfud-&gt;callback(gfud-&gt;user_data, NULL, 0);
+-
+-        destroy_fetch_url_data(gfud);
+-    }
+-
+-    if (got_eof) {
+-        gfud-&gt;webdata = g_realloc(gfud-&gt;webdata, gfud-&gt;len + 1);
+-        gfud-&gt;webdata[gfud-&gt;len] = 0;
+-
+-        gaim_input_remove(gfud-&gt;inpa);
+-        close(sock);
+-        gfud-&gt;callback(gfud-&gt;user_data, gfud-&gt;webdata, gfud-&gt;len);
+-
+-        destroy_fetch_url_data(gfud);
+-    }
++	    gchar* buf = g_strdup_printf(&quot;GET %s HTTP/1.1\r\n&quot; &quot;Accept-Encoding: identity\r\n&quot;
++                       &quot;Host: www.gay.com\r\n&quot; &quot;Cookie: %s\r\n&quot;,
++                       url, session-&gt;cookies);
++	gchar* res; 
++	if (session-&gt;hasFormData)
++            res=g_strdup_printf(&quot;%sContent-Type: application/x-www-form-urlencoded\r\n\r\n&quot;,buf);
++	else
++	    res=g_strdup_printf(&quot;%s\r\n&quot;,buf);
++	g_free(buf);
++	return res;
+ }
+-
+-
+-
+-void
+-gaim_session_fetch(const char *url, gboolean full,
+-                   const char *user_agent, gboolean http11,
+-                   void (*cb) (gpointer, const char *, size_t),
+-                   void *user_data, GaimUrlSession * session)
+-{
+-    int sock;
+-    GaimFetchUrlData *gfud;
+-
+-    g_return_if_fail(url != NULL);
+-    g_return_if_fail(cb != NULL);
+-
+-    gaim_debug_info(&quot;gaim_session_fetch&quot;,
+-                    &quot;requested to fetch (%s), full=%d, user_agent=(%s), http11=%d\n&quot;,
+-                    url, full, user_agent ? user_agent : &quot;(null)&quot;, http11);
+-
+-    gfud = g_new0(GaimFetchUrlData, 1);
+-
+-    gfud-&gt;callback = cb;
+-    gfud-&gt;user_data = user_data;
+-    gfud-&gt;url = g_strdup(url);
+-    gfud-&gt;user_agent = (user_agent != NULL ? g_strdup(user_agent) : NULL);
+-    gfud-&gt;http11 = http11;
+-    gfud-&gt;full = full;
+-    gfud-&gt;session = session;
+-    gaim_url_parse(url, &amp;gfud-&gt;website.address, &amp;gfud-&gt;website.port,
+-                   &amp;gfud-&gt;website.page, &amp;gfud-&gt;website.user,
+-                   &amp;gfud-&gt;website.passwd);
+-
+-    if ((sock = gaim_proxy_connect(NULL, gfud-&gt;website.address,
+-                                   gfud-&gt;website.port, session_fetched_cb,
+-                                   gfud)) &lt; 0) {
+-        destroy_fetch_url_data(gfud);
+-
+-        cb(user_data, g_strdup(_(&quot;g003: Error opening connection.\n&quot;)), 0);
+-    }
+-}
+-
+ static void
+-gaym_weblogin_step5(gpointer data, const char *text, size_t len)
++gaym_weblogin_step5(GaimUtilFetchUrlData *url_data, gpointer data, const gchar *text, gsize len, const gchar* err)
+ {
+-
++    gaim_debug_misc(&quot;weblogin&quot;,&quot;STEP FIVE BEGINS\n&quot;); 
+     GaimUrlSession *session = (GaimUrlSession *) data;
+     struct gaym_conn *gaym = session-&gt;gaym;
+     // Get hash from text
+@@ -527,10 +208,11 @@
+ }
+ 
+ static void
+-gaym_weblogin_step4(gpointer data, const char *text, size_t len)
++gaym_weblogin_step4(GaimUtilFetchUrlData *url_data, gpointer data, const gchar *text, gsize len, const gchar* err)
+ {
+ 
+     GaimUrlSession *session = (GaimUrlSession *) data;
++    parse_cookies(text, session, len);
+     gaim_debug_misc(&quot;gaym&quot;, &quot;Step 4: session: %x\n&quot;, session);
+     if (session &amp;&amp; GAIM_CONNECTION_IS_VALID(session-&gt;account-&gt;gc)) {
+         // The fourth step is to parse a rand=# value out of the message
+@@ -539,17 +221,21 @@
+         // We then connect to messenger/applet.html
+         char url[512];
+         int nonce;
+-        char *buf = g_strdup_printf(_(&quot;Signon: %s&quot;),
+-                                    (session-&gt;account-&gt;username));
+-        gaim_connection_update_progress(session-&gt;account-&gt;gc, buf, 3, 6);
++        //char *buf = g_strdup_printf(_(&quot;Signon: %s&quot;),
++        //                            (session-&gt;account-&gt;username));
++        //gaim_connection_update_progress(session-&gt;account-&gt;gc, buf, 3, 6);
+         sscanf(text, &quot;?rand=%d&quot;, &amp;nonce);
+         snprintf(url, 512,
+                  &quot;<A HREF="http://www.gay.com/messenger/applet.html?rand=%d">http://www.gay.com/messenger/applet.html?rand=%d</A>&quot;,
+                  nonce);
+-
++	
+         session-&gt;hasFormData = TRUE;
+-        gaim_session_fetch(url, FALSE, NULL, FALSE, gaym_weblogin_step5,
+-                           session, session);
++	gaim_debug_misc(&quot;weblogin&quot;,&quot;About to build url\n&quot;);
++	gchar* request=gaym_build_session_request(url, session);
++	gaim_debug_misc(&quot;weblogin&quot;,&quot;Requesting: %s\n&quot;,request);
++        gaim_util_fetch_url_request(url, FALSE, NULL, FALSE, 
++				    request, TRUE, gaym_weblogin_step5,
++				    session);
+     } else {
+         gaim_debug_misc(&quot;gaym&quot;, &quot;Connection was cancelled before step4\n&quot;);
+         gaim_debug_misc(&quot;gaym&quot;, &quot;session: %x\n&quot;, session);
+@@ -588,8 +274,8 @@
+                  session-&gt;username, session-&gt;password);
+ 
+             session-&gt;hasFormData = TRUE;
+-            gaim_session_fetch(url, FALSE, NULL, FALSE,
+-                               gaym_weblogin_step4, session, session);
++            gaim_util_fetch_url_request(url, FALSE, NULL, FALSE, NULL, TRUE,
++                               gaym_weblogin_step4, session);
+         } else {
+             gaim_debug_misc(&quot;gaym&quot;, &quot;cancelled before step1\n&quot;);
+             gaim_debug_misc(&quot;gaym&quot;, &quot;gaym-&gt;sessoin: %x\n&quot;, session);
+@@ -599,6 +285,8 @@
+     }
+ }
+ 
++
++/*Doesn't do anything yet*/
+ void gaym_try_cached_password(GaimAccount * account,
+                               void (*callback) (GaimAccount * account))
+ {
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	
+	<LI>Next message: <A HREF="000221.html">[Qrc-svn] r291 - qrc/branches/fork-for-gaim-2/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#220">[ date ]</a>
+              <a href="thread.html#220">[ thread ]</a>
+              <a href="subject.html#220">[ subject ]</a>
+              <a href="author.html#220">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,89 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r128 - trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r128%20-%20trunk/gaym/src&In-Reply-To=%3C200506271349.j5RDnMgt009436%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000059.html">
+   <LINK REL="Next"  HREF="000061.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r128 - trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r128%20-%20trunk/gaym/src&In-Reply-To=%3C200506271349.j5RDnMgt009436%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r128 - trunk/gaym/src">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Mon Jun 27 15:49:22 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000059.html">[Qrc-svn] r127 - trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000061.html">[Qrc-svn] r129 - trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#60">[ date ]</a>
+              <a href="thread.html#60">[ thread ]</a>
+              <a href="subject.html#60">[ subject ]</a>
+              <a href="author.html#60">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-27 15:49:20 +0200 (Mon, 27 Jun 2005)
+New Revision: 128
+
+Modified:
+   trunk/gaym/src/gaym.c
+Log:
+Fixed a rather ugly problem that caused unknown messages to be sent to
+the server for every buddy on the list, if one buddy was added that
+contained a newline.  Cutting and pasting would sometimes cause this to
+happen if the user wasn't careful.
+
+
+Modified: trunk/gaym/src/gaym.c
+===================================================================
+--- trunk/gaym/src/gaym.c	2005-06-26 23:13:34 UTC (rev 127)
++++ trunk/gaym/src/gaym.c	2005-06-27 13:49:20 UTC (rev 128)
+@@ -607,6 +607,9 @@
+ static void gaym_add_buddy(GaimConnection * gc, GaimBuddy * buddy,
+                            GaimGroup * group)
+ {
++    buddy-&gt;name = g_strstrip(buddy-&gt;name);
++    buddy-&gt;alias = g_strstrip(buddy-&gt;alias);
++    buddy-&gt;server_alias = g_strstrip(buddy-&gt;server_alias);
+     struct gaym_conn *gaym = (struct gaym_conn *) gc-&gt;proto_data;
+     struct gaym_buddy *ib = g_new0(struct gaym_buddy, 1);
+     ib-&gt;name = g_strdup(buddy-&gt;name);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000059.html">[Qrc-svn] r127 - trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000061.html">[Qrc-svn] r129 - trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#60">[ date ]</a>
+              <a href="thread.html#60">[ thread ]</a>
+              <a href="subject.html#60">[ subject ]</a>
+              <a href="author.html#60">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,86 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r206 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r206%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507150337.j6F3bowb017245%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000136.html">
+   <LINK REL="Next"  HREF="000138.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r206 - qrc/trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r206%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507150337.j6F3bowb017245%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r206 - qrc/trunk/gaym/src">deckrider at berlios.de
+       </A><BR>
+    <I>Fri Jul 15 05:37:50 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000136.html">[Qrc-svn] r205 - in qrc/trunk: . gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000138.html">[Qrc-svn] r207 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#137">[ date ]</a>
+              <a href="thread.html#137">[ thread ]</a>
+              <a href="subject.html#137">[ subject ]</a>
+              <a href="author.html#137">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-15 05:37:49 +0200 (Fri, 15 Jul 2005)
+New Revision: 206
+
+Modified:
+   qrc/trunk/gaym/src/gaym.c
+Log:
+Adding back the g_free() for the cleanup of the value in case we use it
+in the future to pass the Bio to the fetch mini profile function.
+
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-15 03:12:51 UTC (rev 205)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-15 03:37:49 UTC (rev 206)
+@@ -518,7 +518,7 @@
+     gaym-&gt;msgs = g_hash_table_new(g_str_hash, g_str_equal);
+     gaym_msg_table_build(gaym);
+     gaym-&gt;info_window_needed =
+-        g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
++        g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+ 
+     buf = g_strdup_printf(_(&quot;Signon: %s&quot;), username);
+     gaim_connection_update_progress(gc, buf, 1, 6);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000136.html">[Qrc-svn] r205 - in qrc/trunk: . gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000138.html">[Qrc-svn] r207 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#137">[ date ]</a>
+              <a href="thread.html#137">[ thread ]</a>
+              <a href="subject.html#137">[ subject ]</a>
+              <a href="author.html#137">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

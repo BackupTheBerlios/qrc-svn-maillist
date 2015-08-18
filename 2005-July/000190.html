@@ -1,0 +1,406 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r260 - in qrc/trunk: gaym/src gaym-extras/src nsis
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r260%20-%20in%20qrc/trunk%3A%20gaym/src%20gaym-extras/src%20nsis&In-Reply-To=%3C200507310329.j6V3T8hJ017314%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000189.html">
+   <LINK REL="Next"  HREF="000191.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r260 - in qrc/trunk: gaym/src gaym-extras/src nsis</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r260%20-%20in%20qrc/trunk%3A%20gaym/src%20gaym-extras/src%20nsis&In-Reply-To=%3C200507310329.j6V3T8hJ017314%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r260 - in qrc/trunk: gaym/src gaym-extras/src nsis">jblebrun at berlios.de
+       </A><BR>
+    <I>Sun Jul 31 05:29:08 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000189.html">[Qrc-svn] r259 - in qrc/trunk: . gaym/src gaym-extras/src
+</A></li>
+        <LI>Next message: <A HREF="000191.html">[Qrc-svn] r261 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#190">[ date ]</a>
+              <a href="thread.html#190">[ thread ]</a>
+              <a href="subject.html#190">[ subject ]</a>
+              <a href="author.html#190">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-07-31 05:29:02 +0200 (Sun, 31 Jul 2005)
+New Revision: 260
+
+Modified:
+   qrc/trunk/gaym-extras/src/bio-popups.c
+   qrc/trunk/gaym-extras/src/gaym-extras.c
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/gayminfo.c
+   qrc/trunk/gaym/src/helpers.c
+   qrc/trunk/gaym/src/msgs.c
+   qrc/trunk/nsis/installer.nsi
+Log:
+More random cleanup and bugfix. Sorry for the onslaught of commit emails ;-)
+
+helpers.c: 
+*Return &quot;no info&quot; instead of null as tooltip for non-existent person. 
+
+gayminfo.c:
+*ADDED A g_dir_close! D'oh!
+
+msgs.c:
+*Make the &quot;no such person&quot; message appear in the window, if a conversation is open, instead of annoying popup notification. 
+*Don't use buddy icon system at all, since we have our own caching system.
+
+gaym.c:
+*Normalize some hash table lookups
+*return no info found for tooltip
+
+gaym-extras.c:
+*defines to make sure win32 looks for icons in the right place. Might be the wrong way to do it.
+*add a prefs frame
+
+bio-popups.c:
+*added a dir_close! d'oh!
+*make popups get destroyed on right click, since this was causing crash.
+
+installer.nsI:
+*add icons in right place
+
+
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-30 22:19:23 UTC (rev 259)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-31 03:29:02 UTC (rev 260)
+@@ -236,13 +236,12 @@
+     }
+ 
+     struct gaym_buddy *ib =
+-        g_hash_table_lookup(gaym-&gt;channel_members, buddy-&gt;name);
+-
+-    if (!ib)
+-        ib = g_hash_table_lookup(gaym-&gt;buddies, buddy-&gt;name);
+-
++        g_hash_table_lookup(gaym-&gt;channel_members, gaim_normalize(gaym-&gt;account,buddy-&gt;name)); 
++    if(!ib)
++         ib=g_hash_table_lookup(gaym-&gt;buddies, gaim_normalize(gaym-&gt;account,buddy-&gt;name));
++    
+     if (!ib) {
+-        return NULL;
++        return g_strdup(&quot;No info found.&quot;);
+     }
+ 
+     return build_tooltip_text(ib);
+@@ -812,11 +811,11 @@
+     if (!channel_member) {
+         GaymBuddy *channel_member = g_new0(GaymBuddy, 1);
+         channel_member-&gt;ref_count = 1;
+-        g_hash_table_insert(gaym-&gt;channel_members, g_strdup(name),
++        g_hash_table_insert(gaym-&gt;channel_members, g_strdup(gaim_normalize(gaym-&gt;account,name)),
+                             channel_member);
+         gaim_debug_misc(&quot;gaym&quot;, &quot;Creating channel_members entry for %s\n&quot;,
+                         name);
+-        return g_hash_table_lookup(gaym-&gt;channel_members, name);
++        return g_hash_table_lookup(gaym-&gt;channel_members, gaim_normalize(gaym-&gt;account, name));
+     } else {
+         gaim_debug_misc(&quot;gaym&quot;,
+                         &quot;Adding reference to channel_members entry for %s\n&quot;,
+@@ -833,7 +832,7 @@
+ 
+     GaymBuddy *channel_member;
+     channel_member =
+-        (GaymBuddy *) g_hash_table_lookup(gaym-&gt;channel_members, name);
++        (GaymBuddy *) g_hash_table_lookup(gaym-&gt;channel_members, gaim_normalize(gaym-&gt;account,name));
+     if (!channel_member)
+         return FALSE;
+     else {
+@@ -847,7 +846,7 @@
+         if (channel_member-&gt;ref_count == 0) {
+             gaim_debug_misc(&quot;gaym&quot;, &quot;Removing %s from channel_members\n&quot;,
+                             name);
+-            return g_hash_table_remove(gaym-&gt;channel_members, name);
++            return g_hash_table_remove(gaym-&gt;channel_members, gaim_normalize(gaym-&gt;account, name));
+         }
+         return FALSE;
+     }
+
+Modified: qrc/trunk/gaym/src/gayminfo.c
+===================================================================
+--- qrc/trunk/gaym/src/gayminfo.c	2005-07-30 22:19:23 UTC (rev 259)
++++ qrc/trunk/gaym/src/gayminfo.c	2005-07-31 03:29:02 UTC (rev 260)
+@@ -151,9 +151,9 @@
+         gaim_signal_emit(gaim_accounts_get_handle(), &quot;info-updated&quot;,
+                          d-&gt;gc, NULL, d-&gt;who);
+         if (gaim_find_conversation_with_account(d-&gt;who, d-&gt;gc-&gt;account)) {
+-            gaim_buddy_icons_set_for_user(gaim_connection_get_account
+-                                          (d-&gt;gc), d-&gt;who,
+-                                          (void *) pic_data, len);
++            //gaim_buddy_icons_set_for_user(gaim_connection_get_account
++            //                              (d-&gt;gc), d-&gt;who,
++            //                              (void *) pic_data, len);
+         }
+ 
+     } else {
+@@ -232,6 +232,7 @@
+                     }
+                     g_free(thumbnail_base);
+                 }
++		g_dir_close(gdir);
+             }
+             if (do_fetch) {
+ 
+
+Modified: qrc/trunk/gaym/src/helpers.c
+===================================================================
+--- qrc/trunk/gaym/src/helpers.c	2005-07-30 22:19:23 UTC (rev 259)
++++ qrc/trunk/gaym/src/helpers.c	2005-07-31 03:29:02 UTC (rev 260)
+@@ -456,8 +456,11 @@
+ 
+ char *build_tooltip_text(struct gaym_buddy *ib)
+ {
++    if(!ib-&gt;name)
++	return g_strdup(&quot;No info found.&quot;);
+     char *escaped;
+     GString *tooltip = g_string_new(&quot;&quot;);
++    
+     g_string_printf(tooltip, &quot;&lt;b&gt;&lt;i&gt;%s&lt;/i&gt;&lt;/b&gt;&quot;, ib-&gt;name);
+ 
+     g_return_val_if_fail(ib != NULL, NULL);
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-07-30 22:19:23 UTC (rev 259)
++++ qrc/trunk/gaym/src/msgs.c	2005-07-31 03:29:02 UTC (rev 260)
+@@ -244,7 +244,7 @@
+     if (!gaym || !args || !args[1]) {
+         return;
+     }
+-
++    
+     gcom_nick_to_gaym(args[1]);
+ 
+     gaym_buddy_status(gaym, args[1], TRUE, args[5]);
+@@ -255,8 +255,8 @@
+ 
+     // Update, but then release the reference. It was already opened
+     // during conversation-created.
+-    gaym_update_channel_member(gaym, args[1], args[5]);
+-    gaym_unreference_channel_member(gaym, args[1]);
++    gaym_update_channel_member(gaym, normalized, args[5]);
++    gaym_unreference_channel_member(gaym, normalized);
+     gaim_signal_emit(gaim_accounts_get_handle(), &quot;info-updated&quot;,
+                      gaym-&gt;account, args[1]);
+ 
+@@ -539,11 +539,32 @@
+                           const char *from, char **args)
+ {
+     GaimConnection *gc = gaim_account_get_connection(gaym-&gt;account);
++    GaimConversation *convo;
+ 
++    convo = gaim_find_conversation_with_account(args[1], gaym-&gt;account);
++    if (convo) {
++        if (gaim_conversation_get_type(convo) == GAIM_CONV_CHAT) {
++            /* does this happen? */
++            gaim_conv_chat_write(GAIM_CONV_CHAT(convo), args[1],
++                                 _(&quot;no such channel&quot;),
++                                 GAIM_MESSAGE_SYSTEM | GAIM_MESSAGE_NO_LOG,
++                                 time(NULL));
++        } else {
++            gaim_conv_im_write(GAIM_CONV_IM(convo), args[1],
++                               _(&quot;User is not logged in&quot;),
++                               GAIM_MESSAGE_SYSTEM | GAIM_MESSAGE_NO_LOG,
++                               time(NULL));
++        }
++    } else {
++        if ((gc = gaim_account_get_connection(gaym-&gt;account)) == NULL)
++            return;
++        gaim_notify_error(gc, NULL, _(&quot;Not logged in: &quot;), args[1]);
++    }
++
+     if (gc == NULL || args == NULL || args[1] == NULL)
+         return;
+-
+-    gaim_notify_error(gc, NULL, _(&quot;Not logged in:&quot;), args[1]);
++    
++    
+ }
+ 
+ void gaym_msg_nonick(struct gaym_conn *gaym, const char *name,
+
+Modified: qrc/trunk/gaym-extras/src/bio-popups.c
+===================================================================
+--- qrc/trunk/gaym-extras/src/bio-popups.c	2005-07-30 22:19:23 UTC (rev 259)
++++ qrc/trunk/gaym-extras/src/bio-popups.c	2005-07-31 03:29:02 UTC (rev 260)
+@@ -25,7 +25,7 @@
+                               gpointer n)
+ {
+     // This prevent clicks from demloishing popups.
+-    if (e-&gt;mode != GDK_CROSSING_NORMAL)
++    if (e-&gt;mode != GDK_CROSSING_NORMAL &amp;&amp; (e-&gt;state &amp; GDK_BUTTON1_MASK))
+         return;
+ 
+     guint *timeout = g_hash_table_lookup(popup_timeouts, tv);
+@@ -103,7 +103,7 @@
+                     pixbuf = gdk_pixbuf_new_from_file(path, &amp;err);
+                 g_free(path);
+             }
+-            g_free(gdir);
++            g_dir_close(gdir);
+         }
+         g_free(dirname);
+     }
+@@ -334,7 +334,7 @@
+ 
+     GaimGtkConversation *gtkconv = GAIM_GTK_CONVERSATION(c);
+     // Prevent clicks from demolishing popup.
+-    if (e-&gt;mode != GDK_CROSSING_NORMAL)
++    if (e-&gt;mode != GDK_CROSSING_NORMAL &amp;&amp; (e-&gt;state &amp; GDK_BUTTON1_MASK))
+         return;
+     GtkWidget *tab = gtkconv-&gt;tab_label;
+ 
+
+Modified: qrc/trunk/gaym-extras/src/gaym-extras.c
+===================================================================
+--- qrc/trunk/gaym-extras/src/gaym-extras.c	2005-07-30 22:19:23 UTC (rev 259)
++++ qrc/trunk/gaym-extras/src/gaym-extras.c	2005-07-31 03:29:02 UTC (rev 260)
+@@ -1,7 +1,12 @@
+ /* Show icons in chat room windows */
+ 
+-
++//Messy.
+ #include &quot;gaym-extras.h&quot;
++#ifdef _WIN32
++#include &quot;win32/win32dep.h&quot;
++#else
++#define DATADIR GAIM_DATADIR
++#endif
+ // Adds motion handlers to IM tab labels.
+ static void redo_im_window(GaimConversation * c)
+ {
+@@ -36,9 +41,9 @@
+ 
+     if (!strcmp(dir, &quot;gaim&quot;))
+         filename =
+-            g_build_filename(GAIM_DATADIR, &quot;pixmaps&quot;, &quot;gaim&quot;, base, NULL);
++            g_build_filename(DATADIR, &quot;pixmaps&quot;, &quot;gaim&quot;, base, NULL);
+     else {
+-        filename = g_build_filename(GAIM_DATADIR, &quot;pixmaps&quot;, &quot;gaim&quot;, dir,
++        filename = g_build_filename(DATADIR, &quot;pixmaps&quot;, &quot;gaim&quot;, dir,
+                                     base, NULL);
+     }
+ 
+@@ -105,10 +110,31 @@
+                         &quot;deleting-conversation&quot;, plugin,
+                         GAIM_CALLBACK(clean_popup_stuff), NULL);
+ 
++    gaim_prefs_add_none(&quot;/plugins/gaym-extras&quot;);
++    gaim_prefs_add_none(&quot;/plugins/gaym-extras/silly&quot;);
++
+     extras_register_stock();
++    
+     return TRUE;
+ }
+ 
++static GaimPluginPrefFrame *get_plugin_pref_frame(GaimPlugin * plugin)
++{
++    GaimPluginPrefFrame *frame;
++    GaimPluginPref *ppref;
++
++    frame = gaim_plugin_pref_frame_new();
++
++    ppref =
++        gaim_plugin_pref_new_with_name_and_label(&quot;/plugins/gaym-extras/silly&quot;,_(&quot;Do you really want to turn any of this off? ;-)&quot;));
++    gaim_plugin_pref_frame_add(frame, ppref);
++
++      return frame;
++}
++static GaimPluginUiInfo prefs_info = {
++    get_plugin_pref_frame
++};
++
+ static GaimPluginInfo info = {
+     GAIM_PLUGIN_MAGIC,
+     GAIM_MAJOR_VERSION,
+@@ -129,7 +155,7 @@
+     NULL,
+     NULL,
+     NULL,
+-    NULL,
++    &amp;prefs_info,
+     NULL
+ };
+ 
+
+Modified: qrc/trunk/nsis/installer.nsi
+===================================================================
+--- qrc/trunk/nsis/installer.nsi	2005-07-30 22:19:23 UTC (rev 259)
++++ qrc/trunk/nsis/installer.nsi	2005-07-31 03:29:02 UTC (rev 260)
+@@ -135,9 +135,9 @@
+               Delete &quot;$R1\plugins\${BOT_CHALLENGER_DLL}&quot;
+               Delete &quot;$R1\plugins\${GAYM_EXTRAS_DLL}&quot;
+               ; pixmaps
+-	      Delete &quot;$R1\pixmaps\${ALPHA_PNG}&quot;
+-	      Delete &quot;$R1\pixmaps\${ENTRY_PNG}&quot;
+-	      Delete &quot;$R1\pixmaps\${PIC_PNG}&quot;
++	      Delete &quot;$R1\pixmaps\gaim\gaym\${ALPHA_PNG}&quot;
++	      Delete &quot;$R1\pixmaps\gaim\gaym\${ENTRY_PNG}&quot;
++	      Delete &quot;$R1\pixmaps\gaim\gaym\${PIC_PNG}&quot;
+               Delete &quot;$R1\pixmaps\gaim\status\default\${GAYM_PNG}&quot;
+               Delete &quot;$R3&quot;
+ 
+@@ -188,7 +188,7 @@
+     SetOutPath &quot;$INSTDIR\pixmaps\gaim\status\default&quot;
+     File &quot;..\gaym\pixmaps\${GAYM_PNG}&quot;
+     	
+-    SetOutPath &quot;$INSTDIR\pixmaps&quot;
++    SetOutPath &quot;$INSTDIR\pixmaps\gaim\gaym&quot;
+     File &quot;..\gaym-extras\pixmaps\${ALPHA_PNG}&quot;
+     File &quot;..\gaym-extras\pixmaps\${ENTRY_PNG}&quot;
+     File &quot;..\gaym-extras\pixmaps\${PIC_PNG}&quot;
+@@ -229,9 +229,9 @@
+     Delete &quot;$INSTDIR\plugins\${BOT_CHALLENGER_DLL}&quot;
+     ; pixmaps
+     Delete &quot;$INSTDIR\pixmaps\gaim\status\default\${GAYM_PNG}&quot;
+-    Delete &quot;$INSTDIR\pixmaps\${ALPHA_PNG}&quot;
+-    Delete &quot;$INSTDIR\pixmaps\${ENTRY_PNG}&quot;
+-    Delete &quot;$INSTDIR\pixmaps\${PIC_PNG}&quot;
++    Delete &quot;$INSTDIR\pixmaps\gaim\gaym\${ALPHA_PNG}&quot;
++    Delete &quot;$INSTDIR\pixmaps\gaim\gaym\${ENTRY_PNG}&quot;
++    Delete &quot;$INSTDIR\pixmaps\gaim\gaym\${PIC_PNG}&quot;
+     ; uninstaller
+     Delete &quot;$INSTDIR\${QRC_UNINST_EXE}&quot;
+     ; uninstaller shortcut
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000189.html">[Qrc-svn] r259 - in qrc/trunk: . gaym/src gaym-extras/src
+</A></li>
+	<LI>Next message: <A HREF="000191.html">[Qrc-svn] r261 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#190">[ date ]</a>
+              <a href="thread.html#190">[ thread ]</a>
+              <a href="subject.html#190">[ subject ]</a>
+              <a href="author.html#190">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,2174 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r288 - in qrc/branches/fork-for-gaim-2: . bot-challenger gaym/src gaym-extras/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-December/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r288%20-%20in%20qrc/branches/fork-for-gaim-2%3A%20.%20bot-challenger%20gaym/src%20gaym-extras/src&In-Reply-To=%3C200512210316.jBL3Gwp8015772%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000217.html">
+   
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r288 - in qrc/branches/fork-for-gaim-2: . bot-challenger gaym/src gaym-extras/src</H1>
+    <B>jblebrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r288%20-%20in%20qrc/branches/fork-for-gaim-2%3A%20.%20bot-challenger%20gaym/src%20gaym-extras/src&In-Reply-To=%3C200512210316.jBL3Gwp8015772%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r288 - in qrc/branches/fork-for-gaim-2: . bot-challenger gaym/src gaym-extras/src">jblebrun at berlios.de
+       </A><BR>
+    <I>Wed Dec 21 04:16:58 CET 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000217.html">[Qrc-svn] r287 - qrc/branches
+</A></li>
+        
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#218">[ date ]</a>
+              <a href="thread.html#218">[ thread ]</a>
+              <a href="subject.html#218">[ subject ]</a>
+              <a href="author.html#218">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-12-21 04:16:46 +0100 (Wed, 21 Dec 2005)
+New Revision: 288
+
+Removed:
+   qrc/branches/fork-for-gaim-2/display-options/
+Modified:
+   qrc/branches/fork-for-gaim-2/Makefile.am
+   qrc/branches/fork-for-gaim-2/bot-challenger/bot-challenger.c
+   qrc/branches/fork-for-gaim-2/configure.ac
+   qrc/branches/fork-for-gaim-2/gaym-extras/src/bio-popups.c
+   qrc/branches/fork-for-gaim-2/gaym-extras/src/chaticon.c
+   qrc/branches/fork-for-gaim-2/gaym-extras/src/chatsort.c
+   qrc/branches/fork-for-gaim-2/gaym-extras/src/gaym-extras.c
+   qrc/branches/fork-for-gaim-2/gaym-extras/src/roombrowse.c
+   qrc/branches/fork-for-gaim-2/gaym/src/cmds.c
+   qrc/branches/fork-for-gaim-2/gaym/src/dcc_send.c
+   qrc/branches/fork-for-gaim-2/gaym/src/gaym.c
+   qrc/branches/fork-for-gaim-2/gaym/src/gaym.h
+   qrc/branches/fork-for-gaim-2/gaym/src/gayminfo.c
+   qrc/branches/fork-for-gaim-2/gaym/src/helpers.c
+   qrc/branches/fork-for-gaim-2/gaym/src/msgs.c
+Log:
+Removed display-options
+Updated symbols for gaim 2.0
+Updated away status for gaim 2.0
+Changed icons to be buddy icons
+
+
+
+Modified: qrc/branches/fork-for-gaim-2/Makefile.am
+===================================================================
+--- qrc/branches/fork-for-gaim-2/Makefile.am	2005-12-11 21:49:58 UTC (rev 287)
++++ qrc/branches/fork-for-gaim-2/Makefile.am	2005-12-21 03:16:46 UTC (rev 288)
+@@ -19,5 +19,4 @@
+ 	$(MAYBE_BOT_CHALLENGER) \
+ 	$(MAYBE_CHATICON) \
+ 	$(MAYBE_GAYM) \
+-	$(MAYBE_GAYM_EXTRAS) \
+-	display-options
++	$(MAYBE_GAYM_EXTRAS) 
+
+Modified: qrc/branches/fork-for-gaim-2/bot-challenger/bot-challenger.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/bot-challenger/bot-challenger.c	2005-12-11 21:49:58 UTC (rev 287)
++++ qrc/branches/fork-for-gaim-2/bot-challenger/bot-challenger.c	2005-12-21 03:16:46 UTC (rev 288)
+@@ -160,7 +160,7 @@
+ 
+     if (prpl_info &amp;&amp; prpl_info-&gt;send_im) {
+         i = prpl_info-&gt;send_im(gc, recipient, message,
+-                               GAIM_CONV_IM_AUTO_RESP);
++                               GAIM_MESSAGE_AUTO_RESP);
+     }
+ 
+     return;
+@@ -197,7 +197,8 @@
+     }
+ 
+     /* if there is already an open conversation, allowed it */
+-    if (gaim_find_conversation_with_account(*sender, account)) {
++    if (gaim_find_conversation_with_account
++        (GAIM_CONV_TYPE_IM, *sender, account)) {
+         return retval;
+     }
+ 
+
+Modified: qrc/branches/fork-for-gaim-2/configure.ac
+===================================================================
+--- qrc/branches/fork-for-gaim-2/configure.ac	2005-12-11 21:49:58 UTC (rev 287)
++++ qrc/branches/fork-for-gaim-2/configure.ac	2005-12-21 03:16:46 UTC (rev 288)
+@@ -2,14 +2,14 @@
+ # Process this file with autoconf to produce a configure script.
+ 
+ AC_PREREQ(2.59)
+-AC_INIT([qrc],[0.34.1+svn],[<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">gaymplugin at yahoogroups.com</A>])
++AC_INIT([qrc],[2.0],[<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">gaymplugin at yahoogroups.com</A>])
+ AC_CANONICAL_TARGET([])
+ AM_INIT_AUTOMAKE([1.9.5 no-dist-gzip dist-bzip2])
+ 
+ REQUIRED_PKG_CONFIG=&quot;0.15.0&quot;
+ AC_SUBST(REQUIRED_PKG_CONFIG)
+ 
+-REQUIRED_GAIM=&quot;gaim &gt;= 1.2 gaim &lt; 2.0&quot;
++REQUIRED_GAIM=&quot;gaim gaim &gt;= 2.0&quot;
+ AC_SUBST(REQUIRED_GAIM)
+ 
+ REQUIRED_GTK=&quot;gtk+-2.0&quot;
+@@ -36,9 +36,6 @@
+ # Build preferences
+ 
+ 
+-AC_ARG_ENABLE([display-options],
+-	[AS_HELP_STRING(--enable-display-options,build the bot-challenger plugin @&lt;:@default=no@:&gt;@)],,
+-	[enable_display_options=&quot;no&quot;])
+ 	
+ AC_ARG_ENABLE([bot-challenger],
+ 	[AS_HELP_STRING(--enable-bot-challenger,build the bot-challenger plugin @&lt;:@default=yes@:&gt;@)],,
+@@ -140,7 +137,6 @@
+ 
+ AC_CONFIG_FILES([Makefile
+                  bot-challenger/Makefile
+-		 display-options/Makefile
+                  gaym/Makefile
+                  gaym/pixmaps/Makefile
+                  gaym/src/Makefile
+@@ -155,7 +151,6 @@
+ echo $PACKAGE $VERSION
+ echo
+ echo Build bot-challenger plugin...... : $enable_bot_challenger
+-echo Build display-options plugin...... : $enable_display_options
+ echo Build gaym plugin................ : $enable_gaym
+ echo Build gaym-extras plugin......... : $enable_gaym_extras
+ echo
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/cmds.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/cmds.c	2005-12-11 21:49:58 UTC (rev 287)
++++ qrc/branches/fork-for-gaim-2/gaym/src/cmds.c	2005-12-21 03:16:46 UTC (rev 288)
+@@ -38,14 +38,15 @@
+                      const char *target, const char **args)
+ {
+     GaimConversation *convo =
+-        gaim_find_conversation_with_account(target, gaym-&gt;account);
++        gaim_find_conversation_with_account(GAIM_CONV_TYPE_ANY, target,
++                                            gaym-&gt;account);
+     char *buf;
+ 
+     if (!convo)
+         return 1;
+ 
+     buf = g_strdup_printf(_(&quot;Unknown command: %s&quot;), cmd);
+-    if (gaim_conversation_get_type(convo) == GAIM_CONV_IM)
++    if (gaim_conversation_get_type(convo) == GAIM_CONV_TYPE_IM)
+         gaim_conv_im_write(GAIM_CONV_IM(convo), &quot;&quot;, buf,
+                            GAIM_MESSAGE_SYSTEM | GAIM_MESSAGE_NO_LOG,
+                            time(NULL));
+@@ -120,12 +121,14 @@
+     g_free(newargs[1]);
+     g_free(newargs);
+ 
+-    convo = gaim_find_conversation_with_account(target, gaym-&gt;account);
++    convo =
++        gaim_find_conversation_with_account(GAIM_CONV_TYPE_ANY, target,
++                                            gaym-&gt;account);
+     if (convo) {
+         action = g_strdup_printf(&quot;/me %s&quot;, args[0]);
+         if (action[strlen(action) - 1] == '\n')
+             action[strlen(action) - 1] = '\0';
+-        if (gaim_conversation_get_type(convo) == GAIM_CONV_CHAT)
++        if (gaim_conversation_get_type(convo) == GAIM_CONV_TYPE_CHAT)
+             serv_got_chat_in(gc,
+                              gaim_conv_chat_get_id(GAIM_CONV_CHAT(convo)),
+                              gaim_connection_get_display_name(gc), 0,
+@@ -196,8 +199,10 @@
+     if (!args || !args[0])
+         return 0;
+ 
+-    convo = gaim_find_conversation_with_account(target, gaym-&gt;account);
+-    if (!convo || gaim_conversation_get_type(convo) != GAIM_CONV_CHAT)
++    convo =
++        gaim_find_conversation_with_account(GAIM_CONV_TYPE_CHAT, target,
++                                            gaym-&gt;account);
++    if (!convo)
+         return 0;
+ 
+     if (args[1])
+@@ -462,7 +467,8 @@
+     if (!args || !args[0])
+         return 0;
+ 
+-    convo = gaim_conversation_new(GAIM_CONV_IM, gaym-&gt;account, args[0]);
++    convo =
++        gaim_conversation_new(GAIM_CONV_TYPE_IM, gaym-&gt;account, args[0]);
+ 
+     if (args[1]) {
+         gc = gaim_account_get_connection(gaym-&gt;account);
+@@ -507,8 +513,10 @@
+     if (!args)
+         return 0;
+ 
+-    convo = gaim_find_conversation_with_account(target, gaym-&gt;account);
+-    if (!convo || gaim_conversation_get_type(convo) != GAIM_CONV_CHAT)
++    convo =
++        gaim_find_conversation_with_account(GAIM_CONV_TYPE_CHAT, target,
++                                            gaym-&gt;account);
++    if (!convo)
+         return 0;
+ 
+     if (!args[0]) {
+@@ -516,7 +524,7 @@
+ 
+         if (topic) {
+             char *tmp, *tmp2;
+-            tmp = gaim_escape_html(topic);
++            tmp = g_markup_escape_text(topic, -1);
+             tmp2 = gaim_markup_linkify(tmp);
+             buf = g_strdup_printf(_(&quot;current topic is: %s&quot;), tmp2);
+             g_free(tmp);
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/dcc_send.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/dcc_send.c	2005-12-11 21:49:58 UTC (rev 287)
++++ qrc/branches/fork-for-gaim-2/gaym/src/dcc_send.c	2005-12-21 03:16:46 UTC (rev 288)
+@@ -223,7 +223,7 @@
+     }
+ }
+ 
+-ssize_t gaym_dccsend_send_write(const char *buffer, size_t size,
++ssize_t gaym_dccsend_send_write(const guchar * buffer, size_t size,
+                                 GaimXfer * xfer)
+ {
+     ssize_t s;
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/gaym.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/gaym.c	2005-12-11 21:49:58 UTC (rev 287)
++++ qrc/branches/fork-for-gaim-2/gaym/src/gaym.c	2005-12-21 03:16:46 UTC (rev 288)
+@@ -44,9 +44,10 @@
+ #include &quot;gaym.h&quot;
+ 
+ static const char *gaym_blist_icon(GaimAccount * a, GaimBuddy * b);
+-static void gaym_blist_emblems(GaimBuddy * b, char **se, char **sw,
+-                               char **nw, char **ne);
+-static GList *gaym_away_states(GaimConnection * gc);
++static void gaym_blist_emblems(GaimBuddy * b, const char **se,
++                               const char **sw, const char **nw,
++                               const char **ne);
++static GList *gaym_status_types(GaimAccount * account);
+ static GList *gaym_actions(GaimPlugin * plugin, gpointer context);
+ /* static GList *gaym_chat_info(GaimConnection *gc); */
+ static void gaym_login(GaimAccount * account);
+@@ -54,12 +55,12 @@
+                           GaimInputCondition cond);
+ static void gaym_close(GaimConnection * gc);
+ static int gaym_im_send(GaimConnection * gc, const char *who,
+-                        const char *what, GaimConvImFlags flags);
+-static int gaym_chat_send(GaimConnection * gc, int id, const char *what);
++                        const char *what, GaimMessageFlags flags);
++static int gaym_chat_send(GaimConnection * gc, int id, const char *what,
++                          GaimMessageFlags flags);
+ static void gaym_chat_join(GaimConnection * gc, GHashTable * data);
+ static void gaym_input_cb(gpointer data, gint source,
+                           GaimInputCondition cond);
+-
+ static guint gaym_nick_hash(const char *nick);
+ static gboolean gaym_nick_equal(const char *nick1, const char *nick2);
+ static void gaym_buddy_free(struct gaym_buddy *ib);
+@@ -70,6 +71,7 @@
+ static void gaym_buddy_clear_done(char *name, struct gaym_buddy *ib,
+                                   gpointer nothing);
+ 
++static void connect_signals(GaimConnection * plugin);
+ static GaimPlugin *_gaym_plugin = NULL;
+ 
+ static const char *status_chars = &quot;@+%&amp;&quot;;
+@@ -147,8 +149,8 @@
+ {
+     char *converted_name = NULL;
+     converted_name = gaym_nick_to_gcom_strdup(name);
+-
+     /**
++     * 
+      * There are 510 characters available for an IRC command (512 if
+      * you count CR-LF).  &quot;WHOIS &quot; takes up 6 characters.  This means
+      * we have up to 504 characters available for comma separated
+@@ -188,11 +190,12 @@
+     return &quot;gaym&quot;;
+ }
+ 
+-static void gaym_blist_emblems(GaimBuddy * b, char **se, char **sw,
+-                               char **nw, char **ne)
++static void gaym_blist_emblems(GaimBuddy * b, const char **se,
++                               const char **sw, const char **nw,
++                               const char **ne)
+ {
+-    if (b-&gt;present == GAIM_BUDDY_OFFLINE)
+-        *se = &quot;offline&quot;;
++    // if (b-&gt;present == GAIM_BUDDY_OFFLINE)
++    // *se = &quot;offline&quot;;
+ }
+ 
+ static char *gaym_status_text(GaimBuddy * buddy)
+@@ -228,9 +231,9 @@
+ 
+ static char *gaym_tooltip_text(GaimBuddy * buddy)
+ {
+-    if(!buddy || !buddy-&gt;account || !buddy-&gt;account-&gt;gc)
+-	return NULL;
+-    
++    if (!buddy || !buddy-&gt;account || !buddy-&gt;account-&gt;gc)
++        return NULL;
++
+     struct gaym_conn *gaym =
+         (struct gaym_conn *) buddy-&gt;account-&gt;gc-&gt;proto_data;
+ 
+@@ -255,9 +258,29 @@
+     return build_tooltip_text(ib);
+ }
+ 
+-static GList *gaym_away_states(GaimConnection * gc)
++static GList *gaym_status_types(GaimAccount * account)
+ {
+-    return g_list_prepend(NULL, (gpointer) GAIM_AWAY_CUSTOM);
++    GaimStatusType *type;
++    GList *types = NULL;
++
++    type = gaim_status_type_new(GAIM_STATUS_OFFLINE, &quot;offline&quot;,
++                                _(&quot;Offline&quot;), FALSE);
++    types = g_list_append(types, type);
++
++    type = gaim_status_type_new(GAIM_STATUS_AVAILABLE, &quot;available&quot;,
++                                _(&quot;Available&quot;), TRUE);
++    types = g_list_append(types, type);
++
++    type =
++        gaim_status_type_new_with_attrs(GAIM_STATUS_AWAY, &quot;away&quot;,
++                                        _(&quot;Away&quot;), TRUE, TRUE, FALSE,
++                                        &quot;message&quot;, _(&quot;Message&quot;),
++                                        gaim_value_new(GAIM_TYPE_STRING),
++                                        NULL);
++    types = g_list_append(types, type);
++
++    return types;
++
+ }
+ 
+ static void gaym_set_info(GaimConnection * gc, const char *info)
+@@ -267,7 +290,6 @@
+     char *hostname = &quot;none&quot;;
+     char *buf, *bioline;
+     int i = 0;
+-
+     char *tmpinfo = NULL;
+     if (info) {
+         tmpinfo = g_strdup(info);
+@@ -279,7 +301,7 @@
+         tmpinfo = g_strstrip(tmpinfo);
+     }
+ 
+-    if (gc-&gt;away &amp;&amp; !tmpinfo) {
++    if (!tmpinfo) {
+         /**
+          * don't change any bio settings, since this is just
+          * setting an away message
+@@ -310,7 +332,9 @@
+     bioline =
+         g_strdup_printf(&quot;%s#%s\001%s&quot;,
+                         gaym-&gt;thumbnail ? gaym-&gt;thumbnail : &quot;&quot;,
+-                        gc-&gt;away ? gc-&gt;away : (gaym-&gt;bio ? gaym-&gt;bio : &quot;&quot;),
++                        // gc-&gt;away ? gc-&gt;away : (gaym-&gt;bio ? gaym-&gt;bio :
++                        // &quot;&quot;),
++                        (gaym-&gt;bio ? gaym-&gt;bio : &quot;&quot;),
+                         gaym-&gt;server_stats ? gaym-&gt;server_stats : &quot;&quot;);
+ 
+     buf = gaym_format(gaym, &quot;vvvv:&quot;, &quot;USER&quot;,
+@@ -395,7 +419,7 @@
+             g_strdup_printf(&quot;%.*s%d&quot;, strlen(channel) - 1, channel, i);
+         act =
+             gaim_blist_node_action_new(label, gaym_blist_join_chat_cb,
+-                                       instance);
++                                       instance, NULL);
+         m = g_list_prepend(m, act);
+     }
+     return m;
+@@ -670,6 +694,7 @@
+         gc-&gt;inpa =
+             gaim_input_add(gaym-&gt;fd, GAIM_INPUT_READ, gaym_input_cb, gc);
+ 
++        connect_signals(gc);
+ 
+     }
+ }
+@@ -746,7 +771,7 @@
+ }
+ 
+ static int gaym_im_send(GaimConnection * gc, const char *who,
+-                        const char *what, GaimConvImFlags flags)
++                        const char *what, GaimMessageFlags flags)
+ {
+     struct gaym_conn *gaym = gc-&gt;proto_data;
+     const char *args[2];
+@@ -757,7 +782,7 @@
+     } else {
+         args[0] = who;
+     }
+-    if (flags &amp; GAIM_CONV_IM_AUTO_RESP) {
++    if (flags &amp; GAIM_MESSAGE_AUTO_RESP) {
+         stripped_msg = gaim_markup_strip_html(what);
+         automsg = g_strdup_printf(&quot;&lt;AUTO-REPLY&gt; %s&quot;, stripped_msg);
+         g_free(stripped_msg);
+@@ -784,15 +809,16 @@
+ }
+ 
+ struct get_info_data {
+-    char* who;
+-    struct gaym_conn* gaym;
++    char *who;
++    struct gaym_conn *gaym;
+ } get_info_data;
+ 
+-static void cancel_get_info_cb(gpointer cb_data) {
+-    
+-    struct get_info_data* data=(struct get_info_data*)cb_data;
+-    if(!data-&gt;who || !data-&gt;gaym)
+-	return;
++static void cancel_get_info_cb(gpointer cb_data)
++{
++
++    struct get_info_data *data = (struct get_info_data *) cb_data;
++    if (!data-&gt;who || !data-&gt;gaym)
++        return;
+     g_hash_table_remove(data-&gt;gaym-&gt;info_window_needed, data-&gt;who);
+ 
+ }
+@@ -804,31 +830,26 @@
+     args[0] = who;
+ 
+     char *normalized = g_strdup(gaim_normalize(gc-&gt;account, who));
+-   
+-    struct get_info_data* data=g_new0(struct get_info_data,1);
+-    data-&gt;who=normalized;
+-    data-&gt;gaym=gaym;
+-    snprintf(buf, 100, &quot;Fetching info for %s...\n&quot;,who);
+-    void* dialog =
+-        gaim_request_action(gc, who,
+-                            buf, NULL, 0, data, 1, (&quot;Cancel&quot;),
+-                            cancel_get_info_cb);
++
++    struct get_info_data *data = g_new0(struct get_info_data, 1);
++    data-&gt;who = normalized;
++    data-&gt;gaym = gaym;
++    snprintf(buf, 100, &quot;Fetching info for %s...\n&quot;, who);
++    void *dialog = gaim_request_action(gc, who,
++                                       buf, NULL, 0, data, 1, (&quot;Cancel&quot;),
++                                       cancel_get_info_cb);
+     g_hash_table_insert(gaym-&gt;info_window_needed, normalized, dialog);
+     gaym_cmd_whois(gaym, &quot;whois&quot;, NULL, args);
+ }
+ 
+-static void gaym_set_away(GaimConnection * gc, const char *state,
+-                          const char *msg)
++static void gaym_set_status(GaimAccount * account, GaimStatus * status)
+ {
+-    char *bio = NULL;
+-    char *tmpmsg = NULL;
+-    int i = 0;
+-    struct gaym_conn *gaym = gc-&gt;proto_data;
++    // char *bio = NULL;
++    // char *tmpmsg = NULL;
++    // int i = 0;
++    // struct gaym_conn *gaym = account-&gt;gc-&gt;proto_data;
+ 
+-    if (gc-&gt;away) {
+-        g_free(gc-&gt;away);
+-        gc-&gt;away = NULL;
+-    }
++    /* Set the away message */
+ 
+     /**
+      * In addition to setting the away message, set the Bio to the
+@@ -836,30 +857,6 @@
+      * to the original bio.
+      */
+ 
+-    if (msg) {
+-        tmpmsg = g_strdup(msg);
+-        for (i = 0; i &lt; strlen(tmpmsg); i++) {
+-            if (tmpmsg[i] == '\n') {
+-                tmpmsg[i] = ' ';
+-            }
+-        }
+-        tmpmsg = g_strstrip(tmpmsg);
+-
+-        gc-&gt;away = g_strndup(tmpmsg, MAX_BIO_LEN);
+-        gaym_set_info(gc, NULL);
+-        g_free(tmpmsg);
+-    } else {
+-        if (gaym &amp;&amp; gaym-&gt;bio) {
+-            bio = g_strdup(gaym-&gt;bio);
+-            char *stripped = gaim_markup_strip_html(bio);
+-            gaym_set_info(gc, stripped);
+-            g_free(stripped);
+-            g_free(bio);
+-        } else {
+-            gaym_set_info(gc, NULL);
+-        }
+-    }
+-
+     /**
+      *  The following would be great, and gay.com's server supports
+      *  it, but gay.com's clients don't see the result.  So even though
+@@ -1068,19 +1065,11 @@
+     gaym_privacy_change(gc, NULL);
+ }
+ 
+-static void gaym_warn(GaimConnection * gc, const char *who,
+-                      gboolean anonymous)
+-{
+-    void *handle = NULL;
+-    struct gaym_conn *gaym = gc-&gt;proto_data;
+-    char *buf =
+-        g_strdup_printf
+-        (&quot;<A HREF="http://%s/members/report/form.html?area=chat&amp;room=&amp;report=%s">http://%s/members/report/form.html?area=chat&amp;room=&amp;report=%s</A>&quot;,
+-         gaym-&gt;server, who);
+-    gaim_notify_uri(handle, buf);
+-    g_free(buf);
+-}
+-
++/* static void gaym_warn(GaimConnection * gc, const char *who, gboolean
++   anonymous) { void *handle = NULL; struct gaym_conn *gaym =
++   gc-&gt;proto_data; char *buf = g_strdup_printf
++   (&quot;<A HREF="http://%s/members/report/form.html?area=chat&amp;room=&amp;report=%s">http://%s/members/report/form.html?area=chat&amp;room=&amp;report=%s</A>&quot;,
++   gaym-&gt;server, who); gaim_notify_uri(handle, buf); g_free(buf); } */
+ static void gaym_chat_join(GaimConnection * gc, GHashTable * data)
+ {
+     struct gaym_conn *gaym = gc-&gt;proto_data;
+@@ -1160,7 +1149,8 @@
+     serv_got_chat_left(gc, id);
+ }
+ 
+-static int gaym_chat_send(GaimConnection * gc, int id, const char *what)
++static int gaym_chat_send(GaimConnection * gc, int id, const char *what,
++                          GaimMessageFlags flags)
+ {
+     struct gaym_conn *gaym = gc-&gt;proto_data;
+     GaimConversation *convo = gaim_find_chat(gc, id);
+@@ -1182,7 +1172,7 @@
+ 
+     gaym_cmd_privmsg(gaym, &quot;msg&quot;, NULL, args);
+ 
+-    tmp = gaim_escape_html(what);
++    tmp = g_markup_escape_text(what, -1);
+     serv_got_chat_in(gc, id, gaim_connection_get_display_name(gc), 0, tmp,
+                      time(NULL));
+     g_free(tmp);
+@@ -1384,12 +1374,13 @@
+     0,                          /* options */
+     NULL,                       /* user_splits */
+     NULL,                       /* protocol_options */
+-    {&quot;jpg&quot;, 57, 77, 57, 77, GAIM_ICON_SCALE_DISPLAY},   /* icon_spec */
++    {&quot;jpg,jpeg,gif,bmp,ico&quot;, 57, 77, 57, 77, GAIM_ICON_SCALE_DISPLAY},  /* icon_spec 
++                                                                         */
+     gaym_blist_icon,            /* list_icon */
+     gaym_blist_emblems,         /* list_emblems */
+     gaym_status_text,           /* status_text */
+     gaym_tooltip_text,          /* tooltip_text */
+-    gaym_away_states,           /* away_states */
++    gaym_status_types,          /* status_types */
+     gaym_blist_node_menu,       /* blist_node_menu */
+     gaym_chat_join_info,        /* chat_info */
+     gaym_chat_info_defaults,    /* chat_info_defaults */
+@@ -1399,7 +1390,7 @@
+     gaym_set_info,              /* set_info */
+     NULL,                       /* send_typing */
+     gaym_get_info,              /* get_info */
+-    gaym_set_away,              /* set_away */
++    gaym_set_status,            /* set_status */
+     NULL,                       /* set_idle */
+     NULL,                       /* change_passwd */
+     gaym_add_buddy,             /* add_buddy */
+@@ -1411,7 +1402,6 @@
+     gaym_rem_permit,            /* rem_permit */
+     gaym_rem_deny,              /* rem_deny */
+     gaym_set_permit_deny,       /* set_permit_deny */
+-    gaym_warn,                  /* warn */
+     gaym_chat_join,             /* join_chat */
+     NULL,                       /* reject_chat */
+     gaym_get_chat_name,         /* get_chat_name */
+@@ -1455,12 +1445,12 @@
+ }
+ static void gaym_clean_channel_members(GaimConversation * conv)
+ {
+-    if(strncmp(conv-&gt;account-&gt;protocol_id, &quot;prpl-gaym&quot;, 9))
++    if (strncmp(conv-&gt;account-&gt;protocol_id, &quot;prpl-gaym&quot;, 9))
+         return;
+ 
+     g_return_if_fail(conv != NULL);
+-    
+-    if (conv-&gt;type == GAIM_CONV_CHAT) {
++
++    if (conv-&gt;type == GAIM_CONV_TYPE_CHAT) {
+         GaimConvChat *chat = gaim_conversation_get_chat_data(conv);
+         GaimConnection *gc = gaim_conversation_get_gc(conv);
+         g_return_if_fail(gc != NULL);
+@@ -1469,7 +1459,7 @@
+         gaim_debug_misc(&quot;gaym&quot;, &quot;got userlist %x length %i\n&quot;, users,
+                         g_list_length(users));
+         g_list_foreach(users, (GFunc) deref_one_user, gaym);
+-    } else if (conv-&gt;type == GAIM_CONV_IM) {
++    } else if (conv-&gt;type == GAIM_CONV_TYPE_IM) {
+         gaim_debug_misc(&quot;gaym&quot;, &quot;removing reference to %s\n&quot;, conv-&gt;name);
+         GaimConnection *gc = gaim_conversation_get_gc(conv);
+         g_return_if_fail(gc != NULL);
+@@ -1481,9 +1471,10 @@
+ {
+     char *buf;
+     char *name;
+-    gaim_debug_misc(&quot;gaym&quot;, &quot;Got conversation-created signal\n&quot;);
++    gaim_debug_misc(&quot;******gaym&quot;,
++                    &quot;****************Got conversation-created signal\n&quot;);
+     if (strncmp(conv-&gt;account-&gt;protocol_id, &quot;prpl-gaym&quot;, 9) == 0
+-        &amp;&amp; gaim_conversation_get_type(conv) == GAIM_CONV_IM) {
++        &amp;&amp; gaim_conversation_get_type(conv) == GAIM_CONV_TYPE_IM) {
+ 
+         /**
+          * First check to see if we already have the photo via
+@@ -1642,10 +1633,10 @@
+     struct gaym_conn *gaym = (struct gaym_conn *) account-&gt;gc-&gt;proto_data;
+     GaymNamelist *namelist = g_new0(GaymNamelist, 1);
+     namelist-&gt;roomname = g_strdup(room);
+-    if(g_str_has_suffix(room, &quot;*&quot;))
+-	namelist-&gt;multi_room=TRUE;
++    if (g_str_has_suffix(room, &quot;*&quot;))
++        namelist-&gt;multi_room = TRUE;
+     else
+-	namelist-&gt;multi_room=FALSE;
++        namelist-&gt;multi_room = FALSE;
+     namelist-&gt;members = NULL;
+     namelist-&gt;num_rooms = 100;
+     namelist-&gt;current = 0;
+@@ -1656,6 +1647,38 @@
+     // g_hash_table_insert(gaym-&gt;namelist_pending, list);
+     gaym_cmd_who(gaym, NULL, NULL, args);
+ }
++
++
++
++static void connect_signals(GaimConnection * plugin)
++{
++
++    static gboolean connection_done = FALSE;
++    if (connection_done)
++        return;
++    connection_done = TRUE;
++    gaim_debug_misc(&quot;gaym&quot;,
++                    &quot;CONNECTING SIGNALS: gaim_conversations_get_handle(): %x\n&quot;,
++                    gaim_conversations_get_handle());
++    gaim_signal_connect(gaim_conversations_get_handle(),
++                        &quot;conversation-created&quot;, plugin,
++                        GAIM_CALLBACK(gaym_get_photo_info), NULL);
++
++    gaim_signal_connect(gaim_conversations_get_handle(),
++                        &quot;deleting-conversation&quot;, plugin,
++                        GAIM_CALLBACK(gaym_clean_channel_members), NULL);
++
++
++    gaim_signal_connect(gaim_accounts_get_handle(), &quot;request-namelist&quot;,
++                        plugin, GAIM_CALLBACK(gaym_get_room_namelist),
++                        NULL);
++    gaim_signal_connect(gaim_accounts_get_handle(), &quot;request-info-quietly&quot;,
++                        plugin, GAIM_CALLBACK(gaym_get_info_quietly),
++                        NULL);
++
++
++
++}
+ static void _init_plugin(GaimPlugin * plugin)
+ {
+ 
+@@ -1676,19 +1699,6 @@
+     prpl_info.protocol_options =
+         g_list_prepend(prpl_info.protocol_options, option);
+ 
+-    /**
+-     * We have to pull thumbnails, since they aren't pushed like with
+-     * other protocols.
+-     */
+-    gaim_signal_connect(gaim_conversations_get_handle(),
+-                        &quot;conversation-created&quot;, plugin,
+-                        GAIM_CALLBACK(gaym_get_photo_info), NULL);
+-
+-
+-    gaim_signal_connect(gaim_conversations_get_handle(),
+-                        &quot;deleting-conversation&quot;, plugin,
+-                        GAIM_CALLBACK(gaym_clean_channel_members), NULL);
+-
+     gaim_signal_register(gaim_accounts_get_handle(),
+                          &quot;info-updated&quot;,
+                          gaim_marshal_VOID__POINTER_POINTER, NULL, 2,
+@@ -1718,16 +1728,8 @@
+                          gaim_value_new(GAIM_TYPE_POINTER,
+                                         GAIM_TYPE_CHAR));
+ 
+-    gaim_signal_connect(gaim_accounts_get_handle(), &quot;request-namelist&quot;,
+-                        plugin, GAIM_CALLBACK(gaym_get_room_namelist),
+-                        NULL);
+-    gaim_signal_connect(gaim_accounts_get_handle(), &quot;request-info-quietly&quot;,
+-                        plugin, GAIM_CALLBACK(gaym_get_info_quietly),
+-                        NULL);
+ 
+ 
+-
+-
+     gaim_prefs_add_none(&quot;/plugins/prpl/gaym&quot;);
+     gaim_prefs_add_int(&quot;/plugins/prpl/gaym/chat_room_instances&quot;, 4);
+     gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/show_join&quot;, TRUE);
+@@ -1743,7 +1745,8 @@
+                           GAYBOI_SPAM_URL);
+ 
+     gaim_prefs_connect_callback(&quot;/plugins/prpl/gaym/botfilter_url&quot;,
+-                                botfilter_url_changed_cb, NULL);
++                                &quot;botfilter_url&quot;, botfilter_url_changed_cb,
++                                NULL);
+ 
+     gaim_prefs_add_string(&quot;/plugins/prpl/gaym/botfilter_url_result&quot;, &quot;&quot;);
+     gaim_prefs_add_int(&quot;/plugins/prpl/gaym/botfilter_url_last_check&quot;, 0);
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/gaym.h
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/gaym.h	2005-12-11 21:49:58 UTC (rev 287)
++++ qrc/branches/fork-for-gaim-2/gaym/src/gaym.h	2005-12-21 03:16:46 UTC (rev 288)
+@@ -46,6 +46,10 @@
+ 
+ #define GAYBOI_SPAM_URL &quot;<A HREF="http://gayboi.org/spam/spamlst.php">http://gayboi.org/spam/spamlst.php</A>&quot;
+ 
++
++#define GAYM_STATUS_ID_AWAY &quot;away&quot;
++#define GAYM_STATUS_ID_AVAILABLE &quot;available&quot;
++#define GAYM_STATUS_ID_OFFLINE &quot;offline&quot;
+ typedef struct _BListWhois BListWhois;
+ struct _BListWhois {
+     int count;
+@@ -116,17 +120,18 @@
+ } GaimUrlSession;
+ typedef struct gaym_buddy GaymBuddy;
+ struct gaym_buddy {
+-    gchar *name;                 /* gaym formatted nick */
++    gchar *name;                /* gaym formatted nick */
+     gboolean done;              /* has been checked */
+     gboolean online;            /* is online */
+     gint ref_count;             /* reference count for mem mngmnt */
+-    gchar *bio;                  /* bio string */
+-    gchar *thumbnail;            /* thumbnail string */
+-    gchar *sex;                  /* sex string */
+-    gchar *age;                  /* age string */
+-    gchar *prefix;               /* prefix string */
+-    gchar *location;             /* location string */
+-    gchar *room;		/* Which subroom, if this is a namelist entry*/
++    gchar *bio;                 /* bio string */
++    gchar *thumbnail;           /* thumbnail string */
++    gchar *sex;                 /* sex string */
++    gchar *age;                 /* age string */
++    gchar *prefix;              /* prefix string */
++    gchar *location;            /* location string */
++    gchar *room;                /* Which subroom, if this is a namelist
++                                   entry */
+     gboolean gaymuser;          /* gaym detected */
+ };
+ GaymBuddy *gaym_get_channel_member_info(struct gaym_conn *gaym,
+@@ -248,6 +253,7 @@
+     gboolean multi_room;
+     GSList *current;            // Pointer to gaymbuddy to be updated next 
+                                 // 
++    // 
+     // (during names pass)
+ } GaymNamelist;
+ void gaym_dccsend_send_file(GaimConnection * gc, const char *who,
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/gayminfo.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/gayminfo.c	2005-12-11 21:49:58 UTC (rev 287)
++++ qrc/branches/fork-for-gaim-2/gaym/src/gayminfo.c	2005-12-21 03:16:46 UTC (rev 288)
+@@ -25,7 +25,6 @@
+ #include &quot;gayminfo.h&quot;
+ #include &quot;util.h&quot;
+ #include &quot;debug.h&quot;
+-
+ // #define GAYM_TOKEN 1
+ 
+ #ifdef GAYM_TOKEN
+@@ -139,43 +138,38 @@
+         return;
+     }
+ 
++    if (!d-&gt;gc)
++        return;
+     if (len &amp;&amp; !g_strrstr_len(pic_data, len, &quot;Server Error&quot;)) {
+-        char *dir =
+-            g_build_filename(gaim_user_dir(), &quot;icons&quot;, &quot;gaym&quot;, d-&gt;who,
+-                             NULL);
+-        char *filename = g_strdup(d-&gt;filename);
+-        char *path = g_build_filename(dir, filename, NULL);
+-        gaim_debug_misc(&quot;gayminfo&quot;, &quot;dir: %s\n&quot;, dir);
+-        gaim_debug_misc(&quot;gayminfo&quot;, &quot;filename: %s\n&quot;, filename);
+-        gaim_debug_misc(&quot;gayminfo&quot;, &quot;path: %s\n&quot;, path);
+-        if (!g_file_test(dir, G_FILE_TEST_EXISTS))
+-            gaim_build_dir(dir, S_IRUSR | S_IWUSR | S_IXUSR);
+-
+-        if (path &amp;&amp; !g_file_test(path, G_FILE_TEST_EXISTS)) {
+-            FILE *file;
+-            if ((file = g_fopen(path, &quot;wb&quot;))) {
+-                fwrite(pic_data, 1, len, file);
+-                fclose(file);
+-            } else {
+-                gaim_debug_misc(&quot;fetch_thumbnail_cb&quot;,
+-                                &quot;Couldn't write file\n&quot;);
+-            }
+-            g_free(filename);
+-            g_free(path);
+-            g_free(dir);
++        gaim_debug_misc(&quot;gaym&quot;, &quot;Setting buddy icon for %s\n&quot;, d-&gt;who);
++        if (len &lt; 1024) {
++            void *new_pic_data = NULL;
++            gaim_debug_misc(&quot;gaym&quot;, &quot;Short icon file, padding to 1024\n&quot;);
++            new_pic_data = g_malloc0(1024);
++            memcpy(new_pic_data, pic_data, len);
++            len = 1024;
++            gaim_buddy_icon_new(d-&gt;gc-&gt;account, d-&gt;who,
++                                (void *) new_pic_data, len);
++            g_free(new_pic_data);
++        } else {
++            gaim_buddy_icon_new(d-&gt;gc-&gt;account, d-&gt;who, (void *) pic_data,
++                                len);
+         }
++        GaimBuddyIcon *icon =
++            gaim_buddy_icons_find(d-&gt;gc-&gt;account, d-&gt;who);
++        guint len;
++        const guchar *data = gaim_buddy_icon_get_data(icon, &amp;len);
+     }
+     if (GAIM_CONNECTION_IS_VALID(d-&gt;gc) &amp;&amp; len) {
+         gaim_signal_emit(gaim_accounts_get_handle(), &quot;info-updated&quot;,
+                          d-&gt;gc-&gt;account, d-&gt;who);
+-      /*  if (gaim_find_conversation_with_account(d-&gt;who, d-&gt;gc-&gt;account)) {
+-	    
+-	    gaim_debug_misc(&quot;fetch_thumbnail_cb&quot;,&quot;setting buddy icon\n&quot;);
+-            gaim_buddy_icons_set_for_user(gaim_connection_get_account
+-             (d-&gt;gc), d-&gt;who,
+-             (void *) pic_data, len);
+-        }*/
++        /* if (gaim_find_conversation_with_account(d-&gt;who,
++           d-&gt;gc-&gt;account)) {
+ 
++           gaim_debug_misc(&quot;fetch_thumbnail_cb&quot;,&quot;setting buddy icon\n&quot;);
++           gaim_buddy_icons_set_for_user(gaim_connection_get_account
++           (d-&gt;gc), d-&gt;who, (void *) pic_data, len); } */
++
+     } else {
+         gaim_debug_error(&quot;gaym&quot;, &quot;Fetching buddy icon failed.\n&quot;);
+     }
+@@ -234,52 +228,23 @@
+     char *normalized = g_strdup(gaim_normalize(gaym-&gt;account, name));
+ 
+     if (thumbnail &amp;&amp; fetch_thumbnail) {
+-        gboolean do_fetch = 1;
+-        GError *err = NULL;
+         if (!ib || gaim_utf8_strcasecmp(thumbnail, ib-&gt;thumbnail)) {
+-            char *dirname =
+-                g_build_filename(gaim_user_dir(), &quot;icons&quot;, &quot;gaym&quot;,
+-                                 gaim_normalize(gaym-&gt;account, name),
+-                                 NULL);
+-            GDir *gdir = g_dir_open(dirname, 0, &amp;err);
+-            if (gdir) {
+-                const char *filename;
++            char *hashurl = NULL;
++            hashurl =
++                g_hash_table_lookup(gaym-&gt;confighash,
++                                    &quot;mini-profile-panel.thumbnail-prefix&quot;);
++            g_return_if_fail(hashurl != NULL);
++            data = g_new0(struct gaym_fetch_thumbnail_data, 1);
++            data-&gt;gc = gaim_account_get_connection(gaym-&gt;account);
++            data-&gt;who = g_strdup(gaim_normalize(gaym-&gt;account, name));
++            data-&gt;filename = g_strdup(g_strrstr(thumbnail, &quot;/&quot;));
++            gaim_debug_misc(&quot;gayminfo&quot;, &quot;Found filename: %s\n&quot;,
++                            data-&gt;filename);
++            url = g_strdup_printf(&quot;%s%s&quot;, hashurl, thumbnail);
++            gaim_url_fetch(url, FALSE, &quot;Mozilla/4.0&quot;, FALSE,
++                           gaym_fetch_thumbnail_cb, data);
++            g_free(url);
+ 
+-                while ((filename = g_dir_read_name(gdir))) {    /* don't
+-                                                                   free
+-                                                                   filename: 
+-                                                                   owned
+-                                                                   by
+-                                                                   glib. */
+-                    char *thumbnail_base = g_path_get_basename(thumbnail);
+-                    gaim_debug_misc(&quot;gaym&quot;, &quot;compared %s and %s\n&quot;,
+-                                    thumbnail_base, filename);
+-                    if (!gaim_utf8_strcasecmp(thumbnail_base, filename)) {
+-                        do_fetch = 0;
+-                        break;
+-                    }
+-                    g_free(thumbnail_base);
+-                }
+-                g_dir_close(gdir);
+-            }
+-            if (do_fetch) {
+-                char *hashurl = NULL;
+-                hashurl =
+-                    g_hash_table_lookup(gaym-&gt;confighash,
+-                                        &quot;mini-profile-panel.thumbnail-prefix&quot;);
+-                g_return_if_fail(hashurl != NULL);
+-                data = g_new0(struct gaym_fetch_thumbnail_data, 1);
+-                data-&gt;gc = gaim_account_get_connection(gaym-&gt;account);
+-                data-&gt;who = g_strdup(gaim_normalize(gaym-&gt;account, name));
+-                data-&gt;filename = g_strdup(g_strrstr(thumbnail, &quot;/&quot;));
+-                gaim_debug_misc(&quot;gayminfo&quot;, &quot;Found filename: %s\n&quot;,
+-                                data-&gt;filename);
+-                url = g_strdup_printf(&quot;%s%s&quot;, hashurl, thumbnail);
+-                gaim_url_fetch(url, FALSE, &quot;Mozilla/4.0&quot;, FALSE,
+-                               gaym_fetch_thumbnail_cb, data);
+-                g_free(url);
+-            }
+-
+         }
+     }
+ 
+@@ -322,7 +287,12 @@
+         ib-&gt;gaymuser = gaymuser;
+         GaimBuddy *buddy = gaim_find_buddy(gaym-&gt;account, name);
+         if (buddy) {
+-            serv_got_update(gc, buddy-&gt;name, online, 0, 0, 0, 0);
++            if (ib-&gt;online)
++                gaim_prpl_got_user_status(gaym-&gt;account, buddy-&gt;name,
++                                          GAYM_STATUS_ID_AVAILABLE, NULL);
++            else
++                gaim_prpl_got_user_status(gaym-&gt;account, buddy-&gt;name,
++                                          GAYM_STATUS_ID_OFFLINE, NULL);
+         }
+     }
+     return;
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/helpers.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/helpers.c	2005-12-11 21:49:58 UTC (rev 287)
++++ qrc/branches/fork-for-gaim-2/gaym/src/helpers.c	2005-12-21 03:16:46 UTC (rev 288)
+@@ -463,7 +463,7 @@
+     char *escaped;
+     GString *tooltip = g_string_new(&quot;&quot;);
+ 
+-    //g_string_printf(tooltip, &quot;&lt;b&gt;&lt;i&gt;%s&lt;/i&gt;&lt;/b&gt;&quot;, ib-&gt;name);
++    // g_string_printf(tooltip, &quot;&lt;b&gt;&lt;i&gt;%s&lt;/i&gt;&lt;/b&gt;&quot;, ib-&gt;name);
+ 
+     g_return_val_if_fail(ib != NULL, NULL);
+ 
+@@ -500,7 +500,7 @@
+     if (tooltip-&gt;len == 0) {
+         g_string_append_printf(tooltip, _(&quot; No info.&quot;));
+     }
+-    //g_string_erase(tooltip, 0, 1);
++    // g_string_erase(tooltip, 0, 1);
+ 
+     return g_string_free(tooltip, FALSE);
+ }
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/msgs.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/msgs.c	2005-12-11 21:49:58 UTC (rev 287)
++++ qrc/branches/fork-for-gaim-2/gaym/src/msgs.c	2005-12-21 03:16:46 UTC (rev 288)
+@@ -82,7 +82,7 @@
+     }
+ 
+     gcom_nick_to_gaym(args[1]);
+-    serv_got_im(gc, args[1], args[2], GAIM_CONV_IM_AUTO_RESP, time(NULL));
++    serv_got_im(gc, args[1], args[2], GAIM_MESSAGE_AUTO_RESP, time(NULL));
+ }
+ 
+ static void gaym_fetch_photo_cb(void *user_data, const char *info_data,
+@@ -94,19 +94,20 @@
+ 
+     struct gaym_fetch_thumbnail_data *d = user_data;
+ 
+-    char *info, *t;
++    char *info, *t = 0;
+ 
+     struct gaym_conn *gaym = d-&gt;gc-&gt;proto_data;
+ 
+     char *hashurl =
+         g_hash_table_lookup(gaym-&gt;confighash, &quot;view-profile-url&quot;);
+     g_return_if_fail(hashurl != NULL);
+-    
++
+     void *dialog =
+-	g_hash_table_lookup(gaym-&gt;info_window_needed, gaim_normalize(d-&gt;gc-&gt;account, d-&gt;who));
++        g_hash_table_lookup(gaym-&gt;info_window_needed,
++                            gaim_normalize(d-&gt;gc-&gt;account, d-&gt;who));
+ 
+-    if(!dialog)
+-	return;
++    if (!dialog)
++        return;
+ 
+     int id = gaim_imgstore_add(info_data, len, NULL);
+     if (d-&gt;stats &amp;&amp; d-&gt;bio)
+@@ -131,10 +132,9 @@
+              id, hashurl, d-&gt;who);
+ 
+     gaim_request_close(GAIM_REQUEST_ACTION, dialog);
+-    g_hash_table_remove(gaym-&gt;info_window_needed, gaim_normalize(d-&gt;gc-&gt;account, d-&gt;who));
+-    gaim_notify_userinfo(d-&gt;gc, d-&gt;who,
+-                         t = g_strdup_printf(&quot;Gay.com - %s&quot;, d-&gt;who),
+-                         d-&gt;who, NULL, info, NULL, NULL);
++    g_hash_table_remove(gaym-&gt;info_window_needed,
++                        gaim_normalize(d-&gt;gc-&gt;account, d-&gt;who));
++    gaim_notify_userinfo(d-&gt;gc, d-&gt;who, info, NULL, NULL);
+     g_free(t);
+ 
+     if (d) {
+@@ -155,7 +155,7 @@
+     struct gaym_fetch_thumbnail_data *d = user_data;
+     char *picpath;
+     char *picurl;
+-    char *info, *t;
++    char *info;
+     char *match = &quot;pictures.0.url=&quot;;
+ 
+     struct gaym_conn *gaym = d-&gt;gc-&gt;proto_data;
+@@ -163,13 +163,14 @@
+     char *hashurl =
+         g_hash_table_lookup(gaym-&gt;confighash, &quot;view-profile-url&quot;);
+     g_return_if_fail(hashurl != NULL);
+-    
++
+     void *dialog =
+-	g_hash_table_lookup(gaym-&gt;info_window_needed, gaim_normalize(d-&gt;gc-&gt;account, d-&gt;who));
+-    
+-    if(!dialog)
+-	return;
++        g_hash_table_lookup(gaym-&gt;info_window_needed,
++                            gaim_normalize(d-&gt;gc-&gt;account, d-&gt;who));
+ 
++    if (!dialog)
++        return;
++
+     if (d-&gt;stats &amp;&amp; d-&gt;bio)
+         info =
+             g_strdup_printf
+@@ -193,12 +194,10 @@
+ 
+     picpath = return_string_between(match, &quot;\n&quot;, info_data);
+     if (!picpath || strlen(picpath) == 0) {
+-	gaim_request_close(GAIM_REQUEST_ACTION, dialog);
+-	g_hash_table_remove(gaym-&gt;info_window_needed, gaim_normalize(d-&gt;gc-&gt;account, d-&gt;who));
+-        gaim_notify_userinfo(d-&gt;gc, d-&gt;who,
+-                             t = g_strdup_printf(&quot;Gay.com - %s&quot;, d-&gt;who),
+-                             d-&gt;who, NULL, info, NULL, NULL);
+-        g_free(t);
++        gaim_request_close(GAIM_REQUEST_ACTION, dialog);
++        g_hash_table_remove(gaym-&gt;info_window_needed,
++                            gaim_normalize(d-&gt;gc-&gt;account, d-&gt;who));
++        gaim_notify_userinfo(d-&gt;gc, d-&gt;who, info, NULL, NULL);
+         return;
+     }
+ 
+@@ -228,12 +227,12 @@
+     gaym_buddy_status(gaym, args[1], FALSE, NULL, FALSE);
+ 
+     char *normalized = g_strdup(gaim_normalize(gaym-&gt;account, args[1]));
+-    
+-    void* dialog;
+-    if ((dialog=g_hash_table_lookup(gaym-&gt;info_window_needed, normalized)))
+-    {
+-	g_hash_table_remove(gaym-&gt;info_window_needed, normalized);
+ 
++    void *dialog;
++    if ((dialog =
++         g_hash_table_lookup(gaym-&gt;info_window_needed, normalized))) {
++        g_hash_table_remove(gaym-&gt;info_window_needed, normalized);
++
+         char *hashurl =
+             g_hash_table_lookup(gaym-&gt;confighash, &quot;view-profile-url&quot;);
+         g_return_if_fail(hashurl != NULL);
+@@ -244,10 +243,9 @@
+             (&quot;That user is not logged on. Check &lt;a href='%s%s'&gt;here&lt;/a&gt; to see if that user has a profile.&quot;,
+              hashurl, args[1]);
+         gaim_request_close(GAIM_REQUEST_ACTION, dialog);
+-	gaim_notify_userinfo(gaim_account_get_connection(gaym-&gt;account),
+-                             NULL, NULL, &quot;No such user&quot;, NULL, buf, NULL,
+-                             NULL);
+-	
++        gaim_notify_userinfo(gaim_account_get_connection(gaym-&gt;account),
++                             args[1], buf, NULL, NULL);
++
+     }
+     g_free(normalized);
+ }
+@@ -299,11 +297,9 @@
+                            &quot;Mozilla/4.0 (compatible; MSIE 5.0)&quot;, FALSE,
+                            gaym_fetch_info_cb, data);
+             g_free(infourl);
++        } else {
++            g_hash_table_remove(gaym-&gt;info_window_needed, normalized);
+         }
+-	else
+-	{
+-	    g_hash_table_remove(gaym-&gt;info_window_needed, normalized);
+-	}
+     }
+     g_free(normalized);
+ }
+@@ -473,7 +469,8 @@
+         if (!gaym-&gt;nameconv)
+             return;
+         convo =
+-            gaim_find_conversation_with_account(gaym-&gt;nameconv ? gaym-&gt;
++            gaim_find_conversation_with_account(GAIM_CONV_TYPE_CHAT,
++                                                gaym-&gt;nameconv ? gaym-&gt;
+                                                 nameconv : args[1],
+                                                 gaym-&gt;account);
+         if (!convo) {
+@@ -494,7 +491,7 @@
+                 g_strdup_printf(_(&quot;Users on %s: %s&quot;),
+                                 args[1] ? args[1] : &quot;&quot;,
+                                 names ? names : &quot;&quot;);
+-            if (gaim_conversation_get_type(convo) == GAIM_CONV_CHAT)
++            if (gaim_conversation_get_type(convo) == GAIM_CONV_TYPE_CHAT)
+                 gaim_conv_chat_write(GAIM_CONV_CHAT(convo), &quot;&quot;, msg,
+                                      GAIM_MESSAGE_SYSTEM |
+                                      GAIM_MESSAGE_NO_LOG, time(NULL));
+@@ -523,7 +520,7 @@
+                 GList *l;
+ 
+                 gaim_conv_chat_add_users(GAIM_CONV_CHAT(convo), users,
+-                                         NULL);
++                                         NULL, NULL, FALSE);
+ 
+                 for (l = users; l != NULL; l = l-&gt;next)
+                     g_free(l-&gt;data);
+@@ -548,8 +545,6 @@
+                             &quot;names[i]: %s, nameslist-&gt;current: %x\n&quot;,
+                             names[i], nameslist-&gt;current);
+             while (names[i] &amp;&amp; strlen(names[i]) &amp;&amp; nameslist-&gt;current) {
+-                gaim_debug_misc(&quot;names&quot;, &quot;append %s (length %i)\n&quot;,
+-                                names[i], strlen(names[i]));
+                 ((GaymBuddy *) (nameslist-&gt;current-&gt;data))-&gt;name =
+                     g_strdup(names[i]);
+                 nameslist-&gt;current = g_slist_next(nameslist-&gt;current);
+@@ -570,6 +565,7 @@
+ {
+     GaimConnection *gc;
+ 
++    GaimBlistNode *gnode, *cnode, *bnode;
+     gaim_debug_misc(&quot;gaym&quot;, &quot;Got motd\n&quot;);
+ 
+     gc = gaim_account_get_connection(gaym-&gt;account);
+@@ -578,8 +574,29 @@
+         return;
+     }
+     gaim_connection_set_state(gc, GAIM_CONNECTED);
+-    serv_finish_login(gc);
++    // serv_finish_login(gc);
++    /* this used to be in the core, but it's not now */
++    for (gnode = gaim_get_blist()-&gt;root; gnode; gnode = gnode-&gt;next) {
++        if (!GAIM_BLIST_NODE_IS_GROUP(gnode))
++            continue;
++        for (cnode = gnode-&gt;child; cnode; cnode = cnode-&gt;next) {
++            if (!GAIM_BLIST_NODE_IS_CONTACT(cnode))
++                continue;
++            for (bnode = cnode-&gt;child; bnode; bnode = bnode-&gt;next) {
++                GaimBuddy *b;
++                if (!GAIM_BLIST_NODE_IS_BUDDY(bnode))
++                    continue;
++                b = (GaimBuddy *) bnode;
++                if (b-&gt;account == gc-&gt;account) {
++                    struct gaym_buddy *ib = g_new0(struct gaym_buddy, 1);
++                    ib-&gt;name = g_strdup(b-&gt;name);
++                    g_hash_table_insert(gaym-&gt;buddies, ib-&gt;name, ib);
++                }
++            }
++        }
++    }
+ 
++    gaim_debug_misc(&quot;gaym&quot;, &quot;Calling blist timeout\n&quot;);
+     gaym_blist_timeout(gaym);
+     if (!gaym-&gt;timer)
+         gaym-&gt;timer =
+@@ -605,9 +622,11 @@
+     GaimConnection *gc = gaim_account_get_connection(gaym-&gt;account);
+     GaimConversation *convo;
+ 
+-    convo = gaim_find_conversation_with_account(args[1], gaym-&gt;account);
++    convo =
++        gaim_find_conversation_with_account(GAIM_CONV_TYPE_ANY, args[1],
++                                            gaym-&gt;account);
+     if (convo) {
+-        if (gaim_conversation_get_type(convo) == GAIM_CONV_CHAT) {
++        if (gaim_conversation_get_type(convo) == GAIM_CONV_TYPE_CHAT) {
+             /* does this happen? */
+             gaim_conv_chat_write(GAIM_CONV_CHAT(convo), args[1],
+                                  _(&quot;no such channel&quot;),
+@@ -637,9 +656,11 @@
+     GaimConnection *gc;
+     GaimConversation *convo;
+ 
+-    convo = gaim_find_conversation_with_account(args[1], gaym-&gt;account);
++    convo =
++        gaim_find_conversation_with_account(GAIM_CONV_TYPE_ANY, args[1],
++                                            gaym-&gt;account);
+     if (convo) {
+-        if (gaim_conversation_get_type(convo) == GAIM_CONV_CHAT) {
++        if (gaim_conversation_get_type(convo) == GAIM_CONV_TYPE_CHAT) {
+             /* does this happen? */
+             gaim_conv_chat_write(GAIM_CONV_CHAT(convo), args[1],
+                                  _(&quot;no such channel&quot;),
+@@ -664,7 +685,9 @@
+     GaimConnection *gc;
+     GaimConversation *convo;
+ 
+-    convo = gaim_find_conversation_with_account(args[1], gaym-&gt;account);
++    convo =
++        gaim_find_conversation_with_account(GAIM_CONV_TYPE_CHAT, args[1],
++                                            gaym-&gt;account);
+     if (convo) {
+         gaim_conv_chat_write(GAIM_CONV_CHAT(convo), args[1], args[2],
+                              GAIM_MESSAGE_SYSTEM | GAIM_MESSAGE_NO_LOG,
+@@ -683,7 +706,8 @@
+                         const char *from, char **args)
+ {
+     GaimConversation *convo =
+-        gaim_find_conversation_with_account(args[1], gaym-&gt;account);
++        gaim_find_conversation_with_account(GAIM_CONV_TYPE_CHAT, args[1],
++                                            gaym-&gt;account);
+ 
+     gaim_debug(GAIM_DEBUG_INFO, &quot;gaym&quot;,
+                &quot;We're apparently not in %s, but tried to use it\n&quot;,
+@@ -746,7 +770,8 @@
+                     const char *from, char **args)
+ {
+     GaimConversation *conv =
+-        gaim_find_conversation_with_account(gaym-&gt;traceconv ? gaym-&gt;
++        gaim_find_conversation_with_account(GAIM_CONV_TYPE_ANY,
++                                            gaym-&gt;traceconv ? gaym-&gt;
+                                             traceconv : args[1],
+                                             gaym-&gt;account);
+     gaim_conversation_write(conv, &quot;TRACE&quot;, args[3],
+@@ -798,7 +823,9 @@
+         return;
+     }
+ 
+-    convo = gaim_find_conversation_with_account(args[0], gaym-&gt;account);
++    convo =
++        gaim_find_conversation_with_account(GAIM_CONV_TYPE_ANY, args[0],
++                                            gaym-&gt;account);
+     if (convo == NULL) {
+         gaim_debug(GAIM_DEBUG_ERROR, &quot;gaym&quot;, &quot;JOIN for %s failed\n&quot;,
+                    args[0]);
+@@ -868,7 +895,8 @@
+ 
+     if (*args[0] == '#' || *args[0] == '&amp;') {   /* Channel */
+         convo =
+-            gaim_find_conversation_with_account(args[0], gaym-&gt;account);
++            gaim_find_conversation_with_account(GAIM_CONV_TYPE_ANY,
++                                                args[0], gaym-&gt;account);
+         if (!convo) {
+             gaim_debug(GAIM_DEBUG_ERROR, &quot;gaym&quot;,
+                        &quot;MODE received for %s, which we are not in\n&quot;,
+@@ -989,7 +1017,9 @@
+         return;
+     }
+ 
+-    convo = gaim_find_conversation_with_account(args[0], gaym-&gt;account);
++    convo =
++        gaim_find_conversation_with_account(GAIM_CONV_TYPE_ANY, args[0],
++                                            gaym-&gt;account);
+     gboolean show_part =
+         gaim_prefs_get_bool(&quot;/plugins/prpl/gaym/show_part&quot;);
+ 
+@@ -1070,10 +1100,12 @@
+                             time(NULL) - oldstamp);
+     }
+ 
+-    convo = gaim_find_conversation_with_account(parts[0], gaym-&gt;account);
++    convo =
++        gaim_find_conversation_with_account(GAIM_CONV_TYPE_ANY, parts[0],
++                                            gaym-&gt;account);
+     g_strfreev(parts);
+     if (convo) {
+-        if (gaim_conversation_get_type(convo) == GAIM_CONV_CHAT)
++        if (gaim_conversation_get_type(convo) == GAIM_CONV_TYPE_CHAT)
+             gaim_conv_chat_write(GAIM_CONV_CHAT(convo), &quot;PONG&quot;, msg,
+                                  GAIM_MESSAGE_SYSTEM | GAIM_MESSAGE_NO_LOG,
+                                  time(NULL));
+@@ -1135,7 +1167,9 @@
+         gcom_nick_to_gaym(args[0]);
+     }
+ 
+-    convo = gaim_find_conversation_with_account(args[0], gaym-&gt;account);
++    convo =
++        gaim_find_conversation_with_account(GAIM_CONV_TYPE_ANY, args[0],
++                                            gaym-&gt;account);
+ 
+     notice = !strcmp(args[0], &quot; notice &quot;);
+     tmp = gaym_parse_ctcp(gaym, nick, args[0], args[1], notice);
+@@ -1150,7 +1184,7 @@
+         return;
+     }
+ 
+-    msg = gaim_escape_html(tmp);
++    msg = g_markup_escape_text(tmp, -1);
+ 
+     g_free(tmp);
+ 
+@@ -1249,10 +1283,9 @@
+         GaymBuddy *member = g_new0(GaymBuddy, 1);
+         gchar **parts = g_strsplit(args[2], &quot; &quot;, 7);
+ 
+-	gchar* equals;
+-	if((equals=strchr(args[1], '=')))
+-	   member-&gt;room = g_strdup(equals+1);
+-	gaim_debug_misc(&quot;roombrowse&quot;,&quot;args[1]: %s, args[0]: %s\n&quot;,args[1],args[0]);
++        gchar *equals;
++        if ((equals = strchr(args[1], '=')))
++            member-&gt;room = g_strdup(equals + 1);
+         if (parts[6]) {
+             member-&gt;bio = gaym_bio_strdup(parts[6]);
+             member-&gt;thumbnail = gaym_thumbnail_strdup(parts[6]);
+@@ -1263,7 +1296,7 @@
+             else
+                 member-&gt;prefix = g_strdup(parts[3]);
+ 
+-	    
++
+             gchar *stats = gaym_stats_strdup(parts[6]);
+             if (stats) {
+                 gchar **stat_parts = g_strsplit(stats, &quot;|&quot;, 3);
+@@ -1290,9 +1323,9 @@
+             nameslist-&gt;num_rooms = val;
+         }
+     }
+-
+     // Use the who msgs cross-referenced with the NAMES list to figure out 
+     // 
++    // 
+     // who is who. Resolve conflicts.
+ 
+ }
+@@ -1487,7 +1520,9 @@
+                &quot;gaym_msg_richnames_list() Channel: %s Nick: %s Extra: %s\n&quot;,
+                channel, nick, extra);
+ 
+-    convo = gaim_find_conversation_with_account(channel, gaym-&gt;account);
++    convo =
++        gaim_find_conversation_with_account(GAIM_CONV_TYPE_ANY, channel,
++                                            gaym-&gt;account);
+ 
+     char *bio = gaym_bio_strdup(extra);
+     gboolean gaym_botfilter_permit =
+
+Modified: qrc/branches/fork-for-gaim-2/gaym-extras/src/bio-popups.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym-extras/src/bio-popups.c	2005-12-11 21:49:58 UTC (rev 287)
++++ qrc/branches/fork-for-gaim-2/gaym-extras/src/bio-popups.c	2005-12-21 03:16:46 UTC (rev 288)
+@@ -1,24 +1,23 @@
+ #include &quot;gaym-extras.h&quot;
+ // Consider combining into one popup hash...
+ // All three indexed by a widget (treeview, or tab_label)
+-GHashTable *popup_rects; /* */
+-GHashTable *popup_timeouts; /* contains *int */ 
+-GHashTable *popups; /* contains *GtkWidget for popup window*/
++GHashTable *popup_rects;        /* */
++GHashTable *popup_timeouts;     /* contains *int */
++GHashTable *popups;             /* contains *GtkWidget for popup window */
+ 
+ 
+-/*Called when a conversation is closed
+- * or on plugin unload*/
++/* Called when a conversation is closed or on plugin unload */
+ void clean_popup_stuff(GaimConversation * c)
+ {
+ 
+     if (!g_strrstr(gaim_account_get_protocol_id(c-&gt;account), &quot;prpl-gaym&quot;))
+         return;
+-    
++
+     GaimGtkConversation *gtkconv = GAIM_GTK_CONVERSATION(c);
+-    if (c-&gt;type == GAIM_CONV_IM) {
++    if (c-&gt;type == GAIM_CONV_TYPE_IM) {
+         g_hash_table_remove(popup_timeouts, gtkconv-&gt;tab_label);
+         g_hash_table_remove(popups, gtkconv-&gt;tab_label);
+-    } else if (c-&gt;type == GAIM_CONV_CHAT) {
++    } else if (c-&gt;type == GAIM_CONV_TYPE_CHAT) {
+         GaimGtkChatPane *gtkchat = gtkconv-&gt;u.chat;
+         g_hash_table_remove(popup_timeouts, gtkchat-&gt;list);
+         g_hash_table_remove(popup_rects, gtkchat-&gt;list);
+@@ -170,9 +169,11 @@
+     gtk_widget_set_name(tipwindow, &quot;gtk-tooltips&quot;);
+ 
+     struct paint_data *pdata = g_new0(struct paint_data, 1);
+-    pdata-&gt;tooltiptext = g_strdup_printf(&quot;&lt;b&gt;&lt;i&gt;%s&lt;/i&gt;&lt;/b&gt;%s&quot;,name,tooltiptext);
+-    //pdata-&gt;tooltiptext = tooltiptext;
++    pdata-&gt;tooltiptext =
++        g_strdup_printf(&quot;&lt;b&gt;&lt;i&gt;%s&lt;/i&gt;&lt;/b&gt;%s&quot;, name, tooltiptext);
++    // pdata-&gt;tooltiptext = tooltiptext;
+     g_free(tooltiptext);
++
+     pdata-&gt;pixbuf = lookup_cached_thumbnail(account, name);
+     g_signal_connect(G_OBJECT(tipwindow), &quot;expose_event&quot;,
+                      G_CALLBACK(namelist_paint_tip), pdata);
+@@ -180,7 +181,8 @@
+     layout = gtk_widget_create_pango_layout(tipwindow, NULL);
+     pango_layout_set_wrap(layout, PANGO_WRAP_WORD);
+     pango_layout_set_width(layout, 300000);
+-    pango_layout_set_markup(layout, pdata-&gt;tooltiptext, strlen(pdata-&gt;tooltiptext));
++    pango_layout_set_markup(layout, pdata-&gt;tooltiptext,
++                            strlen(pdata-&gt;tooltiptext));
+     pango_layout_get_size(layout, &amp;w, &amp;h);
+ 
+ #if GTK_CHECK_VERSION(2,2,0)
+
+Modified: qrc/branches/fork-for-gaim-2/gaym-extras/src/chaticon.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym-extras/src/chaticon.c	2005-12-11 21:49:58 UTC (rev 287)
++++ qrc/branches/fork-for-gaim-2/gaym-extras/src/chaticon.c	2005-12-21 03:16:46 UTC (rev 288)
+@@ -3,6 +3,7 @@
+ 
+ void gaym_update_thumbnail(GaimConversation * conv, GdkPixbuf * pixbuf)
+ {
++
+     GaimGtkConversation *gtkconv;
+ 
+     GdkPixbuf *scale;
+@@ -15,7 +16,8 @@
+     GaimPluginProtocolInfo *prpl_info = NULL;
+     g_return_if_fail(conv != NULL);
+     g_return_if_fail(GAIM_IS_GTK_CONVERSATION(conv));
+-    g_return_if_fail(gaim_conversation_get_type(conv) == GAIM_CONV_CHAT);
++    g_return_if_fail(gaim_conversation_get_type(conv) ==
++                     GAIM_CONV_TYPE_CHAT);
+ 
+     gtkconv = GAIM_GTK_CONVERSATION(conv);
+ 
+@@ -35,8 +37,6 @@
+     if (gaim_conversation_get_gc(conv) == NULL)
+         return;
+ 
+-
+-
+     get_icon_scale_size(pixbuf,
+                         prpl_info ? &amp;prpl_info-&gt;icon_spec : NULL,
+                         &amp;scale_width, &amp;scale_height);
+@@ -45,6 +45,7 @@
+     // 
+     // 
+     // 
++    // 
+ 
+     scale =
+         gdk_pixbuf_scale_simple(pixbuf,
+@@ -102,8 +103,8 @@
+ 
+     gtk_widget_grab_focus(GTK_WIDGET(model)-&gt;parent);
+ 
+-    pixbuf = lookup_cached_thumbnail(c-&gt;account, name);
+ 
++    pixbuf = lookup_cached_thumbnail(c-&gt;account, name);
+     if (pixbuf)
+         gaym_update_thumbnail(c, pixbuf);
+ 
+@@ -168,104 +169,7 @@
+ 
+ 
+ }
+-void im_set_icon(GaimAccount* account, const char* name) {
+ 
+-    gaim_debug_misc(&quot;chaticon&quot;,&quot;im_set_icon %x %x\n&quot;,account,name);
+-    GaimPluginProtocolInfo *prpl_info = NULL;
+-    GtkRequisition requisition;
+-    
+-    GdkPixmap *pm=NULL;
+-    GdkBitmap *bm=NULL;
+-
+-
+-
+-    int scale_width, scale_height;
+-    GaimConversation* conv=gaim_find_conversation_with_account(name,account);
+-    if(!conv)
+-	return;
+-
+-    gaim_debug_misc(&quot;chaticons&quot;,&quot;attempting to set icon for %s\n&quot;,name);
+-    GaimGtkWindow *gtkwin = GAIM_GTK_WINDOW(gaim_conversation_get_window(conv));
+-    GaimGtkConversation *gtkconv= GAIM_GTK_CONVERSATION(conv);
+-
+-    /* Remove the current icon stuff */
+-	if (gtkconv-&gt;u.im-&gt;icon_container != NULL)
+-		gtk_widget_destroy(gtkconv-&gt;u.im-&gt;icon_container);
+-	gtkconv-&gt;u.im-&gt;icon_container = NULL;
+-	if (gtkconv-&gt;u.im-&gt;anim != NULL)
+-		g_object_unref(G_OBJECT(gtkconv-&gt;u.im-&gt;anim));
+-
+-	gtkconv-&gt;u.im-&gt;anim = NULL;
+-
+-	if (gtkconv-&gt;u.im-&gt;icon_timer != 0)
+-		g_source_remove(gtkconv-&gt;u.im-&gt;icon_timer);
+-
+-	gtkconv-&gt;u.im-&gt;icon_timer = 0;
+-
+-	if (gtkconv-&gt;u.im-&gt;iter != NULL)
+-		g_object_unref(G_OBJECT(gtkconv-&gt;u.im-&gt;iter));
+-
+-	gtkconv-&gt;u.im-&gt;iter = NULL;
+-
+-	GdkPixbuf *buf=lookup_cached_thumbnail(account, name);
+-
+-	gaim_debug_misc(&quot;chaticon&quot;,&quot;found cached thumbnail %x\n&quot;,buf);	
+-	get_icon_scale_size(buf, prpl_info ? &amp;prpl_info-&gt;icon_spec :
+-			NULL, &amp;scale_width, &amp;scale_height);
+-	GdkPixbuf* scale = gdk_pixbuf_scale_simple(buf, scale_width, scale_height,
+-				GDK_INTERP_HYPER);
+-
+-	gdk_pixbuf_render_pixmap_and_mask(scale, &amp;pm, &amp;bm, 100);
+-	g_object_unref(G_OBJECT(scale));
+-
+-
+-	gtkconv-&gt;u.im-&gt;icon_container = gtk_vbox_new(FALSE, 0);
+-
+-	GtkWidget* frame = gtk_frame_new(NULL);
+-	gtk_frame_set_shadow_type(GTK_FRAME(frame),
+-							  (bm ? GTK_SHADOW_NONE : GTK_SHADOW_IN));
+-	gtk_box_pack_start(GTK_BOX(gtkconv-&gt;u.im-&gt;icon_container), frame,
+-					   FALSE, FALSE, 0);
+-
+-	GtkWidget* event = gtk_event_box_new();
+-	gtk_container_add(GTK_CONTAINER(frame), event);
+-	//g_signal_connect(G_OBJECT(event), &quot;button-press-event&quot;,
+-					 //G_CALLBACK(icon_menu), conv);
+-	gtk_widget_show(event);
+-
+-	gtkconv-&gt;u.im-&gt;icon = gtk_image_new_from_pixmap(pm, bm);
+-	gtk_widget_set_size_request(gtkconv-&gt;u.im-&gt;icon, scale_width, scale_height);
+-	gtk_container_add(GTK_CONTAINER(event), gtkconv-&gt;u.im-&gt;icon);
+-	gtk_widget_show(gtkconv-&gt;u.im-&gt;icon);
+-
+-	g_object_unref(G_OBJECT(pm));
+-
+-	if (bm)
+-		g_object_unref(G_OBJECT(bm));
+-
+-	GaimButtonStyle button_type = gaim_prefs_get_int(&quot;/gaim/gtk/conversations/button_type&quot;);
+-	/* the button seems to get its size before the box, so... */
+-	gtk_widget_size_request(gtkconv-&gt;send, &amp;requisition);
+-	if (button_type == GAIM_BUTTON_NONE || requisition.height * 1.5 &lt; scale_height) {
+-		gtk_box_pack_start(GTK_BOX(gtkconv-&gt;lower_hbox),
+-						   gtkconv-&gt;u.im-&gt;icon_container, FALSE, FALSE, 0);
+-/*		gtk_box_reorder_child(GTK_BOX(gtkconv-&gt;lower_hbox), vbox, 0); */
+-	} else {
+-		gtk_box_pack_start(GTK_BOX(gtkconv-&gt;bbox),
+-						   gtkconv-&gt;u.im-&gt;icon_container, FALSE, FALSE, 0);
+-		gtk_box_reorder_child(GTK_BOX(gtkconv-&gt;bbox),
+-							  gtkconv-&gt;u.im-&gt;icon_container, 0);
+-	}
+-
+-	gtk_widget_show(gtkconv-&gt;u.im-&gt;icon_container);
+-	gtk_widget_show(frame);
+-
+-	/* The buddy icon code needs badly to be fixed. */
+-	buf = gdk_pixbuf_animation_get_static_image(gtkconv-&gt;u.im-&gt;anim);
+-	if(conv == gaim_conv_window_get_active_conversation(gaim_conversation_get_window(conv)))
+-		gtk_window_set_icon(GTK_WINDOW(gtkwin-&gt;window), buf);
+-	
+-}
+ void chaticon_replace(GaimConversation * conv, const char *name,
+                       GaimConvChatBuddyFlags flags)
+ {
+@@ -297,6 +201,9 @@
+                                                         gaim_normalize
+                                                         (conv-&gt;account,
+                                                          name));
++
++
++
+             gaim_debug_misc(&quot;chaticon&quot;, &quot;Got pixbuf: %x\n&quot;);
+             GtkTreePath *path = gtk_tree_model_get_path(list_store, &amp;iter);
+             gtk_list_store_set(GTK_LIST_STORE(list_store), &amp;iter, 0,
+@@ -315,9 +222,9 @@
+ void init_chat_icons(GaimPlugin * plugin)
+ {
+ 
+-    gaim_signal_connect(gaim_accounts_get_handle(),
+-     &quot;info-updated&quot;,
+-     plugin, GAIM_CALLBACK(im_set_icon), NULL);
++    // gaim_signal_connect(gaim_accounts_get_handle(),
++    // &quot;info-updated&quot;,
++    // plugin, GAIM_CALLBACK(im_set_icon), NULL);
+ 
+     icons = g_hash_table_new(g_direct_hash, g_direct_equal);
+ }
+
+Modified: qrc/branches/fork-for-gaim-2/gaym-extras/src/chatsort.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym-extras/src/chatsort.c	2005-12-11 21:49:58 UTC (rev 287)
++++ qrc/branches/fork-for-gaim-2/gaym-extras/src/chatsort.c	2005-12-21 03:16:46 UTC (rev 288)
+@@ -109,14 +109,13 @@
+ 
+     GtkBox *buttonbox = GTK_BOX(button-&gt;parent);
+     gtk_widget_destroy(button);
+-    button = GTK_WIDGET(gaim_gtkconv_button_new(order[current].icon, NULL,      // _(&quot;E&quot;), 
+-                                                                                // 
+-                                                // 
+-                                                // 
+-                                                order[current].tooltip,
+-                                                gtkconv-&gt;tooltips,
+-                                                change_sort_order,
+-                                                gtkconv));
++    button =
++        GTK_WIDGET(gaim_pixbuf_button_from_stock
++                   (NULL, order[current].icon, GAIM_BUTTON_VERTICAL));
++    g_signal_connect(G_OBJECT(button), &quot;clicked&quot;,
++                     G_CALLBACK(change_sort_order), gtkconv);
++    gtk_tooltips_set_tip(gtkconv-&gt;tooltips, button, order[current].tooltip,
++                         NULL);
+     gtk_box_pack_end(buttonbox, button, FALSE, FALSE, 0);
+     gtk_widget_show(button);
+     gtk_tree_sortable_set_sort_func(GTK_TREE_SORTABLE(model),
+@@ -132,16 +131,17 @@
+ {
+ 
+     GaimGtkConversation *gtkconv = GAIM_GTK_CONVERSATION(c);
++    int current = 0;
++    GtkBox *iconbox = (GtkBox *) gtkconv-&gt;u.chat-&gt;userlist_info-&gt;parent;
++    GtkWidget *button =
++        gaim_pixbuf_button_from_stock(NULL, order[current].icon,
++                                      GAIM_BUTTON_VERTICAL);
++    gtk_button_set_relief(GTK_BUTTON(button), GTK_RELIEF_NONE);
++    gtk_tooltips_set_tip(gtkconv-&gt;tooltips, button, order[current].tooltip,
++                         NULL);
++    g_signal_connect(G_OBJECT(button), &quot;clicked&quot;,
++                     G_CALLBACK(change_sort_order), gtkconv);
+ 
+-    GtkBox *iconbox = (GtkBox *) gtkconv-&gt;info-&gt;parent;
+-    // GtkWidget *button = gtk_button_new_with_label(&quot;E&quot;);
+-    GtkWidget *button = gaim_gtkconv_button_new(GAYM_STOCK_ENTRY,
+-                                                NULL,   // _(&quot;E&quot;), 
+-                                                _
+-                                                (&quot;Currently sorting by entry&quot;),
+-                                                gtkconv-&gt;tooltips,
+-                                                change_sort_order,
+-                                                gtkconv);
+     gtk_box_pack_end(iconbox, button, FALSE, FALSE, 0);
+     gtk_widget_show(button);
+ 
+
+Modified: qrc/branches/fork-for-gaim-2/gaym-extras/src/gaym-extras.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym-extras/src/gaym-extras.c	2005-12-11 21:49:58 UTC (rev 287)
++++ qrc/branches/fork-for-gaim-2/gaym-extras/src/gaym-extras.c	2005-12-21 03:16:46 UTC (rev 288)
+@@ -5,9 +5,11 @@
+ void get_icon_scale_size(GdkPixbuf * icon, GaimBuddyIconSpec * spec,
+                          int *width, int *height)
+ {
++    g_return_if_fail(icon != NULL);
+     *width = gdk_pixbuf_get_width(icon);
+     *height = gdk_pixbuf_get_height(icon);
+-    gaim_debug_misc(&quot;popups&quot;, &quot;current: w: %i, h: %i\n&quot;, *width, *height);
++    // gaim_debug_misc(&quot;popups&quot;, &quot;current: w: %i, h: %i\n&quot;, *width,
++    // *height);
+     /* this should eventually get smarter about preserving the aspect
+        ratio when scaling, but gimmie a break, I just woke up */
+     if (spec &amp;&amp; spec-&gt;scale_rules &amp; GAIM_ICON_SCALE_DISPLAY) {
+@@ -38,25 +40,26 @@
+         *width = 100;
+     if (*height &gt; 100)
+         *height = 100;
+-    gaim_debug_misc(&quot;popups&quot;, &quot;scaled: w: %i, h: %i\n&quot;, *width, *height);
++    // gaim_debug_misc(&quot;popups&quot;, &quot;scaled: w: %i, h: %i\n&quot;, *width,
++    // *height);
+ }
+ 
+ // Adds motion handlers to IM tab labels.
+ 
+ static void redo_im_window(GaimConversation * c)
+ {
+-    gaim_debug_misc(&quot;chaticon&quot;,&quot;GOT CONVERSATION CREATED FOR %s\n&quot;,c-&gt;name);
++    gaim_debug_misc(&quot;chaticon&quot;, &quot;GOT CONVERSATION CREATED FOR %s\n&quot;,
++                    c-&gt;name);
+     if (!g_strrstr(gaim_account_get_protocol_id(c-&gt;account), &quot;prpl-gaym&quot;))
+         return;
+-    if (c &amp;&amp; c-&gt;type == GAIM_CONV_IM)
++    if (c &amp;&amp; c-&gt;type == GAIM_CONV_TYPE_IM)
+         add_im_popup_stuff(c);
+-    else if (c-&gt;type == GAIM_CONV_CHAT)
+-    {
+-	add_chat_sort_functions(c);
+-	add_chat_popup_stuff(c);
+-	add_chat_icon_stuff(c);
++    else if (c-&gt;type == GAIM_CONV_TYPE_CHAT) {
++        add_chat_sort_functions(c);
++        add_chat_popup_stuff(c);
++        add_chat_icon_stuff(c);
+     }
+-    
++
+ }
+ 
+ 
+@@ -130,42 +133,59 @@
+ GdkPixbuf *lookup_cached_thumbnail(GaimAccount * account,
+                                    const char *fullname)
+ {
+-    GDir *gdir = NULL;
++    guint len;
++    GaimBuddyIcon *icon = gaim_buddy_icons_find(account, fullname);
++    if (!icon) {
++        gaim_debug_misc(&quot;gaym-extras&quot;, &quot;No icon found for %s\n&quot;, fullname);
++        return NULL;
++    }
++    const guchar *icon_bytes = gaim_buddy_icon_get_data(icon, &amp;len);
++    if (!icon_bytes) {
++        gaim_debug_misc(&quot;gaym-extras&quot;, &quot;No icon data found for %s\n&quot;,
++                        fullname);
++        return NULL;
++    }
++
+     GError *err = NULL;
+-    GdkPixbuf *pixbuf = NULL;
+-    const char *filename = NULL;
+-    char *dirname = NULL;
+-    char *path = NULL;
+-    const char *name = gaim_normalize(account, fullname);
+-    dirname =
+-        g_build_filename(gaim_user_dir(), &quot;icons&quot;, &quot;gaym&quot;, name, NULL);
+-    if (dirname) {
+-        gdir = g_dir_open(dirname, 0, &amp;err);
+-        if (gdir) {
+-            filename = g_dir_read_name(gdir);   // don't free filename:
+-            // owned by glib.
+-            if (filename) {
+-                path = g_build_filename(dirname, filename, NULL);
+-                if (path)
+-                    pixbuf = gdk_pixbuf_new_from_file(path, &amp;err);
+-                g_free(path);
+-            }
+-            g_dir_close(gdir);
+-        }
+-        g_free(dirname);
++    GdkPixbufLoader *loader = gdk_pixbuf_loader_new();
++    if (!gdk_pixbuf_loader_write(loader, icon_bytes, len, &amp;err))
++        gaim_debug_misc(&quot;roombrowse&quot;, &quot;write error: %s\n&quot;, err-&gt;message);
++    else
++        gaim_debug_misc(&quot;roombrowse&quot;, &quot;write %d bytes without errors.\n&quot;,
++                        len);
++    GdkPixbuf *pixbuf = gdk_pixbuf_loader_get_pixbuf(loader);
++    GdkPixbufFormat *format = gdk_pixbuf_loader_get_format(loader);
++    if (format) {
++        gaim_debug_misc(&quot;gaym-extras&quot;, &quot;pixbuf name: %s\n&quot;,
++                        gdk_pixbuf_format_get_name(format));
++        // gaim_debug_misc(&quot;gaym-extras&quot;,&quot;pixbuf domain:
++        // %s\n&quot;,gdk_pixbuf_format_get_domain(format));
++        gaim_debug_misc(&quot;gaym-extras&quot;, &quot;pixbuf description: %s\n&quot;,
++                        gdk_pixbuf_format_get_description(format));
++        int i = 0;
++        gchar **mime_types = gdk_pixbuf_format_get_mime_types(format);
++        gchar **extensions = gdk_pixbuf_format_get_extensions(format);
++        while (mime_types[i] != NULL)
++            gaim_debug_misc(&quot;gaym-extras&quot;, &quot;pixbuf mime_type: %s\n&quot;,
++                            mime_types[i++]);
++        i = 0;
++        while (extensions[i] != NULL)
++            gaim_debug_misc(&quot;gaym-extras&quot;, &quot;pixbuf extensions: %s\n&quot;,
++                            extensions[i++]);
++
++
+     }
++    gdk_pixbuf_loader_close(loader, NULL);
++
+     return pixbuf;
+ }
+ 
+-static gboolean plugin_unload(GaimPlugin * plugin) {
++static gboolean plugin_unload(GaimPlugin * plugin)
++{
+ 
+-    /* Ok, this is hell. I need to:
+-     * Remove any icons from the IM windows.
+-     * Disconnect signals
+-     * Close and destroy roombrowsers/memory associated with
+-     * Destroy all popups
+-     * Remove chaticon buttons
+-     */
++    /* Ok, this is hell. I need to: Remove any icons from the IM windows.
++       Disconnect signals Close and destroy roombrowsers/memory associated 
++       with Destroy all popups Remove chaticon buttons */
+     return TRUE;
+ 
+ }
+@@ -174,6 +194,8 @@
+     init_chat_icons(plugin);
+     init_popups();
+     init_roombrowse(plugin);
++    gaim_debug_misc(&quot;gaym-extras&quot;, &quot;gaim_conversations_get_handle(): %x\n&quot;,
++                    gaim_conversations_get_handle());
+     gaim_signal_connect(gaim_conversations_get_handle(),
+                         &quot;conversation-created&quot;, plugin,
+                         GAIM_CALLBACK(redo_im_window), NULL);
+
+Modified: qrc/branches/fork-for-gaim-2/gaym-extras/src/roombrowse.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym-extras/src/roombrowse.c	2005-12-11 21:49:58 UTC (rev 287)
++++ qrc/branches/fork-for-gaim-2/gaym-extras/src/roombrowse.c	2005-12-21 03:16:46 UTC (rev 288)
+@@ -59,7 +59,8 @@
+     GtkWidget *label;
+     GtkTreeIter iter;
+     GaimConnection *gc;
+-    char* channel;
++    char *channel;
++    GaimConversation *conv;
+ } RoomBrowseGui;
+ 
+ 
+@@ -90,15 +91,22 @@
+            '-1' value */
+         gtk_tree_model_get(list_store, &amp;iter, COLUMN_NAME, &amp;str_data, -1);
+ 
+-	
++
+         if (!strcmp(name, gaim_normalize(browser-&gt;gc-&gt;account, str_data))) {
++            // TODO: Memory leak here, since icons will never get
++            // unreffed.
++
+             GdkPixbuf *pixbuf =
+                 lookup_cached_thumbnail(browser-&gt;gc-&gt;account,
+                                         gaim_normalize(browser-&gt;gc-&gt;
+                                                        account,
+-		                                         name));
+-	    if(!pixbuf)
+-		break;
++                                                       name));
++            if (!pixbuf) {
++                gaim_debug_misc(&quot;roombrowse&quot;, &quot;no pixbuf found for %s\n&quot;,
++                                name);
++                break;
++            }
++
+             get_icon_scale_size(pixbuf,
+                                 prpl_info ? &amp;prpl_info-&gt;icon_spec : NULL,
+                                 &amp;scale_width, &amp;scale_height);
+@@ -113,7 +121,8 @@
+                                COLUMN_PHOTO, scale, -1);
+ 
+             gtk_tree_model_row_changed(list_store, path, &amp;iter);
+-	    gaim_debug_misc(&quot;roombrowse&quot;,&quot;Signaled row change for %s\n&quot;,name);
++            gaim_debug_misc(&quot;roombrowse&quot;, &quot;Signaled row change for %s\n&quot;,
++                            name);
+             // g_free(pixbuf);
+             break;
+         }
+@@ -128,7 +137,7 @@
+ void roombrowse_update_list_row(GaimConnection * gc, const char *who)
+ {
+ 
+-    gaim_debug_misc(&quot;roombrowse&quot;,&quot;Info update: %s\n&quot;,who);
++    gaim_debug_misc(&quot;roombrowse&quot;, &quot;Info update: %s\n&quot;, who);
+     g_hash_table_foreach(browsers, (GHFunc) update_photos, (char *) who);
+ 
+ }
+@@ -147,25 +156,31 @@
+          (MIN(strlen(member-&gt;name), strlen(member-&gt;prefix)) - 1))) {
+         sync = &quot;N&quot;;
+     }
+-    
++
+     GString *info = g_string_new(&quot;&quot;);
++    guchar numerase = 0;
+     if (member-&gt;age)
+-        g_string_append_printf(info, &quot;\n&lt;b&gt;Age:&lt;/b&gt; %s&quot;, member-&gt;age);
+-    if (member-&gt;location)
+-    {
+-	char* escaped=g_markup_escape_text(member-&gt;location, strlen(member-&gt;location));
++        numerase = 1;
++    g_string_append_printf(info, &quot;\n&lt;b&gt;Age:&lt;/b&gt; %s&quot;, member-&gt;age);
++    if (member-&gt;location) {
++        char *escaped =
++            g_markup_escape_text(member-&gt;location,
++                                 strlen(member-&gt;location));
+         g_string_append_printf(info, &quot;\n&lt;b&gt;Location:&lt;/b&gt; %s&quot;, escaped);
++        numerase = 1;
+     }
+-    if (member-&gt;bio) 
+-    {
+-	char* escaped=g_markup_escape_text(member-&gt;bio, strlen(member-&gt;bio));
++    if (member-&gt;bio) {
++        char *escaped =
++            g_markup_escape_text(member-&gt;bio, strlen(member-&gt;bio));
+         g_string_append_printf(info, &quot;\n&lt;b&gt;Info&lt;/b&gt;: %s&quot;, escaped);
++        numerase = 1;
+     }
+-    g_string_erase(info, 0, 1);
++    if (numerase)
++        g_string_erase(info, 0, 1);
+     char *infoc = g_string_free(info, FALSE);
+ 
+ 
+-        gtk_list_store_append(GTK_LIST_STORE(browser-&gt;model), &amp;browser-&gt;iter);
++    gtk_list_store_append(GTK_LIST_STORE(browser-&gt;model), &amp;browser-&gt;iter);
+     GdkPixbuf *pixbuf = NULL;
+     if (member-&gt;thumbnail) {
+ 
+@@ -198,42 +213,43 @@
+             pixbuf = gdk_pixbuf_new_from_file(filename, NULL);
+         }
+     }
+-    get_icon_scale_size(pixbuf,
+-                        prpl_info ? &amp;prpl_info-&gt;icon_spec : NULL,
+-                        &amp;scale_width, &amp;scale_height);
+ 
+-    GdkPixbuf *scale = gdk_pixbuf_scale_simple(pixbuf,
+-                                               scale_width,
+-                                               scale_height,
+-                                               GDK_INTERP_BILINEAR);
+-    g_object_unref(pixbuf);
++    GdkPixbuf *scale = NULL;
++    if (pixbuf) {
++        get_icon_scale_size(pixbuf,
++                            prpl_info ? &amp;prpl_info-&gt;icon_spec : NULL,
++                            &amp;scale_width, &amp;scale_height);
+ 
++        scale = gdk_pixbuf_scale_simple(pixbuf,
++                                        scale_width,
++                                        scale_height, GDK_INTERP_BILINEAR);
++        g_object_unref(pixbuf);
++    }
+     gtk_list_store_set(GTK_LIST_STORE(browser-&gt;model), &amp;browser-&gt;iter,
+                        COLUMN_PHOTO, scale,
+ #if DEBUG
+                        COLUMN_SYNC, sync, COLUMN_PREFIX, member-&gt;prefix,
+ #endif
+                        COLUMN_ROOM, member-&gt;room,
+-		       COLUMN_NAME, member-&gt;name, 
+-		       COLUMN_INFO, infoc, -1);
+-    
++                       COLUMN_NAME, member-&gt;name, COLUMN_INFO, infoc, -1);
+ 
+ 
++
+ }
+ 
+ void roombrowse_update_list(GaimAccount * account, GaymNamelist * namelist)
+ {
+ 
+-    g_return_if_fail(namelist);
+     gaim_debug_misc(&quot;roombrowse&quot;, &quot;update_list from namelist at %x\n&quot;,
+                     namelist);
++    g_return_if_fail(namelist);
+ 
+     RoomBrowseGui *browser =
+         g_hash_table_lookup(browsers, namelist-&gt;roomname);
+     if (!browser &amp;&amp; namelist-&gt;roomname) {
+         gaim_debug_misc(&quot;roombrowse&quot;, &quot;No browser found for %s\n&quot;,
+                         namelist-&gt;roomname);
+-	return;
++        return;
+ 
+     }
+     gtk_list_store_clear(GTK_LIST_STORE(browser-&gt;model));
+@@ -263,13 +279,15 @@
+     if (browser-&gt;gc-&gt;account &amp;&amp; browser-&gt;gc)
+         prpl_info = GAIM_PLUGIN_PROTOCOL_INFO(browser-&gt;gc-&gt;prpl);
+ 
+-    conv = gaim_find_conversation_with_account(who, browser-&gt;gc-&gt;account);
++    conv =
++        gaim_find_conversation_with_account(GAIM_CONV_TYPE_IM, who,
++                                            browser-&gt;gc-&gt;account);
+ 
+-    if (conv != NULL)
+-        gaim_conv_window_show(gaim_conversation_get_window(conv));
++    if (conv != NULL);          // gaim_conv_window_show(gaim_conversation_get_window(conv));
+     else
+         conv =
+-            gaim_conversation_new(GAIM_CONV_IM, browser-&gt;gc-&gt;account, who);
++            gaim_conversation_new(GAIM_CONV_TYPE_IM, browser-&gt;gc-&gt;account,
++                                  who);
+ 
+ }
+ static void chat_do_info(RoomBrowseGui * browser, const char *who)
+@@ -381,7 +399,7 @@
+ {
+ 
+     g_return_if_fail(selection != NULL);
+-    gaim_debug_misc(&quot;roombrowse&quot;,&quot;changed_cb\n&quot;);
++    gaim_debug_misc(&quot;roombrowse&quot;, &quot;changed_cb\n&quot;);
+ 
+     GtkTreeIter iter;
+     GtkTreeModel *model = NULL;
+@@ -447,34 +465,44 @@
+     return TRUE;
+ }
+ 
+-static gboolean browser_window_destroyed(GtkWidget* window, GdkEvent* event, gpointer name) {
+-    gaim_debug_misc(&quot;roombrowser&quot;,&quot;remove browser entry for %s\n&quot;,name);
+-    g_hash_table_remove(browsers, name);
+-    g_free(name);
++static gboolean browser_conv_destroy(GaimConversation * conv)
++{
++    g_return_val_if_fail(conv != NULL, FALSE);
++    guchar *channel = g_hash_table_lookup(browser_channels, conv-&gt;name);
++    if (!channel)
++        return FALSE;
++    gaim_debug_misc(&quot;roombrowser&quot;,
++                    &quot;remove browser entry for %s which is %s\n&quot;,
++                    conv-&gt;name, channel);
++    g_hash_table_remove(browsers, channel);
++    g_hash_table_remove(browser_channels, conv-&gt;name);
+     return FALSE;
+ }
+-static void roombrowse_fix_conv(GaimConversation* conv) {
+-  
+-    GtkWidget* pane;
++static void roombrowse_fix_conv(GaimConversation * conv)
++{
++
++    gaim_debug_misc(&quot;roombrowse&quot;, &quot;Total roombrowers so far: %x\n&quot;,
++                    g_hash_table_size(browsers));
+     g_return_if_fail(conv != NULL);
+-    if(!g_str_has_prefix(conv-&gt;name, &quot;BROWSE:&quot;))
+-	    return;
+-    GaimGtkConversation* gtkconv=GAIM_GTK_CONVERSATION(conv);
+-    gaim_signal_emit(gaim_conversations_get_handle(),  &quot;conversation-destroyed&quot;, conv);
+-    conv-&gt;type=GAIM_CONV_MISC;
+-    gchar* channel = g_hash_table_lookup(browser_channels, conv-&gt;name);
+-    RoomBrowseGui* browser=g_hash_table_lookup(browsers, channel); 
+-    gtk_container_foreach(GTK_CONTAINER(gtkconv-&gt;tab_cont), (GtkCallback)(gtk_widget_hide), NULL);
+-    
++    if (!g_str_has_prefix(conv-&gt;name, &quot;BROWSE:&quot;))
++        return;
++    GaimGtkConversation *gtkconv = GAIM_GTK_CONVERSATION(conv);
++
++    conv-&gt;type = GAIM_CONV_TYPE_MISC;
++    gchar *channel = g_hash_table_lookup(browser_channels, conv-&gt;name);
++    RoomBrowseGui *browser = g_hash_table_lookup(browsers, channel);
++    gtk_container_foreach(GTK_CONTAINER(gtkconv-&gt;tab_cont),
++                          (GtkCallback) (gtk_widget_hide), NULL);
++
+     GtkWidget *sw = gtk_scrolled_window_new(NULL, NULL);
+-	gtk_box_pack_start(GTK_BOX(gtkconv-&gt;tab_cont), sw, TRUE, TRUE, 0);
++    gtk_box_pack_start(GTK_BOX(gtkconv-&gt;tab_cont), sw, TRUE, TRUE, 0);
+     gtk_widget_show(sw);
+     GtkListStore *ls = gtk_list_store_new(N_COLUMNS,
+                                           GDK_TYPE_PIXBUF,
+                                           G_TYPE_STRING,
+                                           G_TYPE_STRING,
+                                           G_TYPE_STRING,
+-					  G_TYPE_STRING,
++                                          G_TYPE_STRING,
+                                           G_TYPE_STRING);
+     browser-&gt;model = GTK_TREE_MODEL(ls);
+ 
+@@ -552,7 +580,8 @@
+ 
+     g_signal_connect(browser-&gt;button, &quot;clicked&quot;, G_CALLBACK(update_list),
+                      udata);
+-    gtk_box_pack_start(GTK_BOX(gtkconv-&gt;tab_cont), browser-&gt;button, FALSE, FALSE, 0);
++    gtk_box_pack_start(GTK_BOX(gtkconv-&gt;tab_cont), browser-&gt;button, FALSE,
++                       FALSE, 0);
+     gtk_widget_show(browser-&gt;button);
+ 
+ 
+@@ -563,7 +592,7 @@
+ {
+     RoomBrowseGui *browser = g_new0(RoomBrowseGui, 1);
+     GaimConnection *gc = (GaimConnection *) data;
+-	    
++
+     // GaimAccount *account = ((GaimChat *) node)-&gt;account;
+     GaimChat *chat = ((GaimChat *) node);
+     const char *channel = g_hash_table_lookup(chat-&gt;components, &quot;channel&quot;);
+@@ -571,17 +600,19 @@
+     const char *tempname;
+     gaim_debug_misc(&quot;roombrowse&quot;, &quot;chat name: %s\n&quot;, room);
+     gaim_debug_misc(&quot;roombrowse&quot;, &quot;channel name: %s\n&quot;, channel);
+-   
+-    browser-&gt;channel=g_strdup(channel);
+-    browser-&gt;gc=gc;
+-    tempname=g_strdup_printf(&quot;BROWSE:%s&quot;,room);
++
++    browser-&gt;channel = g_strdup(channel);
++    browser-&gt;gc = gc;
++    tempname = g_strdup_printf(&quot;BROWSE:%s&quot;, room);
+     g_hash_table_insert(browsers, g_strdup(channel), browser);
+-    g_hash_table_insert(browser_channels, g_strdup(tempname), g_strdup(channel));
+-    GaimConversation* conv = gaim_conversation_new(GAIM_CONV_CHAT, gc-&gt;account, tempname); 
+-    gaim_debug_misc(&quot;roombrowse&quot;,&quot;New conv: %x\n&quot;,conv);
+-        return;
++    g_hash_table_insert(browser_channels, g_strdup(tempname),
++                        g_strdup(channel));
++    GaimConversation *conv =
++        gaim_conversation_new(GAIM_CONV_TYPE_CHAT, gc-&gt;account, tempname);
++    gaim_debug_misc(&quot;roombrowse&quot;, &quot;New conv: %x\n&quot;, conv);
++    return;
+ 
+-    }
++}
+ static void roombrowse_menu_create(GaimBlistNode * node, GList ** menu)
+ {
+ 
+@@ -602,7 +633,7 @@
+     GaimBlistNodeAction *act = gaim_blist_node_action_new(label,
+                                                           roombrowse_menu_cb,
+                                                           chat-&gt;account-&gt;
+-                                                          gc);
++                                                          gc, NULL);
+ 
+     *menu = g_list_append(*menu, act);
+     // g_free(label);
+@@ -626,14 +657,16 @@
+                         NULL);
+ 
+     gaim_signal_connect(gaim_conversations_get_handle(),
+-			&quot;conversation-created&quot;,
+-			plugin,
+-			GAIM_CALLBACK(roombrowse_fix_conv),
+-			NULL);
++                        &quot;conversation-created&quot;,
++                        plugin, GAIM_CALLBACK(roombrowse_fix_conv), NULL);
++    gaim_signal_connect(gaim_conversations_get_handle(),
++                        &quot;deleting-conversation&quot;,
++                        plugin, GAIM_CALLBACK(browser_conv_destroy), NULL);
++
+     browsers =
+         g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+ 
+     browser_channels =
+-        g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
++        g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+     return;
+ }
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000217.html">[Qrc-svn] r287 - qrc/branches
+</A></li>
+	
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#218">[ date ]</a>
+              <a href="thread.html#218">[ thread ]</a>
+              <a href="subject.html#218">[ subject ]</a>
+              <a href="author.html#218">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

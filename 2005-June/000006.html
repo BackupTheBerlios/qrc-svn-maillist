@@ -1,0 +1,126 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r56 - gaym/trunk
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r56%20-%20gaym/trunk&In-Reply-To=%3C200506031349.j53DnZ8b002204%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000005.html">
+   <LINK REL="Next"  HREF="000007.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r56 - gaym/trunk</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r56%20-%20gaym/trunk&In-Reply-To=%3C200506031349.j53DnZ8b002204%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r56 - gaym/trunk">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Fri Jun  3 15:49:35 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000005.html">[Qrc-svn] r54 - gaym/trunk/src
+</A></li>
+        <LI>Next message: <A HREF="000007.html">[Qrc-svn] r57 - gaym/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6">[ date ]</a>
+              <a href="thread.html#6">[ thread ]</a>
+              <a href="subject.html#6">[ subject ]</a>
+              <a href="author.html#6">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-03 15:49:33 +0200 (Fri, 03 Jun 2005)
+New Revision: 56
+
+Modified:
+   gaym/trunk/autogen.sh
+   gaym/trunk/configure.ac
+Log:
+- Require at least automake 1.9.5 (thanks: michael &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">rubberboy at doggie.org</A>&gt;).
+- Exit autogen.sh on automake error.
+
+
+Modified: gaym/trunk/autogen.sh
+===================================================================
+--- gaym/trunk/autogen.sh	2005-06-03 05:21:18 UTC (rev 55)
++++ gaym/trunk/autogen.sh	2005-06-03 13:49:33 UTC (rev 56)
+@@ -60,23 +60,14 @@
+ echo;
+ echo &quot;Running automake....&quot;
+ echo;
+-automake --force-missing --add-missing;
++automake --force-missing --add-missing || exit;
+ 
+ echo;
+ echo &quot;Running autoconf....&quot;
+ echo;
+ autoconf --force || exit;
+ 
+-#
+-# Apparently, running automake a second time like this fixes 
+-# distcheck for automake 1.5 and doesn't break it for 1.4.
+-#
+ echo;
+-echo &quot;Running automake again....&quot;
+-echo;
+-automake || exit;
+-
+-echo;
+ echo &quot;Finished generating configuration files for GayM.&quot;
+ echo &quot;Now you may run './configure'.&quot;
+ echo;
+
+Modified: gaym/trunk/configure.ac
+===================================================================
+--- gaym/trunk/configure.ac	2005-06-03 05:21:18 UTC (rev 55)
++++ gaym/trunk/configure.ac	2005-06-03 13:49:33 UTC (rev 56)
+@@ -4,7 +4,7 @@
+ AC_PREREQ([2.59])
+ AC_INIT([gaim-gaym],[0.33.0+svn],[<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">gaymplugin at yahoogroups.com</A>])
+ AC_CANONICAL_SYSTEM
+-AM_INIT_AUTOMAKE
++AM_INIT_AUTOMAKE([1.9.5])
+ 
+ REQUIRED_GAIM=&quot;gaim &gt;= 1.2 gaim &lt; 2.0&quot;
+ AC_SUBST(REQUIRED_GAIM)
+@@ -17,7 +17,7 @@
+ # Checks for programs.
+ AC_PROG_CC
+ AC_DISABLE_STATIC
+-AM_PROG_LIBTOOL
++AC_PROG_LIBTOOL
+ LIBTOOL=&quot;$LIBTOOL --silent&quot;
+ AC_PROG_INSTALL
+ 
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000005.html">[Qrc-svn] r54 - gaym/trunk/src
+</A></li>
+	<LI>Next message: <A HREF="000007.html">[Qrc-svn] r57 - gaym/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#6">[ date ]</a>
+              <a href="thread.html#6">[ thread ]</a>
+              <a href="subject.html#6">[ subject ]</a>
+              <a href="author.html#6">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

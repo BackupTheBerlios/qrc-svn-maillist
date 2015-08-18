@@ -1,0 +1,114 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r298 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2007-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r298%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200707140439.l6E4dNDn024401%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000228.html">
+   <LINK REL="Next"  HREF="000229.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r298 - qrc/trunk/gaym/src</H1>
+    <B>jblebrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r298%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200707140439.l6E4dNDn024401%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r298 - qrc/trunk/gaym/src">jblebrun at mail.berlios.de
+       </A><BR>
+    <I>Sat Jul 14 06:39:31 CEST 2007</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000228.html">[Qrc-svn] r297 - in qrc/trunk: . gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000229.html">[Qrc-svn] r299 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#226">[ date ]</a>
+              <a href="thread.html#226">[ thread ]</a>
+              <a href="subject.html#226">[ subject ]</a>
+              <a href="author.html#226">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2007-07-14 06:39:22 +0200 (Sat, 14 Jul 2007)
+New Revision: 298
+
+Modified:
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/helpers.c
+Log:
+Fixed tooltip
+
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2007-07-14 04:26:09 UTC (rev 297)
++++ qrc/trunk/gaym/src/gaym.c	2007-07-14 04:39:22 UTC (rev 298)
+@@ -221,7 +221,6 @@
+     if (!buddy || !buddy-&gt;account || !buddy-&gt;account-&gt;gc)
+         return;
+ 
+-    PurpleNotifyUserInfo *info = purple_notify_user_info_new();
+     
+     struct gaym_conn *gaym =
+         (struct gaym_conn *) buddy-&gt;account-&gt;gc-&gt;proto_data;
+@@ -240,7 +239,7 @@
+                                  purple_normalize(gaym-&gt;account,
+                                                 buddy-&gt;name));
+ 
+-    build_tooltip_text(ib, info);
++    build_tooltip_text(ib, user_info);
+     
+ }
+ 
+
+Modified: qrc/trunk/gaym/src/helpers.c
+===================================================================
+--- qrc/trunk/gaym/src/helpers.c	2007-07-14 04:26:09 UTC (rev 297)
++++ qrc/trunk/gaym/src/helpers.c	2007-07-14 04:39:22 UTC (rev 298)
+@@ -469,12 +469,14 @@
+     if (ib-&gt;sex) {
+         escaped = g_markup_escape_text(ib-&gt;sex, strlen(ib-&gt;sex));
+         purple_notify_user_info_add_pair(info, _(&quot;Sex&quot;), escaped);
++        purple_debug_misc(&quot;tooltip&quot;,&quot;adding sex\n&quot;);
+         g_free(escaped);
+     }
+ 
+     if (ib-&gt;age) {
+         escaped = g_markup_escape_text(ib-&gt;age, strlen(ib-&gt;age));
+         purple_notify_user_info_add_pair(info, _(&quot;Age&quot;), escaped);
++        purple_debug_misc(&quot;tooltip&quot;,&quot;adding age\n&quot;);
+         g_free(escaped);
+     }
+     if (ib-&gt;location) {
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000228.html">[Qrc-svn] r297 - in qrc/trunk: . gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000229.html">[Qrc-svn] r299 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#226">[ date ]</a>
+              <a href="thread.html#226">[ thread ]</a>
+              <a href="subject.html#226">[ subject ]</a>
+              <a href="author.html#226">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

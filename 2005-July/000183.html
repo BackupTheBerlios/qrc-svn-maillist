@@ -1,0 +1,432 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r253 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r253%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507300909.j6U99NCL006219%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000182.html">
+   <LINK REL="Next"  HREF="000184.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r253 - qrc/trunk/gaym/src</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r253%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507300909.j6U99NCL006219%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r253 - qrc/trunk/gaym/src">jblebrun at berlios.de
+       </A><BR>
+    <I>Sat Jul 30 11:09:23 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000182.html">[Qrc-svn] r252 - qrc/trunk/gaym-extras
+</A></li>
+        <LI>Next message: <A HREF="000184.html">[Qrc-svn] r254 - in qrc/trunk: gaym/src gaym-extras
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#183">[ date ]</a>
+              <a href="thread.html#183">[ thread ]</a>
+              <a href="subject.html#183">[ subject ]</a>
+              <a href="author.html#183">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-07-30 11:09:22 +0200 (Sat, 30 Jul 2005)
+New Revision: 253
+
+Modified:
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/gaym.h
+   qrc/trunk/gaym/src/gayminfo.c
+   qrc/trunk/gaym/src/gayminfo.h
+   qrc/trunk/gaym/src/helpers.c
+   qrc/trunk/gaym/src/msgs.c
+Log:
+helpers.c:  refactoring
+gayminfo.c: file caching of thumbnail fetches.
+
+Misc cleanup.
+
+
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-30 09:07:03 UTC (rev 252)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-30 09:09:22 UTC (rev 253)
+@@ -510,8 +510,6 @@
+      * for thumbails inside the IM conversation window if the
+      * person is not already on the buddy list
+      */
+-    gaym-&gt;im_thumbnail_needed =
+-        g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+ 
+     buf = g_strdup_printf(_(&quot;Signon: %s&quot;), username);
+     gaim_connection_update_progress(gc, buf, 1, 6);
+@@ -537,7 +535,7 @@
+     gaym-&gt;confighash = gaym_properties_new(config_text);
+     g_return_if_fail(gaym-&gt;confighash != NULL);
+ 
+-    synchronize_deny_list(gc, gaym-&gt;confighash);
++    //synchronize_deny_list(gc, gaym-&gt;confighash);
+ 
+     return;
+ }
+@@ -686,7 +684,6 @@
+     g_hash_table_destroy(gaym-&gt;msgs);
+     g_hash_table_destroy(gaym-&gt;info_window_needed);
+     g_hash_table_destroy(gaym-&gt;entry_order);
+-    g_hash_table_destroy(gaym-&gt;im_thumbnail_needed);
+     if (gaym-&gt;motd)
+         g_string_free(gaym-&gt;motd, TRUE);
+ 
+@@ -1438,10 +1435,6 @@
+          * with the WHOIS to get the photo for the IM thumbnail
+          */
+ 
+-        char *normalized =
+-            g_strdup(gaim_normalize(gc-&gt;account, conv-&gt;name));
+-        g_hash_table_insert(gaym-&gt;im_thumbnail_needed, normalized,
+-                            normalized);
+ 
+         name = gaym_nick_to_gcom_strdup(conv-&gt;name);
+         buf = gaym_format(gaym, &quot;vn&quot;, &quot;WHOIS&quot;, name);
+@@ -1597,11 +1590,13 @@
+ 
+     gaim_signal_register(gaim_accounts_get_handle(),
+                          &quot;info-updated&quot;,
+-                         gaim_marshal_VOID__POINTER_POINTER, NULL, 3,
++                         gaim_marshal_VOID__POINTER_POINTER, NULL, 2,
+                          gaim_value_new(GAIM_TYPE_SUBTYPE,
+                                         GAIM_SUBTYPE_ACCOUNT),
+                          gaim_value_new(GAIM_TYPE_POINTER,
+                                         GAIM_TYPE_CHAR));
++    
++    
+ 
+     gaim_prefs_add_none(&quot;/plugins/prpl/gaym&quot;);
+     gaim_prefs_add_int(&quot;/plugins/prpl/gaym/chat_room_instances&quot;, 4);
+
+Modified: qrc/trunk/gaym/src/gaym.h
+===================================================================
+--- qrc/trunk/gaym/src/gaym.h	2005-07-30 09:07:03 UTC (rev 252)
++++ qrc/trunk/gaym/src/gaym.h	2005-07-30 09:09:22 UTC (rev 253)
+@@ -80,7 +80,6 @@
+ 
+     gboolean blist_updating;
+     GHashTable *info_window_needed;
+-    GHashTable *im_thumbnail_needed;
+ 
+     GString *motd;
+     GString *names;
+
+Modified: qrc/trunk/gaym/src/gayminfo.c
+===================================================================
+--- qrc/trunk/gaym/src/gayminfo.c	2005-07-30 09:07:03 UTC (rev 252)
++++ qrc/trunk/gaym/src/gayminfo.c	2005-07-30 09:09:22 UTC (rev 253)
+@@ -111,6 +111,56 @@
+ 
+     }
+ }
++void gaym_fetch_thumbnail_cb(void *user_data, const char *pic_data,
++                             size_t len)
++{
++    if (!user_data)
++        return;
++    struct gaym_fetch_thumbnail_data *d = user_data;
++    if (!pic_data) {
++        return;
++    }
++    
++    if (len &amp;&amp; !g_strrstr_len(pic_data, len, &quot;Server Error&quot;)) {
++        char *dir = g_build_filename(gaim_user_dir(), &quot;icons&quot;, &quot;gaym&quot;, d-&gt;who, NULL);
++        char *filename = g_strdup(d-&gt;filename);
++        char *path = g_build_filename(dir, filename, NULL);
++	gaim_debug_misc(&quot;gayminfo&quot;,&quot;dir: %s\n&quot;,dir);
++	gaim_debug_misc(&quot;gayminfo&quot;,&quot;filename: %s\n&quot;,filename);
++	gaim_debug_misc(&quot;gayminfo&quot;,&quot;path: %s\n&quot;,path);
++	if(!g_file_test(dir, G_FILE_TEST_EXISTS))
++            gaim_build_dir(dir, S_IRUSR | S_IWUSR | S_IXUSR);
++	
++	if(path &amp;&amp; !g_file_test(path, G_FILE_TEST_EXISTS)) {
++            FILE *file;
++            if ((file = g_fopen(path, &quot;wb&quot;))) {
++                fwrite(pic_data, 1, len, file);
++                fclose(file);
++            } else {
++                gaim_debug_misc(&quot;fetch_thumbnail_cb&quot;, &quot;Couldn't write file\n&quot;);
++            }
++            g_free(filename);
++            g_free(path);
++            g_free(dir);
++        }
++    }
++    if (GAIM_CONNECTION_IS_VALID(d-&gt;gc) &amp;&amp; len) {
++        gaim_signal_emit(gaim_accounts_get_handle(), &quot;info-updated&quot;,
++                         d-&gt;gc, NULL, d-&gt;who);
++        if(gaim_find_conversation_with_account(d-&gt;who, d-&gt;gc-&gt;account)) 
++	{
++	   gaim_buddy_icons_set_for_user(gaim_connection_get_account(d-&gt;gc),
++                                      d-&gt;who, (void *) pic_data, len);
++	}
++	   
++    } else {
++        gaim_debug_error(&quot;gaym&quot;, &quot;Fetching buddy icon failed.\n&quot;);
++    }
++
++    g_free(d-&gt;who);
++    g_free(d);
++}
++
+ void gaym_buddy_status(struct gaym_conn *gaym, char *name,
+                        gboolean online, char *info)
+ {
+@@ -150,31 +200,54 @@
+     struct gaym_buddy *ib = g_hash_table_lookup(gaym-&gt;buddies, name);
+ 
+     char *normalized = g_strdup(gaim_normalize(gaym-&gt;account, name));
+-    char *im_thumbnail =
+-        g_hash_table_lookup(gaym-&gt;im_thumbnail_needed, normalized);
+-
++    
+     if (thumbnail) {
+-        if ((ib &amp;&amp; gaim_utf8_strcasecmp(thumbnail, ib-&gt;thumbnail))
+-            || im_thumbnail) {
+-
+-            char *hashurl = NULL;
+-            hashurl =
+-                g_hash_table_lookup(gaym-&gt;confighash,
+-                                    &quot;mini-profile-panel.thumbnail-prefix&quot;);
+-            g_return_if_fail(hashurl != NULL);
+-            data = g_new0(struct gaym_fetch_thumbnail_data, 1);
+-            data-&gt;gc = gaim_account_get_connection(gaym-&gt;account);
+-            data-&gt;who = g_strdup(name);
+-            url = g_strdup_printf(&quot;%s%s&quot;, hashurl, thumbnail);
+-            gaim_url_fetch(url, FALSE, &quot;Mozilla/4.0&quot;, FALSE,
+-                           gaym_fetch_thumbnail_cb, data);
+-            g_free(url);
+-        }
++	gboolean do_fetch=1;
++	GError* err=NULL;
++        if (!ib || gaim_utf8_strcasecmp(thumbnail, ib-&gt;thumbnail)) {
++	    char* dirname=g_build_filename(gaim_user_dir(), &quot;icons&quot;, &quot;gaym&quot;, gaim_normalize(gaym-&gt;account,name), NULL);
++	    GDir* gdir=g_dir_open(dirname, 0 , &amp;err);
++	    if(gdir)
++	    {
++	        const char* filename;
++		
++	        while((filename=g_dir_read_name(gdir))) //don't free filename: owned by glib.
++		{
++		    char* thumbnail_base=g_path_get_basename(thumbnail);
++		    gaim_debug_misc(&quot;gaym&quot;,&quot;compared %s and %s\n&quot;,thumbnail_base, filename);
++		    if(!gaim_utf8_strcasecmp(thumbnail_base, filename))
++		    {
++			do_fetch=0;
++			break;
++		    }
++		    g_free(thumbnail_base);
++		}	
++	    }
++	    if(do_fetch) {
++		
++		gaim_debug_misc(&quot;gaym&quot;,&quot;********************************************\n&quot;);
++		gaim_debug_misc(&quot;gaym&quot;,&quot;*****************FETCH**********************\n&quot;);
++		gaim_debug_misc(&quot;gaym&quot;,&quot;********************************************\n&quot;);
++		char *hashurl = NULL;
++		hashurl =
++		    g_hash_table_lookup(gaym-&gt;confighash,
++					&quot;mini-profile-panel.thumbnail-prefix&quot;);
++		g_return_if_fail(hashurl != NULL);
++		data = g_new0(struct gaym_fetch_thumbnail_data, 1);
++		data-&gt;gc = gaim_account_get_connection(gaym-&gt;account);
++		data-&gt;who = g_strdup(gaim_normalize(gaym-&gt;account,name));
++		data-&gt;filename=g_strdup(g_strrstr(thumbnail, &quot;/&quot;));
++		gaim_debug_misc(&quot;gayminfo&quot;,&quot;Found filename: %s\n&quot;,data-&gt;filename);
++		url = g_strdup_printf(&quot;%s%s&quot;, hashurl, thumbnail);
++		g_free(thumbnail);
++		gaim_url_fetch(url, FALSE, &quot;Mozilla/4.0&quot;, FALSE,
++			       gaym_fetch_thumbnail_cb, data);
++		g_free(url);
++	    }
++    
++	}
+     }
+ 
+-    if (im_thumbnail) {
+-        g_hash_table_remove(gaym-&gt;im_thumbnail_needed, normalized);
+-    }
+     g_free(normalized);
+ 
+     if (ib) {
+
+Modified: qrc/trunk/gaym/src/gayminfo.h
+===================================================================
+--- qrc/trunk/gaym/src/gayminfo.h	2005-07-30 09:07:03 UTC (rev 252)
++++ qrc/trunk/gaym/src/gayminfo.h	2005-07-30 09:09:22 UTC (rev 253)
+@@ -35,6 +35,7 @@
+ struct gaym_fetch_thumbnail_data {
+     GaimConnection *gc;
+     char *who;
++    char *filename;
+     char *bio;
+     char *stats;
+     // const char *pic_data;
+
+Modified: qrc/trunk/gaym/src/helpers.c
+===================================================================
+--- qrc/trunk/gaym/src/helpers.c	2005-07-30 09:07:03 UTC (rev 252)
++++ qrc/trunk/gaym/src/helpers.c	2005-07-30 09:09:22 UTC (rev 253)
+@@ -20,7 +20,7 @@
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+  */
+ #include &quot;internal.h&quot;
+-
++#include &quot;debug.h&quot;
+ #include &quot;helpers.h&quot;
+ 
+ void gcom_nick_to_gaym(char *nick)
+@@ -205,25 +205,27 @@
+ 
+ void replace_dollar_n(gpointer key, gpointer value, gpointer user_data)
+ {
+-    int i = 0;
+-    gchar *tmpstr = (gchar *) value;
++ 
+     /**
+      * replace $[0-9] with %s, so we can use printf style
+      * processing with the provided property values
+      */
+-    for (i = 0; i &lt; strlen(tmpstr); i++) {
+-        if (tmpstr[i] == '$') {
+-            if (g_ascii_isdigit(tmpstr[i + 1])) {
+-                tmpstr[i] = '%';
+-                tmpstr[i + 1] = 's';
+-                i++;
+-            }
+-        }
++    char* pos=(char*)value;
++    while((pos=(strchr(pos, '$'))))
++    {
++	pos++;
++	if(g_ascii_isdigit(pos))
++	{
++		*pos='s';
++		*(pos-1)='%';
++		
++	}
+     }
+ }
+ 
+ GHashTable *gaym_properties_new(const gchar * str)
+ {
++    
+     gchar *tmpstr = NULL;
+     gchar **tmparr = NULL;
+     gchar **proparr = NULL;
+@@ -240,12 +242,21 @@
+     /**
+      * strip out continuation character followed by newline 
+      */
+-    tmparr = g_strsplit(tmpstr, &quot;\\\n&quot;, -1);
+-    g_free(tmpstr);
+-    tmpstr = g_strjoinv(NULL, tmparr);
+-    g_strfreev(tmparr);
+-
++    //tmparr = g_strsplit(tmpstr, &quot;\\\n&quot;, -1);
++    //g_free(tmpstr);
++    //tmpstr = g_strjoinv(NULL, tmparr);
++    //g_strfreev(tmparr);
+     /**
++     * Since the properties get stripped of spaces later,
++     * just replace \\\n with &lt;space&gt;\n in-place, for speed.
++     * */
++    char* pos=tmpstr;
++    while((pos=g_strrstr(pos, &quot;\\\n&quot;)))
++    {
++	*pos=' ';
++	*(pos+1)=' ';
++    }
++    /**
+      * We're getting close.  Now we need an array as follows:
+      *
+      * property=value
+@@ -280,10 +291,12 @@
+         proparr = g_strsplit(tmparr[i], &quot;=&quot;, 2);
+         if (proparr[0] &amp;&amp; strlen(g_strstrip(proparr[0])) &gt; 0
+             &amp;&amp; proparr[1] &amp;&amp; strlen(g_strstrip(proparr[1])) &gt; 0) {
+-            g_hash_table_insert(props, g_strdup(proparr[0]),
++            
++		g_hash_table_insert(props, g_strdup(proparr[0]),
+                                 g_strdup(proparr[1]));
+-            g_strfreev(proparr);
++	    
+         }
++	g_strfreev(proparr);
+     }
+ 
+     g_strfreev(tmparr);
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-07-30 09:07:03 UTC (rev 252)
++++ qrc/trunk/gaym/src/msgs.c	2005-07-30 09:09:22 UTC (rev 253)
+@@ -85,30 +85,6 @@
+     serv_got_im(gc, args[1], args[2], GAIM_CONV_IM_AUTO_RESP, time(NULL));
+ }
+ 
+-void gaym_fetch_thumbnail_cb(void *user_data, const char *pic_data,
+-                             size_t len)
+-{
+-    if (!user_data)
+-        return;
+-    struct gaym_fetch_thumbnail_data *d = user_data;
+-    if (!pic_data) {
+-        gaim_signal_emit(gaim_accounts_get_handle(), &quot;buddy-icon-fetched&quot;,
+-                         d-&gt;gc, NULL, d-&gt;who);
+-        return;
+-    }
+-
+-
+-    if (GAIM_CONNECTION_IS_VALID(d-&gt;gc) &amp;&amp; len) {
+-        gaim_buddy_icons_set_for_user(gaim_connection_get_account(d-&gt;gc),
+-                                      d-&gt;who, (void *) pic_data, len);
+-    } else {
+-        gaim_debug_error(&quot;gaym&quot;, &quot;Fetching buddy icon failed.\n&quot;);
+-    }
+-
+-    g_free(d-&gt;who);
+-    g_free(d);
+-}
+-
+ static void gaym_fetch_photo_cb(void *user_data, const char *info_data,
+                                 size_t len)
+ {
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000182.html">[Qrc-svn] r252 - qrc/trunk/gaym-extras
+</A></li>
+	<LI>Next message: <A HREF="000184.html">[Qrc-svn] r254 - in qrc/trunk: gaym/src gaym-extras
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#183">[ date ]</a>
+              <a href="thread.html#183">[ thread ]</a>
+              <a href="subject.html#183">[ subject ]</a>
+              <a href="author.html#183">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

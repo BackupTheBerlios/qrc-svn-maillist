@@ -1,0 +1,396 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r273 - in qrc/trunk: . gaym/src gaym-extras/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-August/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r273%20-%20in%20qrc/trunk%3A%20.%20gaym/src%20gaym-extras/src&In-Reply-To=%3C200508181436.j7IEabFj022813%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000202.html">
+   <LINK REL="Next"  HREF="000204.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r273 - in qrc/trunk: . gaym/src gaym-extras/src</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r273%20-%20in%20qrc/trunk%3A%20.%20gaym/src%20gaym-extras/src&In-Reply-To=%3C200508181436.j7IEabFj022813%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r273 - in qrc/trunk: . gaym/src gaym-extras/src">jblebrun at berlios.de
+       </A><BR>
+    <I>Thu Aug 18 16:36:37 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000202.html">[Qrc-svn] r272 - in qrc/trunk: gaym/src gaym-extras/src
+</A></li>
+        <LI>Next message: <A HREF="000204.html">[Qrc-svn] r274 - qrc/trunk/gaym-extras/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#203">[ date ]</a>
+              <a href="thread.html#203">[ thread ]</a>
+              <a href="subject.html#203">[ subject ]</a>
+              <a href="author.html#203">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-08-18 16:36:32 +0200 (Thu, 18 Aug 2005)
+New Revision: 273
+
+Modified:
+   qrc/trunk/Makefile.am
+   qrc/trunk/configure.ac
+   qrc/trunk/gaym-extras/src/bio-popups.c
+   qrc/trunk/gaym-extras/src/gaym-extras.c
+   qrc/trunk/gaym-extras/src/gaym-extras.h
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/helpers.c
+   qrc/trunk/gaym/src/msgs.c
+Log:
+helpers.c:
+*Took the name out of the tooltiptext returned here
+
+msgs.c:
+*Added handling for mid-op notification window for info requests.
+
+gaym.c:
+*Added creation of a window letting user know that info is being fetched.
+
+gaym-extras:
+*Fixed display of popup so name is not normalized.
+
+configure.ac:
+*Build display plugin
+
+
+
+
+
+
+
+
+
+Modified: qrc/trunk/Makefile.am
+===================================================================
+--- qrc/trunk/Makefile.am	2005-08-04 05:19:15 UTC (rev 272)
++++ qrc/trunk/Makefile.am	2005-08-18 14:36:32 UTC (rev 273)
+@@ -19,4 +19,5 @@
+ 	$(MAYBE_BOT_CHALLENGER) \
+ 	$(MAYBE_CHATICON) \
+ 	$(MAYBE_GAYM) \
+-	$(MAYBE_GAYM_EXTRAS)
++	$(MAYBE_GAYM_EXTRAS) \
++	display-options
+
+Modified: qrc/trunk/configure.ac
+===================================================================
+--- qrc/trunk/configure.ac	2005-08-04 05:19:15 UTC (rev 272)
++++ qrc/trunk/configure.ac	2005-08-18 14:36:32 UTC (rev 273)
+@@ -36,6 +36,10 @@
+ # Build preferences
+ 
+ 
++AC_ARG_ENABLE([display-options],
++	[AS_HELP_STRING(--enable-display_options,build the bot-challenger plugin @&lt;:@default=yes@:&gt;@)],,
++	[enable_display_options=&quot;yes&quot;])
++	
+ AC_ARG_ENABLE([bot-challenger],
+ 	[AS_HELP_STRING(--enable-bot-challenger,build the bot-challenger plugin @&lt;:@default=yes@:&gt;@)],,
+ 	[enable_bot_challenger=&quot;yes&quot;])
+@@ -49,6 +53,7 @@
+ 	[enable_gaym_extras=&quot;yes&quot;])
+ 
+ AM_CONDITIONAL([COND_BOT_CHALLENGER], [test &quot;$enable_bot_challenger&quot; = &quot;yes&quot;])
++AM_CONDITIONAL([COND_DISPLAY_OPTIONS], [test &quot;$enable_display_options&quot; = &quot;yes&quot;])
+ AM_CONDITIONAL([COND_GAYM], [test &quot;$enable_gaym&quot; = &quot;yes&quot;])
+ AM_CONDITIONAL([COND_GAYM_EXTRAS], [test &quot;$enable_gaym_extras&quot; = &quot;yes&quot;])
+ 
+@@ -56,6 +61,9 @@
+ 	enable_bot_challenger=&quot;no&quot;
+ fi
+ 
++if test &quot;$enable_display_options&quot; != &quot;yes&quot; ; then
++	enable_display_options=&quot;no&quot;
++fi
+ if test &quot;$enable_gaym&quot; != &quot;yes&quot; ; then
+ 	enable_gaym=&quot;no&quot;
+ fi
+@@ -79,6 +87,14 @@
+ 		]
+ 	)
+ fi
++if test &quot;$enable_display_options&quot; = &quot;yes&quot; ; then
++	PKG_CHECK_MODULES([GTK], [$REQUIRED_GTK],
++		[
++		AC_SUBST(GTK_CFLAGS)
++		AC_SUBST(GTK_LIBS)
++		]
++	)
++fi
+ PKG_CHECK_MODULES([GAIM], [$REQUIRED_GAIM],
+ 	[
+ 	AC_SUBST(GAIM_CFLAGS)
+@@ -124,6 +140,7 @@
+ 
+ AC_CONFIG_FILES([Makefile
+                  bot-challenger/Makefile
++		 display-options/Makefile
+                  gaym/Makefile
+                  gaym/pixmaps/Makefile
+                  gaym/src/Makefile
+@@ -138,6 +155,7 @@
+ echo $PACKAGE $VERSION
+ echo
+ echo Build bot-challenger plugin...... : $enable_bot_challenger
++echo Build display_options plugin...... : $enable_display_options
+ echo Build gaym plugin................ : $enable_gaym
+ echo Build gaym-extras plugin......... : $enable_gaym_extras
+ echo
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-08-04 05:19:15 UTC (rev 272)
++++ qrc/trunk/gaym/src/gaym.c	2005-08-18 14:36:32 UTC (rev 273)
+@@ -779,20 +779,38 @@
+ 
+     gaym_cmd_whois(gaym, &quot;whois&quot;, NULL, args);
+ }
++
++struct get_info_data {
++    char* who;
++    struct gaym_conn* gaym;
++} get_info_data;
++
++static void cancel_get_info_cb(gpointer cb_data) {
++    
++    struct get_info_data* data=(struct get_info_data*)cb_data;
++    if(!data-&gt;who || !data-&gt;gaym)
++	return;
++    g_hash_table_remove(data-&gt;gaym-&gt;info_window_needed, data-&gt;who);
++
++}
+ static void gaym_get_info(GaimConnection * gc, const char *who)
+ {
+     struct gaym_conn *gaym = gc-&gt;proto_data;
+     const char *args[1];
++    char buf[100];
+     args[0] = who;
+ 
+     char *normalized = g_strdup(gaim_normalize(gc-&gt;account, who));
+-    /**
+-     * We are adding the same char* to both the key and the value.
+-     * If this changes, we need to change the corresponding
+-     * g_hash_table_new_full() so that things are properly cleaned
+-     * up during the remove/destroy phase.
+-     */
+-    g_hash_table_insert(gaym-&gt;info_window_needed, normalized, normalized);
++   
++    struct get_info_data* data=g_new0(struct get_info_data,1);
++    data-&gt;who=normalized;
++    data-&gt;gaym=gaym;
++    snprintf(buf, 100, &quot;Fetching info for %s...\n&quot;,who);
++    void* dialog =
++        gaim_request_action(gc, who,
++                            buf, NULL, 0, data, 1, (&quot;Cancel&quot;),
++                            cancel_get_info_cb);
++    g_hash_table_insert(gaym-&gt;info_window_needed, normalized, dialog);
+     gaym_cmd_whois(gaym, &quot;whois&quot;, NULL, args);
+ }
+ 
+
+Modified: qrc/trunk/gaym/src/helpers.c
+===================================================================
+--- qrc/trunk/gaym/src/helpers.c	2005-08-04 05:19:15 UTC (rev 272)
++++ qrc/trunk/gaym/src/helpers.c	2005-08-18 14:36:32 UTC (rev 273)
+@@ -463,7 +463,7 @@
+     char *escaped;
+     GString *tooltip = g_string_new(&quot;&quot;);
+ 
+-    g_string_printf(tooltip, &quot;&lt;b&gt;&lt;i&gt;%s&lt;/i&gt;&lt;/b&gt;&quot;, ib-&gt;name);
++    //g_string_printf(tooltip, &quot;&lt;b&gt;&lt;i&gt;%s&lt;/i&gt;&lt;/b&gt;&quot;, ib-&gt;name);
+ 
+     g_return_val_if_fail(ib != NULL, NULL);
+ 
+@@ -500,7 +500,7 @@
+     if (tooltip-&gt;len == 0) {
+         g_string_append_printf(tooltip, _(&quot; No info.&quot;));
+     }
+-    // g_string_erase(tooltip, 0, 1);
++    //g_string_erase(tooltip, 0, 1);
+ 
+     return g_string_free(tooltip, FALSE);
+ }
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-08-04 05:19:15 UTC (rev 272)
++++ qrc/trunk/gaym/src/msgs.c	2005-08-18 14:36:32 UTC (rev 273)
+@@ -101,7 +101,13 @@
+     char *hashurl =
+         g_hash_table_lookup(gaym-&gt;confighash, &quot;view-profile-url&quot;);
+     g_return_if_fail(hashurl != NULL);
++    
++    void *dialog =
++	g_hash_table_lookup(gaym-&gt;info_window_needed, gaim_normalize(d-&gt;gc-&gt;account, d-&gt;who));
+ 
++    if(!dialog)
++	return;
++
+     int id = gaim_imgstore_add(info_data, len, NULL);
+     if (d-&gt;stats &amp;&amp; d-&gt;bio)
+         info =
+@@ -124,6 +130,8 @@
+             (&quot;No Info Found&lt;br&gt;&lt;img id=%d&gt;&lt;br&gt;&lt;a href='%s%s'&gt;Full Profile&lt;/a&gt;&quot;,
+              id, hashurl, d-&gt;who);
+ 
++    gaim_request_close(GAIM_REQUEST_ACTION, dialog);
++    g_hash_table_remove(gaym-&gt;info_window_needed, gaim_normalize(d-&gt;gc-&gt;account, d-&gt;who));
+     gaim_notify_userinfo(d-&gt;gc, d-&gt;who,
+                          t = g_strdup_printf(&quot;Gay.com - %s&quot;, d-&gt;who),
+                          d-&gt;who, NULL, info, NULL, NULL);
+@@ -155,6 +163,12 @@
+     char *hashurl =
+         g_hash_table_lookup(gaym-&gt;confighash, &quot;view-profile-url&quot;);
+     g_return_if_fail(hashurl != NULL);
++    
++    void *dialog =
++	g_hash_table_lookup(gaym-&gt;info_window_needed, gaim_normalize(d-&gt;gc-&gt;account, d-&gt;who));
++    
++    if(!dialog)
++	return;
+ 
+     if (d-&gt;stats &amp;&amp; d-&gt;bio)
+         info =
+@@ -179,6 +193,8 @@
+ 
+     picpath = return_string_between(match, &quot;\n&quot;, info_data);
+     if (!picpath || strlen(picpath) == 0) {
++	gaim_request_close(GAIM_REQUEST_ACTION, dialog);
++	g_hash_table_remove(gaym-&gt;info_window_needed, gaim_normalize(d-&gt;gc-&gt;account, d-&gt;who));
+         gaim_notify_userinfo(d-&gt;gc, d-&gt;who,
+                              t = g_strdup_printf(&quot;Gay.com - %s&quot;, d-&gt;who),
+                              d-&gt;who, NULL, info, NULL, NULL);
+@@ -212,8 +228,9 @@
+     gaym_buddy_status(gaym, args[1], FALSE, NULL, FALSE);
+ 
+     char *normalized = g_strdup(gaim_normalize(gaym-&gt;account, args[1]));
+-
+-    if (g_hash_table_lookup(gaym-&gt;info_window_needed, normalized)) 
++    
++    void* dialog;
++    if ((dialog=g_hash_table_lookup(gaym-&gt;info_window_needed, normalized)))
+     {
+ 	g_hash_table_remove(gaym-&gt;info_window_needed, normalized);
+ 
+@@ -226,9 +243,11 @@
+             g_strdup_printf
+             (&quot;That user is not logged on. Check &lt;a href='%s%s'&gt;here&lt;/a&gt; to see if that user has a profile.&quot;,
+              hashurl, args[1]);
+-        gaim_notify_userinfo(gaim_account_get_connection(gaym-&gt;account),
++        gaim_request_close(GAIM_REQUEST_ACTION, dialog);
++	gaim_notify_userinfo(gaim_account_get_connection(gaym-&gt;account),
+                              NULL, NULL, &quot;No such user&quot;, NULL, buf, NULL,
+                              NULL);
++	
+     }
+     g_free(normalized);
+ }
+@@ -269,7 +288,6 @@
+         data-&gt;who = g_strdup(args[1]);
+         data-&gt;bio = gaym_bio_strdup(args[5]);
+         data-&gt;stats = gaym_stats_strdup(args[5]);
+-        g_hash_table_remove(gaym-&gt;info_window_needed, normalized);
+         char *hashurl = g_hash_table_lookup(gaym-&gt;confighash,
+                                             &quot;ohm.profile-url&quot;);
+         g_return_if_fail(hashurl != NULL);
+@@ -282,6 +300,10 @@
+                            gaym_fetch_info_cb, data);
+             g_free(infourl);
+         }
++	else
++	{
++	    g_hash_table_remove(gaym-&gt;info_window_needed, normalized);
++	}
+     }
+     g_free(normalized);
+ }
+
+Modified: qrc/trunk/gaym-extras/src/bio-popups.c
+===================================================================
+--- qrc/trunk/gaym-extras/src/bio-popups.c	2005-08-04 05:19:15 UTC (rev 272)
++++ qrc/trunk/gaym-extras/src/bio-popups.c	2005-08-18 14:36:32 UTC (rev 273)
+@@ -170,7 +170,9 @@
+     gtk_widget_set_name(tipwindow, &quot;gtk-tooltips&quot;);
+ 
+     struct paint_data *pdata = g_new0(struct paint_data, 1);
+-    pdata-&gt;tooltiptext = tooltiptext;
++    pdata-&gt;tooltiptext = g_strdup_printf(&quot;&lt;b&gt;&lt;i&gt;%s&lt;/i&gt;&lt;/b&gt;%s&quot;,name,tooltiptext);
++    //pdata-&gt;tooltiptext = tooltiptext;
++    g_free(tooltiptext);
+     pdata-&gt;pixbuf = lookup_cached_thumbnail(account, name);
+     g_signal_connect(G_OBJECT(tipwindow), &quot;expose_event&quot;,
+                      G_CALLBACK(namelist_paint_tip), pdata);
+@@ -178,7 +180,7 @@
+     layout = gtk_widget_create_pango_layout(tipwindow, NULL);
+     pango_layout_set_wrap(layout, PANGO_WRAP_WORD);
+     pango_layout_set_width(layout, 300000);
+-    pango_layout_set_markup(layout, tooltiptext, strlen(tooltiptext));
++    pango_layout_set_markup(layout, pdata-&gt;tooltiptext, strlen(pdata-&gt;tooltiptext));
+     pango_layout_get_size(layout, &amp;w, &amp;h);
+ 
+ #if GTK_CHECK_VERSION(2,2,0)
+
+Modified: qrc/trunk/gaym-extras/src/gaym-extras.c
+===================================================================
+--- qrc/trunk/gaym-extras/src/gaym-extras.c	2005-08-04 05:19:15 UTC (rev 272)
++++ qrc/trunk/gaym-extras/src/gaym-extras.c	2005-08-18 14:36:32 UTC (rev 273)
+@@ -166,8 +166,8 @@
+      * Destroy all popups
+      * Remove chaticon buttons
+      */
++    return TRUE;
+ 
+-
+ }
+ static gboolean plugin_load(GaimPlugin * plugin)
+ {
+
+Modified: qrc/trunk/gaym-extras/src/gaym-extras.h
+===================================================================
+--- qrc/trunk/gaym-extras/src/gaym-extras.h	2005-08-04 05:19:15 UTC (rev 272)
++++ qrc/trunk/gaym-extras/src/gaym-extras.h	2005-08-18 14:36:32 UTC (rev 273)
+@@ -39,6 +39,7 @@
+ struct paint_data {
+     char *tooltiptext;
+     GdkPixbuf *pixbuf;
++    char *name;
+ };
+ 
+ // Additional UI info for a conversation.
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000202.html">[Qrc-svn] r272 - in qrc/trunk: gaym/src gaym-extras/src
+</A></li>
+	<LI>Next message: <A HREF="000204.html">[Qrc-svn] r274 - qrc/trunk/gaym-extras/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#203">[ date ]</a>
+              <a href="thread.html#203">[ thread ]</a>
+              <a href="subject.html#203">[ subject ]</a>
+              <a href="author.html#203">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

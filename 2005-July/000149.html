@@ -1,0 +1,272 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r219 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r219%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507211758.j6LHw8jW012383%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000148.html">
+   <LINK REL="Next"  HREF="000150.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r219 - qrc/trunk/gaym/src</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r219%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507211758.j6LHw8jW012383%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r219 - qrc/trunk/gaym/src">jblebrun at berlios.de
+       </A><BR>
+    <I>Thu Jul 21 19:58:08 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000148.html">[Qrc-svn] r218 - qrc/trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000150.html">[Qrc-svn] r220 - in qrc/trunk: . chaticon
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#149">[ date ]</a>
+              <a href="thread.html#149">[ thread ]</a>
+              <a href="subject.html#149">[ subject ]</a>
+              <a href="author.html#149">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-07-21 19:58:07 +0200 (Thu, 21 Jul 2005)
+New Revision: 219
+
+Modified:
+   qrc/trunk/gaym/src/gaym.h
+   qrc/trunk/gaym/src/gayminfo.h
+   qrc/trunk/gaym/src/msgs.c
+Log:
+*THIS REVISION NOT SUITABLE FOR RELEASE! 
+
+*Changed the way the room list is populated initially. It is more inefficient, but it allows for proper sorting by entry order, via the chatsort plugin. This method is a point of debate, due to the notable change in roomlist formation. I will fork this code if people are unhappy with it.
+
+*Info dialog shows thumbnail instead of full photo, if no full photo is available (adult photos)
+
+gaym.h: added join_flags to gaym_conn struct, which is populated during richnames list, but USED during the subsequent &quot;Names&quot; messages that allows us to populate roomlist in entry order.
+
+gayminfo.h: added thumbnail field to fetch_thumbail_data struct. (Why the hell did I name it that, if it didn't even have a thumbnail in it?)
+
+msgs.c:
+*richnames messages no longer populate roomlist, they just populate a flags list. 
+
+*info_needed_callback fallsback to thumbnail photo if no full photo exists.
+
+*msgs_names now populates the list if gaym-&gt;nameconv is null. So, on a join_msg, indicating a successful room join, a names command is immediately sent out. The response of that names message is what triggers list population.
+
+
+
+
+
+
+Modified: qrc/trunk/gaym/src/gaym.h
+===================================================================
+--- qrc/trunk/gaym/src/gaym.h	2005-07-21 02:10:29 UTC (rev 218)
++++ qrc/trunk/gaym/src/gaym.h	2005-07-21 17:58:07 UTC (rev 219)
+@@ -77,7 +77,7 @@
+     gboolean blist_updating;
+     GHashTable *info_window_needed;
+     GHashTable *im_thumbnail_needed;
+-
++    GList *join_flags; //Temporary holding space for join flags. 
+     GString *motd;
+     GString *names;
+     char *nameconv;
+
+Modified: qrc/trunk/gaym/src/gayminfo.h
+===================================================================
+--- qrc/trunk/gaym/src/gayminfo.h	2005-07-21 02:10:29 UTC (rev 218)
++++ qrc/trunk/gaym/src/gayminfo.h	2005-07-21 17:58:07 UTC (rev 219)
+@@ -37,6 +37,7 @@
+     char *who;
+     char *bio;
+     char *stats;
++    char *thumbnail;
+ };
+ void gaym_fetch_thumbnail_cb(void *user_data, const char *pic_data,
+                              size_t len);
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-07-21 02:10:29 UTC (rev 218)
++++ qrc/trunk/gaym/src/msgs.c	2005-07-21 17:58:07 UTC (rev 219)
+@@ -199,6 +199,20 @@
+ 
+     picpath = return_string_between(match, &quot;\n&quot;, info_data);
+     if (!picpath || strlen(picpath) == 0) {
++
++	if(d-&gt;thumbnail) {
++            hashurl =
++                g_hash_table_lookup(gaym-&gt;confighash,
++                                    &quot;mini-profile-panel.thumbnail-prefix&quot;);
++	    picurl = g_strdup_printf(&quot;%s%s&quot;,hashurl,d-&gt;thumbnail);
++	    if(picurl) {
++		gaim_url_fetch(picurl, FALSE, &quot;Mozilla/4.0 (compatible; MSIE 5.0)&quot;,
++                       FALSE, gaym_fetch_photo_cb, user_data);
++	    
++		return; 
++	    }
++	    
++	}
+         gaim_notify_userinfo(d-&gt;gc, d-&gt;who,
+                              t = g_strdup_printf(&quot;Gay.com - %s&quot;, d-&gt;who),
+                              d-&gt;who, NULL, info, NULL, NULL);
+@@ -207,6 +221,7 @@
+     }
+ 
+     picurl = g_strdup_printf(&quot;<A HREF="http://www.gay.com%s">http://www.gay.com%s</A>&quot;, picpath);
++   
+     if (picurl) {
+         gaim_url_fetch(picurl, FALSE, &quot;Mozilla/4.0 (compatible; MSIE 5.0)&quot;,
+                        FALSE, gaym_fetch_photo_cb, user_data);
+@@ -283,6 +298,7 @@
+         data-&gt;who = g_strdup(args[1]);
+         data-&gt;bio = gaym_bio_strdup(args[5]);
+         data-&gt;stats = gaym_stats_strdup(args[5]);
++	data-&gt;thumbnail = gaym_thumbnail_strdup(args[5]);
+ 
+         char *infourl = g_strdup_printf(&quot;%s?pw=%s&amp;name=%s&quot;, hashurl,
+                                         gaym-&gt;hash_pw, args[1]);
+@@ -414,7 +430,7 @@
+         if (!convo) {
+             gaim_debug(GAIM_DEBUG_ERROR, &quot;gaym&quot;,
+                        &quot;Got a NAMES list for %s, which doesn't exist\n&quot;,
+-                       args[2]);
++                       args[1]);
+             g_string_free(gaym-&gt;names, TRUE);
+             gaym-&gt;names = NULL;
+             g_free(gaym-&gt;nameconv);
+@@ -442,44 +458,47 @@
+             gaym-&gt;nameconv = NULL;
+         } else {
+             GList *users = NULL;
+-            GList *flags = NULL;
+ 
+-            while (*cur) {
+-                GaimConvChatBuddyFlags f = GAIM_CBFLAGS_NONE;
++	    gaim_debug_misc(&quot;gaym&quot;,&quot;Using names for initial list population&quot;);
++	    while (*cur) {
+                 end = strchr(cur, ' ');
+-                if (!end)
+-                    end = cur + strlen(cur);
+-                if (*cur == '@') {
+-                    f = GAIM_CBFLAGS_OP;
+-                    cur++;
+-                } else if (*cur == '%') {
+-                    f = GAIM_CBFLAGS_HALFOP;
+-                    cur++;
+-                } else if (*cur == '+') {
+-                    f = GAIM_CBFLAGS_VOICE;
+-                    cur++;
+-                }
++                //if (!end)
++                //    end = cur + strlen(cur);
++                //if (*cur == '@') {
++                //    f = GAIM_CBFLAGS_OP;
++                //    cur++;
++                //} else if (*cur == '%') {
++                //    f = GAIM_CBFLAGS_HALFOP;
++                //    cur++;
++                //} else if (*cur == '+') {
++                //    f = GAIM_CBFLAGS_VOICE;
++                //    cur++;
++                // }
+                 tmp = g_strndup(cur, end - cur);
++
++		gcom_nick_to_gaym(tmp);
+                 users = g_list_prepend(users, tmp);
+-                flags = g_list_prepend(flags, GINT_TO_POINTER(f));
++                //flags = g_list_prepend(flags, GINT_TO_POINTER(f));
+                 cur = end;
+                 if (*cur)
+                     cur++;
+             }
+-            users = g_list_reverse(users);
+-            flags = g_list_reverse(flags);
++	    //users = g_list_reverse(users);
++            //flags = g_list_reverse(flags);
+ 
+             if (users != NULL) {
+                 GList *l;
+ 
+                 gaim_conv_chat_add_users(GAIM_CONV_CHAT(convo), users,
+-                                         flags);
++                                         gaym-&gt;join_flags);
+ 
++		
+                 for (l = users; l != NULL; l = l-&gt;next)
+                     g_free(l-&gt;data);
+ 
+                 g_list_free(users);
+-                g_list_free(flags);
++                g_list_free(gaym-&gt;join_flags);
++		gaym-&gt;join_flags=NULL;
+             }
+         }
+         g_free(names);
+@@ -689,6 +708,8 @@
+         }
+ 
+         serv_got_joined_chat(gc, id++, args[0]);
++	
++	gaym_cmd_names(gaym, &quot;names&quot;, NULL, args);
+         g_free(nick);
+         return;
+     }
+@@ -1236,7 +1257,7 @@
+ {
+     GaimConnection *gc = gaim_account_get_connection(gaym-&gt;account);
+     GaimConversation *convo;
+-    GaimConvChatBuddyFlags flags = GAIM_CBFLAGS_NONE;
++    GaimConvChatBuddyFlags flags;
+     char *channel = args[1];
+     char *nick = args[2];
+     char *extra = args[4];
+@@ -1266,10 +1287,12 @@
+     }
+ 
+     flags = chat_pecking_order(extra);
++    
++    //g_hash_table_insert(gaym-&gt;join_flags, g_strdup(nick), flags);
++    gaym-&gt;join_flags=g_list_prepend(gaym-&gt;join_flags, GINT_TO_POINTER(flags));
++    //gaim_conv_chat_add_user(GAIM_CONV_CHAT(convo), nick, NULL, flags,
++    //                        FALSE);
+ 
+-    gaim_conv_chat_add_user(GAIM_CONV_CHAT(convo), nick, NULL, flags,
+-                            FALSE);
+-
+     /**
+      * Make the ignore.png icon appear next to the nick.
+      */
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000148.html">[Qrc-svn] r218 - qrc/trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000150.html">[Qrc-svn] r220 - in qrc/trunk: . chaticon
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#149">[ date ]</a>
+              <a href="thread.html#149">[ thread ]</a>
+              <a href="subject.html#149">[ subject ]</a>
+              <a href="author.html#149">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

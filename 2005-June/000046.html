@@ -1,0 +1,642 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r114 - in trunk: . gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r114%20-%20in%20trunk%3A%20.%20gaym/src&In-Reply-To=%3C200506190420.j5J4KSqt025840%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000045.html">
+   <LINK REL="Next"  HREF="000047.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r114 - in trunk: . gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r114%20-%20in%20trunk%3A%20.%20gaym/src&In-Reply-To=%3C200506190420.j5J4KSqt025840%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r114 - in trunk: . gaym/src">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Sun Jun 19 06:20:28 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000045.html">[Qrc-svn] r113 - trunk
+</A></li>
+        <LI>Next message: <A HREF="000047.html">[Qrc-svn] r115 - trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#46">[ date ]</a>
+              <a href="thread.html#46">[ thread ]</a>
+              <a href="subject.html#46">[ subject ]</a>
+              <a href="author.html#46">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-19 06:19:56 +0200 (Sun, 19 Jun 2005)
+New Revision: 114
+
+Modified:
+   trunk/TODO
+   trunk/gaym/src/gaym.c
+   trunk/gaym/src/msgs.c
+Log:
+Wildcard roomlist and aliases from buddylist.
+Various comment formating changes.
+
+
+Modified: trunk/TODO
+===================================================================
+--- trunk/TODO	2005-06-18 23:17:33 UTC (rev 113)
++++ trunk/TODO	2005-06-19 04:19:56 UTC (rev 114)
+@@ -13,7 +13,7 @@
+   so its not editable, which would help us here.  So this could be a
+   PROTOCOL PLUGIN)
+ 
+-  As the room list is generated, it should automatically display the multiple
++- As the room list is generated, it should automatically display the multiple
+   rooms associated with a locale, so that the user can select one.
+ 
+ - Split-phase operation notifiers. For example.... if you click to join
+
+Modified: trunk/gaym/src/gaym.c
+===================================================================
+--- trunk/gaym/src/gaym.c	2005-06-18 23:17:33 UTC (rev 113)
++++ trunk/gaym/src/gaym.c	2005-06-19 04:19:56 UTC (rev 114)
+@@ -795,6 +795,58 @@
+     g_free(ib);
+ }
+ 
++static GaimChat *gaym_find_blist_chat(GaimAccount * account,
++                                      const char *name)
++{
++    char *chat_name;
++    GaimChat *chat;
++    GaimPlugin *prpl;
++    GaimPluginProtocolInfo *prpl_info = NULL;
++    struct proto_chat_entry *pce;
++    GaimBlistNode *node, *group;
++    GList *parts;
++
++    GaimBuddyList *gaimbuddylist = gaim_get_blist();
++
++    g_return_val_if_fail(gaimbuddylist != NULL, NULL);
++    g_return_val_if_fail((name != NULL) &amp;&amp; (*name != '\0'), NULL);
++
++    if (!gaim_account_is_connected(account))
++        return NULL;
++
++    prpl = gaim_find_prpl(gaim_account_get_protocol_id(account));
++    prpl_info = GAIM_PLUGIN_PROTOCOL_INFO(prpl);
++
++    for (group = gaimbuddylist-&gt;root; group != NULL; group = group-&gt;next) {
++        for (node = group-&gt;child; node != NULL; node = node-&gt;next) {
++            if (GAIM_BLIST_NODE_IS_CHAT(node)) {
++
++                chat = (GaimChat *) node;
++
++                if (account != chat-&gt;account)
++                    continue;
++
++                parts =
++                    prpl_info-&gt;
++                    chat_info(gaim_account_get_connection(chat-&gt;account));
++
++                pce = parts-&gt;data;
++                chat_name = g_hash_table_lookup(chat-&gt;components,
++                                                pce-&gt;identifier);
++
++                if (chat-&gt;account == account &amp;&amp; chat_name != NULL &amp;&amp;
++                    name != NULL
++                    &amp;&amp; g_pattern_match_simple(chat_name, name)) {
++
++                    return chat;
++                }
++            }
++        }
++    }
++
++    return NULL;
++}
++
+ static GaimRoomlist *gaym_roomlist_get_list(GaimConnection * gc)
+ {
+     struct gaym_conn *gaym;
+@@ -905,7 +957,7 @@
+     NULL,                       /* remove_group */
+     NULL,                       /* get_cb_real_name */
+     NULL,                       /* set_chat_topic */
+-    NULL,                       /* find_blist_chat */
++    gaym_find_blist_chat,       /* find_blist_chat */
+     gaym_roomlist_get_list,     /* roomlist_get_list */
+     gaym_roomlist_cancel,       /* roomlist_cancel */
+     NULL,                       /* roomlist_expand_category */
+
+Modified: trunk/gaym/src/msgs.c
+===================================================================
+--- trunk/gaym/src/msgs.c	2005-06-18 23:17:33 UTC (rev 113)
++++ trunk/gaym/src/msgs.c	2005-06-19 04:19:56 UTC (rev 114)
+@@ -1,24 +1,26 @@
+ /**
+-* @file msgs.c
+-* 
+-* gaim
+-*
+-* Copyright (C) 2003, Ethan Blanton &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">eblanton at cs.purdue.edu</A>&gt;
+-* 
+-* This program is free software; you can redistribute it and/or modify
+-* it under the terms of the GNU General Public License as published by
+-* the Free Software Foundation; either version 2 of the License, or
+-* (at your option) any later version.
+-*
+-* This program is distributed in the hope that it will be useful,
+-* but WITHOUT ANY WARRANTY; without even the implied warranty of
+-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-* GNU General Public License for more details.
+-*
+-* You should have received a copy of the GNU General Public License
+-* along with this program; if not, write to the Free Software
+-* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+-*/
++ * @file msgs.c
++ *
++ * GayM
++ *
++ * GayM is the legal property of its developers, whose names are too numerous
++ * to list here.  Please refer to the COPYRIGHT file distributed with this
++ * source distribution.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
+ 
+ #include &quot;internal.h&quot;
+ #include &quot;conversation.h&quot;
+@@ -31,13 +33,13 @@
+ #include &quot;privacy.h&quot;
+ #include &quot;prefs.h&quot;
+ 
+-#include &lt;stdio.h&gt;
+-
+ #include &quot;helpers.h&quot;
+ #include &quot;gaympriv.h&quot;
+ #include &quot;gaym.h&quot;
+ 
+-// begin forward declarations
++/**
++ * begin forward declarations
++ */
+ 
+ static char *gaym_mask_nick(const char *mask);
+ 
+@@ -47,7 +49,9 @@
+ static void gaym_buddy_status(char *name, struct gaym_buddy *ib,
+                               struct gaym_conn *gaym);
+ 
+-// end forward declarations
++/**
++ * end forward declarations
++ */
+ 
+ char *gaym_mask_thumbnail(const char *biostring)
+ {
+@@ -124,7 +128,9 @@
+ 
+ static void gaym_chat_remove_buddy(GaimConversation * convo, char *data[2])
+ {
+-    // FIXME: is *message ever used ???
++    /**
++     * FIXME: is *message ever used ???
++     */
+     char *message = g_strdup_printf(&quot;quit: %s&quot;, data[1]);
+ 
+     if (gaim_conv_chat_find_user(GAIM_CONV_CHAT(convo), data[0]))
+@@ -359,17 +365,17 @@
+ void gaym_msg_list(struct gaym_conn *gaym, const char *name,
+                    const char *from, char **args)
+ {
+-    // 
+-    // If you free anything here related to the roomlist
+-    // be sure you test what happens when the roomlist reference
+-    // count goes to zero! Because it may crash gaim.
+-    // 
++    /**
++     * If you free anything here related to the roomlist
++     * be sure you test what happens when the roomlist reference
++     * count goes to zero! Because it may crash gaim.
++     */
+     if (!gaym-&gt;roomlist) {
+         return;
+     }
+-    // 
+-    // Begin result of member created room list
+-    // 
++    /**
++     * Begin result of member created room list
++     */
+     if (!strcmp(name, &quot;321&quot;)) {
+         GaimRoomlistRoom *room;
+         room = gaim_roomlist_room_new(GAIM_ROOMLIST_ROOMTYPE_CATEGORY,
+@@ -378,9 +384,9 @@
+         gaim_roomlist_set_in_progress(gaym-&gt;roomlist, TRUE);
+         return;
+     }
+-    // 
+-    // The list of member created room
+-    // 
++    /**
++     * The list of member created room
++     */
+     if (!strcmp(name, &quot;322&quot;)) {
+         GaimRoomlistRoom *room;
+         char *field_start = NULL;
+@@ -391,10 +397,10 @@
+         if (!args[1]) {
+             return;
+         }
+-        // 
+-        // strip leading &quot;#_&quot; and trailing &quot;=1&quot;
+-        // 
+ 
++        /**
++         * strip leading &quot;#_&quot; and trailing &quot;=1&quot;
++         */
+         field_start = strchr(args[1], '_');
+         field_end = strrchr(args[1], '=');
+ 
+@@ -410,16 +416,17 @@
+ 
+         char *field_name = g_strndup(field_start, field_len);
+ 
+-        // 
+-        // replace all remaining &quot;_&quot; with &quot; &quot;
+-        // 
+-
++        /**
++         * replace all remaining &quot;_&quot; with &quot; &quot;
++         */
+         for (i = 0; field_name[i] != '\0'; i++) {
+             if (field_name[i] == '_') {
+                 field_name[i] = ' ';
+             }
+         }
+-        // replace '=' with ':'
++        /**
++         * replace '=' with ':'
++         */
+         field_name[i - 2] = ':';
+ 
+         room = gaim_roomlist_room_new(GAIM_ROOMLIST_ROOMTYPE_ROOM,
+@@ -431,23 +438,23 @@
+         gaim_roomlist_room_add(gaym-&gt;roomlist, room);
+         g_free(field_name);
+     }
+-    // 
+-    // Begin result of member created room list
+-    // This is our trigger to add the static rooms
+-    // 
++    /**
++     * Begin result of member created room list
++     * This is our trigger to add the static rooms
++     */
+     if (!strcmp(name, &quot;323&quot;)) {
+ 
+-        // 
+-        // The following shoul be done just before every &quot;return&quot;
+-        // 
+-        // gaim_roomlist_set_in_progress(gaym-&gt;roomlist, FALSE);
+-        // gaim_roomlist_unref(gaym-&gt;roomlist);
+-        // gaym-&gt;roomlist = NULL;
+-        // return;
+-        // 
+-        // Perhaps this can be simplified, but not worrying with
+-        // it right now
+-        // 
++        /**
++         * The following shoul be done just before every &quot;return&quot;
++         * 
++         * gaim_roomlist_set_in_progress(gaym-&gt;roomlist, FALSE);
++         * gaim_roomlist_unref(gaym-&gt;roomlist);
++         * gaym-&gt;roomlist = NULL;
++         * return;
++         * 
++         * Perhaps this can be simplified, but not worrying with
++         * it right now
++         */
+ 
+         int current_level = 0;
+         char *list_position = NULL;
+@@ -490,11 +497,13 @@
+             level = 0;
+             list_position += 2;
+ 
+-            // 
+-            // This is a room
+-            // 
++            /**
++             * This is a room
++             */
+             if (*list_position == '#') {
+-                // First, parse the room number
++                /**
++                 * First, parse the room number
++                 */
+                 field_end = strchr(list_position, '=');
+                 if (!field_end) {
+                     gaim_debug_error(&quot;gaym&quot;,
+@@ -510,9 +519,9 @@
+                 num = g_strndup(list_position, field_len);
+                 list_position = field_end + 2;
+ 
+-                // 
+-                // Next, the +'s indicate the level in the tree
+-                // 
++                /**
++                 * Next, the +'s indicate the level in the tree
++                 */
+                 while (*list_position == '+') {
+                     level++;
+                     list_position++;
+@@ -528,9 +537,9 @@
+                             current_parent ? current_parent-&gt;parent : NULL;
+                     }
+                 }
+-                // 
+-                // Finally, the readable room name
+-                // 
++                /**
++                 * Finally, the readable room name
++                 */
+                 field_end = strstr(list_position, &quot;\\\n&quot;);
+                 if (!field_end) {
+                     gaim_debug_error(&quot;gaym&quot;, &quot;Room list parsing error!&quot;);
+@@ -552,10 +561,9 @@
+                 if (!gaym-&gt;roomlist_filter
+                     || strstr(lname, gaym-&gt;roomlist_filter) != 0) {
+ 
+-                    // 
+-                    // create and add the room folder
+-                    // 
+-
++                    /**
++                     * create and add the room folder
++                     */
+                     room =
+                         gaim_roomlist_room_new
+                         (GAIM_ROOMLIST_ROOMTYPE_CATEGORY, name,
+@@ -564,9 +572,25 @@
+ 
+                     room_title = room;
+ 
+-                    // 
+-                    // and now the room instances (1, 2, 3 ...)
+-                    // 
++                    name_inst = g_strdup_printf(&quot;%s:*&quot;, name);
++                    num_inst = g_strdup_printf(&quot;%s*&quot;, num);
++
++                    room =
++                        gaim_roomlist_room_new
++                        (GAIM_ROOMLIST_ROOMTYPE_ROOM, name_inst,
++                         room_title);
++                    gaim_roomlist_room_add_field(gaym-&gt;roomlist, room,
++                                                 name_inst);
++                    gaim_roomlist_room_add_field(gaym-&gt;roomlist, room,
++                                                 num_inst);
++                    gaim_roomlist_room_add(gaym-&gt;roomlist, room);
++                    g_free(name_inst);
++                    g_free(num_inst);
++                    name_inst = NULL;
++                    num_inst = NULL;
++                    /**
++                     * and now the room instances (1, 2, 3 ...)
++                     */
+                     room_inst = 0;
+                     for (room_inst = 1; room_inst &lt;= 4; room_inst++) {
+                         name_inst =
+@@ -582,11 +606,7 @@
+                         gaim_roomlist_room_add_field(gaym-&gt;roomlist, room,
+                                                      num_inst);
+                         gaim_roomlist_room_add(gaym-&gt;roomlist, room);
+-                        // gaim_debug_misc(&quot;gaym&quot;,
+-                        // &quot;(Ref %x) Added room %s: %s (level %d) (parent
+-                        // %x)\n&quot;,
+-                        // room, num, name, current_level,
+-                        // room_title);
++
+                         g_free(name_inst);
+                         g_free(num_inst);
+                         name_inst = NULL;
+@@ -598,16 +618,15 @@
+                         g_free(lname);
+                     }
+                 }
+-                // 
+-                // This is a category
+-                // 
++                /**
++                 * This is a category
++                 */
+             } else if (!gaym-&gt;roomlist_filter) {
+ 
+-                // 
+-                // This code is duplicated above. Should probably make a
+-                // function.
+-                // 
+-
++                /**
++                 * This code is duplicated above. Should probably make a
++                 * function.
++                 */
+                 while (*list_position == '+') {
+                     level++;
+                     list_position++;
+@@ -622,14 +641,11 @@
+                         current_level--;
+                         current_parent =
+                             current_parent ? current_parent-&gt;parent : NULL;
+-                        // gaim_debug_misc(&quot;gaym&quot;, &quot;Changed parent to
+-                        // %x\n&quot;,
+-                        // current_parent);
+                     }
+                 }
+-                // 
+-                // end duplicate
+-                // 
++                /**
++                 * end duplicate
++                 */
+                 field_end = strstr(list_position, &quot;\\\n&quot;);
+                 if (!field_end) {
+                     gaim_debug_error(&quot;gaym&quot;, &quot;Room list parsing error!&quot;);
+@@ -645,9 +661,6 @@
+                                            name, current_parent);
+                 gaim_roomlist_room_add(gaym-&gt;roomlist, room);
+ 
+-                // gaim_debug_misc(&quot;gaym&quot;,
+-                // &quot;(Ref %x) Added categroy %s (level %d) (parent %x)\n&quot;,
+-                // room, name, level, current_parent);
+                 g_free(name);
+                 list_position = field_end;
+             } else {
+@@ -776,9 +789,9 @@
+     }
+ }
+ 
+-
+-// Change this to WELCOME
+-
++/**
++ * Change this to WELCOME
++ */
+ void gaym_msg_endmotd(struct gaym_conn *gaym, const char *name,
+                       const char *from, char **args)
+ {
+@@ -829,19 +842,18 @@
+ 
+     convo = gaim_find_conversation_with_account(args[1], gaym-&gt;account);
+     if (convo) {
+-        if (gaim_conversation_get_type(convo) == GAIM_CONV_CHAT)        /* does 
+-                                                                           this 
+-                                                                           happen? 
+-                                                                         */
++        if (gaim_conversation_get_type(convo) == GAIM_CONV_CHAT) {
++            /* does this happen? */
+             gaim_conv_chat_write(GAIM_CONV_CHAT(convo), args[1],
+                                  _(&quot;no such channel&quot;),
+                                  GAIM_MESSAGE_SYSTEM | GAIM_MESSAGE_NO_LOG,
+                                  time(NULL));
+-        else
++        } else {
+             gaim_conv_im_write(GAIM_CONV_IM(convo), args[1],
+                                _(&quot;User is not logged in&quot;),
+                                GAIM_MESSAGE_SYSTEM | GAIM_MESSAGE_NO_LOG,
+                                time(NULL));
++        }
+     } else {
+         if ((gc = gaim_account_get_connection(gaym-&gt;account)) == NULL)
+             return;
+@@ -873,7 +885,9 @@
+     }
+ }
+ 
+-// Is this used?
++/**
++ * Is this used?
++ */
+ void gaym_msg_notinchan(struct gaym_conn *gaym, const char *name,
+                         const char *from, char **args)
+ {
+@@ -892,8 +906,9 @@
+     }
+ }
+ 
+-
+-// Invite WORKS in gay.com!
++/**
++ * Invite WORKS in gay.com!
++ */
+ void gaym_msg_invite(struct gaym_conn *gaym, const char *name,
+                      const char *from, char **args)
+ {
+@@ -974,9 +989,11 @@
+         return;
+ 
+     if (ib-&gt;online &amp;&amp; !ib-&gt;flag) {
+-        // FUTURE VERSION ALERT: This will become
+-        // gaim_prpl_got_user_status.
+-        // serv_got_update is being deprecated.
++        /**
++         * FUTURE VERSION ALERT: This will become
++         * gaim_prpl_got_user_status.
++         * serv_got_update is being deprecated.
++         */
+         serv_got_update(gc, buddy-&gt;name, FALSE, 0, 0, 0, 0);
+         ib-&gt;online = FALSE;
+     }
+@@ -1065,7 +1082,9 @@
+                                 flags, TRUE);
+     }
+ 
+-    // Make the ignore.png icon appear next to the nick.
++    /**
++     * Make the ignore.png icon appear next to the nick.
++     */
+     GaimConversationUiOps *ops = gaim_conversation_get_ui_ops(convo);
+     if (!gaym_privacy_check(gc, nick)) {
+         gaim_conv_chat_ignore(GAIM_CONV_CHAT(convo), nick);
+@@ -1469,9 +1488,11 @@
+     }
+     buf = g_strdup_printf(_(&quot;%s&quot;), args[2]);
+     gaim_notify_error(gc, _(&quot;Pay Only&quot;), _(&quot;Pay Only&quot;), buf);
+-    // FIXME
+-    // by now the chatroom is already in the buddy list...need
+-    // to remove it or something
++    /**
++     * FIXME
++     * by now the chatroom is already in the buddy list...need
++     * to remove it or something
++     */
+     g_free(buf);
+ }
+ 
+@@ -1546,7 +1567,9 @@
+ 
+     convo = gaim_find_conversation_with_account(channel, gaym-&gt;account);
+ 
+-    // gaym_bot_detect(gaym_mask_bio(extra), convo, nick);
++    /**
++     * gaym_bot_detect(gaym_mask_bio(extra), convo, nick);
++     */
+ 
+     if (convo == NULL) {
+         gaim_debug(GAIM_DEBUG_ERROR, &quot;gaym&quot;, &quot;690 for %s failed\n&quot;,
+@@ -1563,7 +1586,9 @@
+     gaim_conv_chat_add_user(GAIM_CONV_CHAT(convo), nick, NULL, flags,
+                             FALSE);
+ 
+-    // Make the ignore.png icon appear next to the nick.
++    /**
++     * Make the ignore.png icon appear next to the nick.
++     */
+     GaimConversationUiOps *ops = gaim_conversation_get_ui_ops(convo);
+     if (!gaym_privacy_check(gc, nick)) {
+         gaim_conv_chat_ignore(GAIM_CONV_CHAT(convo), nick);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000045.html">[Qrc-svn] r113 - trunk
+</A></li>
+	<LI>Next message: <A HREF="000047.html">[Qrc-svn] r115 - trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#46">[ date ]</a>
+              <a href="thread.html#46">[ thread ]</a>
+              <a href="subject.html#46">[ subject ]</a>
+              <a href="author.html#46">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

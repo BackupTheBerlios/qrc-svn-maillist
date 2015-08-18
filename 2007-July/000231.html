@@ -1,0 +1,343 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r301 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2007-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r301%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200707150627.l6F6RBHA029885%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000230.html">
+   
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r301 - qrc/trunk/gaym/src</H1>
+    <B>jblebrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r301%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200707150627.l6F6RBHA029885%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r301 - qrc/trunk/gaym/src">jblebrun at mail.berlios.de
+       </A><BR>
+    <I>Sun Jul 15 08:27:23 CEST 2007</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000230.html">[Qrc-svn] r300 - in qrc/trunk: . gaym/pixmaps gaym/pixmaps/16	gaym/pixmaps/22 gaym/pixmaps/48 gaym/src
+</A></li>
+        
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#231">[ date ]</a>
+              <a href="thread.html#231">[ thread ]</a>
+              <a href="subject.html#231">[ subject ]</a>
+              <a href="author.html#231">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2007-07-15 08:27:10 +0200 (Sun, 15 Jul 2007)
+New Revision: 301
+
+Modified:
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/gaym.h
+   qrc/trunk/gaym/src/msgs.c
+Log:
+Fixed some memory inconsistencies with profile fetching that caused crashes.
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2007-07-14 20:09:01 UTC (rev 300)
++++ qrc/trunk/gaym/src/gaym.c	2007-07-15 06:27:10 UTC (rev 301)
+@@ -793,20 +793,7 @@
+     gaym_cmd_whois(gaym, &quot;whois&quot;, NULL, args);
+ }
+ 
+-struct get_info_data {
+-    char *who;
+-    struct gaym_conn *gaym;
+-} get_info_data;
+ 
+-static void cancel_get_info_cb(gpointer cb_data)
+-{
+-
+-    struct get_info_data *data = (struct get_info_data *) cb_data;
+-    if (!data-&gt;who || !data-&gt;gaym)
+-        return;
+-    g_hash_table_remove(data-&gt;gaym-&gt;info_window_needed, data-&gt;who);
+-
+-}
+ static void gaym_get_info(PurpleConnection * gc, const char *who)
+ {
+     struct gaym_conn *gaym = gc-&gt;proto_data;
+@@ -815,13 +802,23 @@
+     args[0] = who;
+ 
+     char *normalized = g_strdup(purple_normalize(gc-&gt;account, who));
+-
+-    struct get_info_data *data = g_new0(struct get_info_data, 1);
++    purple_debug_misc(&quot;get_info&quot;,&quot;who: %s; normalized: %s\n&quot;,who, normalized);
++    struct get_info_data *info_data = g_new0(struct get_info_data, 1);
++    info_data-&gt;gaym=gaym;
++    info_data-&gt;who=normalized;
++    info_data-&gt;gc=gc;
++    info_data-&gt;info = NULL;
+     PurpleNotifyUserInfo *info = purple_notify_user_info_new();
+-    purple_debug_misc(&quot;get_info&quot;,&quot;Made new info item %x\n&quot;,info);
++
+     purple_notify_user_info_add_pair(info, &quot;Fetching info for&quot;,who);
+-    purple_notify_userinfo(gc, who, info, NULL, data);
+-    g_hash_table_insert(gaym-&gt;info_window_needed, normalized, info);
++    purple_notify_userinfo(gc, who, info, NULL, NULL);
++    purple_debug_misc(&quot;get_info&quot;,&quot;who: %s; normalized: %s\n&quot;,who, normalized);
++    g_hash_table_insert(gaym-&gt;info_window_needed, normalized, info_data);
++    purple_debug_misc(&quot;get_info&quot;,&quot;who: %s; normalized: %s\n&quot;,who, normalized);
++    void *needed = g_hash_table_lookup(gaym-&gt;info_window_needed, normalized);
++    purple_debug_misc(&quot;gaym&quot;, &quot;get info: Needed for %s? %x\n&quot;, normalized, needed);
++
++    purple_notify_user_info_destroy(info);
+     gaym_cmd_whois(gaym, &quot;whois&quot;, NULL, args);
+ }
+ 
+
+Modified: qrc/trunk/gaym/src/gaym.h
+===================================================================
+--- qrc/trunk/gaym/src/gaym.h	2007-07-14 20:09:01 UTC (rev 300)
++++ qrc/trunk/gaym/src/gaym.h	2007-07-15 06:27:10 UTC (rev 301)
+@@ -163,8 +163,17 @@
+     void *cancel_dialog;
+ } hammer_cb_data;
+ 
++struct get_info_data {
++    const char *who;
++    char* stats;
++    char* bio;
++    PurpleNotifyUserInfo *info;
++    struct gaym_conn *gaym;
++    PurpleConnection *gc;
++} get_info_data;
++
+ void hammer_cb_data_destroy(struct hammer_cb_data *hdata);
+-
++void close_info_cb(gpointer cb_data);
+ typedef int (*IRCCmdCallback) (struct gaym_conn * gaym, const char *cmd,
+                                const char *target, const char **args);
+ 
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2007-07-14 20:09:01 UTC (rev 300)
++++ qrc/trunk/gaym/src/msgs.c	2007-07-15 06:27:10 UTC (rev 301)
+@@ -90,77 +90,53 @@
+         return;
+     }
+ 
+-    struct gaym_fetch_thumbnail_data *d = user_data;
++    struct get_info_data *d = user_data;
++    struct gaym_conn *gaym = d-&gt;gaym;
+ 
+-
+-    struct gaym_conn *gaym = d-&gt;gc-&gt;proto_data;
+-
+-
+-    PurpleNotifyUserInfo *info = g_hash_table_lookup(gaym-&gt;info_window_needed, purple_normalize(d-&gt;gc-&gt;account, d-&gt;who));
+-
+-    if (!info)
+-        return;
+-
+     int id = purple_imgstore_add_with_id(g_memdup(url_text, len), len, NULL);
+     char* imghtml=g_strdup_printf(&quot;&lt;img id=\&quot;%d\&quot;&gt;&quot;,id);
+     purple_debug_misc(&quot;userinfo&quot;,&quot;img html: %s\n&quot;,imghtml);
+      
+-    purple_notify_user_info_add_pair(info, NULL, imghtml);
+-    purple_notify_userinfo(d-&gt;gc, d-&gt;who, info, NULL, NULL); 
+-    g_hash_table_remove(gaym-&gt;info_window_needed,
+-                        purple_normalize(d-&gt;gc-&gt;account, d-&gt;who));
+-
+-    g_free(imghtml);
+-    if (d) {
+-        if (d-&gt;who)
+-            g_free(d-&gt;who);
+-        if (d-&gt;bio)
+-            g_free(d-&gt;bio);
+-        if (d-&gt;stats)
+-            g_free(d-&gt;stats);
+-        g_free(d);
++    if(g_hash_table_lookup(gaym-&gt;info_window_needed, d-&gt;who))
++    {
++        purple_notify_user_info_add_pair(d-&gt;info, NULL, imghtml);
++        purple_notify_userinfo(d-&gt;gc, d-&gt;who, d-&gt;info, NULL, NULL); 
++        g_hash_table_remove(gaym-&gt;info_window_needed, d-&gt;who);   
+     }
++    //purple_notify_user_info_destroy(d-&gt;info);
++    g_free(imghtml);
+ }
+ 
+ static void gaym_fetch_info_cb(PurpleUtilFetchUrlData *url_data, void *user_data, const gchar *info_data, gsize len, const gchar* error_message)
+ {
+-    struct gaym_fetch_thumbnail_data *d = user_data;
+-    char *picpath;
+-    char *picurl;
++    struct get_info_data *d = user_data;
++    char *picpath=NULL;
++    char *picurl=NULL;
+     char *match = &quot;pictures.0.url=&quot;;
+ 
+-    struct gaym_conn *gaym = d-&gt;gc-&gt;proto_data;
+-
+-    char *hashurl =
+-        g_hash_table_lookup(gaym-&gt;confighash, &quot;view-profile-url&quot;);
+-    g_return_if_fail(hashurl != NULL);
+-    char *proflink = g_strdup_printf(&quot;&lt;a href='%s%s'&gt;Full Profile&lt;/a&gt;&quot;,hashurl,d-&gt;who);
+-    g_free(hashurl);
+-    
+-    PurpleNotifyUserInfo *info = 
+-        g_hash_table_lookup(gaym-&gt;info_window_needed, purple_normalize(d-&gt;gc-&gt;account, d-&gt;who));
+-
+-    if (!info)
+-        return;
+-
+-    purple_debug_misc(&quot;info_cb&quot;,&quot;Get info %x\n&quot;,info);
+-    purple_notify_user_info_add_pair(info, NULL, proflink);
+-    purple_notify_user_info_add_pair(info, &quot;Stats&quot;, d-&gt;stats?d-&gt;stats:&quot;Not Found&quot;);
+-    purple_notify_user_info_add_pair(info, &quot;Bio&quot;, d-&gt;bio?d-&gt;bio:&quot;Not Found&quot;);
+-    purple_debug_misc(&quot;info_cb&quot;,&quot;info updated %x\n&quot;,info);
+-    purple_notify_userinfo(d-&gt;gc, d-&gt;who, info, NULL, NULL); 
++    purple_debug_misc(&quot;fetch info cb&quot;,&quot;Starting\n&quot;);
+     picpath = return_string_between(match, &quot;\n&quot;, info_data);
+-    picurl = g_strdup_printf(&quot;<A HREF="http://www.gay.com%s">http://www.gay.com%s</A>&quot;, picpath);
+-    purple_debug_misc(&quot;msgs&quot;, &quot;Picture url: %s\n&quot;, picurl);
+-    if (picurl) {
++    if(picpath)
++        picurl = g_strdup_printf(&quot;<A HREF="http://www.gay.com%s">http://www.gay.com%s</A>&quot;, picpath);
++
++    void *needed = g_hash_table_lookup(d-&gt;gaym-&gt;info_window_needed, d-&gt;who);
++    if (picurl &amp;&amp; g_hash_table_lookup(d-&gt;gaym-&gt;info_window_needed, d-&gt;who)) {
++        purple_debug_misc(&quot;msgs&quot;, &quot;Picture url: %s\nNeeded? %x&quot;, picurl, needed);
+         purple_util_fetch_url(picurl, FALSE, &quot;Mozilla/4.0 (compatible; MSIE 5.0)&quot;,
+-                       FALSE, gaym_fetch_photo_cb, user_data);
++                       FALSE, gaym_fetch_photo_cb, d);
+         return;
++        g_free(picurl);
++        g_free(picpath);
+     }
++   
+     else {
+-    g_hash_table_remove(gaym-&gt;info_window_needed,
+-                        purple_normalize(d-&gt;gc-&gt;account, d-&gt;who));
++        g_hash_table_remove(d-&gt;gaym-&gt;info_window_needed, d-&gt;who);
++        //purple_notify_user_info_destroy(d-&gt;info);
++        
+     }
++
++
++
+ }
+ 
+ void gaym_msg_no_such_nick(struct gaym_conn *gaym, const char *name,
+@@ -216,43 +192,61 @@
+         return;
+     }
+ 
+-    gcom_nick_to_gaym(args[1]);
++    char* nick = args[1];
++    char* info = args[5];
+ 
+-    gaym_buddy_status(gaym, args[1], TRUE, args[5], TRUE);
++    gcom_nick_to_gaym(nick);
+ 
+-    char *normalized = g_strdup(purple_normalize(gaym-&gt;account, args[1]));
++    char* stats = gaym_stats_strdup(info);
++    char* bio = gaym_bio_strdup(info);
++    
++    gaym_buddy_status(gaym, nick, TRUE, info, TRUE);
+ 
+-    struct gaym_fetch_thumbnail_data *data;
++    char *normalized = g_strdup(purple_normalize(gaym-&gt;account, nick));
+ 
++
+     // Update, but then release the reference. It was already opened
+     // during conversation-created.
+-    gaym_update_channel_member(gaym, normalized, args[5]);
+-    gaym_unreference_channel_member(gaym, normalized);
+-    purple_debug_misc(&quot;gaym&quot;, &quot;signalling info update for %s\n&quot;, normalized);
+-    purple_signal_emit(purple_accounts_get_handle(), &quot;info-updated&quot;,
+-                     gaym-&gt;account, normalized);
++    //gaym_update_channel_member(gaym, normalized, info);
++    //gaym_unreference_channel_member(gaym, normalized);
+ 
+-    if (g_hash_table_lookup(gaym-&gt;info_window_needed, normalized)) {
++    //purple_debug_misc(&quot;gaym&quot;, &quot;signalling info update for %s\n&quot;, normalized);
++    //purple_signal_emit(purple_accounts_get_handle(), &quot;info-updated&quot;,
++    //                 gaym-&gt;account, normalized);
++    
++    struct get_info_data* d;
++    if ((d = g_hash_table_lookup(gaym-&gt;info_window_needed, normalized))) {
+ 
+-        data = g_new0(struct gaym_fetch_thumbnail_data, 1);
+-        data-&gt;gc = purple_account_get_connection(gaym-&gt;account);
+-        data-&gt;who = g_strdup(args[1]);
+-        data-&gt;bio = gaym_bio_strdup(args[5]);
+-        data-&gt;stats = gaym_stats_strdup(args[5]);
+-        char *hashurl = g_hash_table_lookup(gaym-&gt;confighash,
+-                                            &quot;ohm.profile-url&quot;);
++        
++        char *hashurl;
++        hashurl = g_strdup(g_hash_table_lookup(gaym-&gt;confighash, &quot;view-profile-url&quot;));
+         g_return_if_fail(hashurl != NULL);
++        char *proflink = g_strdup_printf(&quot;&lt;a href='%s%s'&gt;Full Profile&lt;/a&gt;&quot;,hashurl,nick);
++        
++        d-&gt;info = purple_notify_user_info_new();
++        purple_notify_user_info_add_pair(d-&gt;info, NULL, proflink);
++        purple_notify_user_info_add_pair(d-&gt;info, &quot;Stats&quot;, stats?stats:&quot;Not Found&quot;);
++        purple_notify_user_info_add_pair(d-&gt;info, &quot;Bio&quot;, bio?bio:&quot;Not Found&quot;);
++        purple_notify_userinfo(d-&gt;gc, nick, d-&gt;info, NULL, d); 
++        purple_debug_misc(&quot;msg_whois&quot;,&quot;Updated userinfo info\n&quot;);
++        g_free(hashurl);
++        g_free(proflink);
+ 
++        hashurl = g_hash_table_lookup(gaym-&gt;confighash,
++                                            &quot;ohm.profile-url&quot;);
++        g_return_if_fail(hashurl != NULL);
+         char *infourl = g_strdup_printf(&quot;%s?pw=%s&amp;name=%s&quot;, hashurl,
+-                                        gaym-&gt;chat_key, args[1]);
++                                        gaym-&gt;chat_key, nick);
+         if (infourl) {
+             purple_debug_misc(&quot;msgs&quot;,&quot;Fetching %s\n&quot;,infourl);
+             purple_util_fetch_url(infourl, FALSE,
+                            &quot;Mozilla/4.0 (compatible; MSIE 5.0)&quot;, FALSE,
+-                           gaym_fetch_info_cb, data);
++                           gaym_fetch_info_cb, d);
+             g_free(infourl);
+-        } else {
++        } 
++        else {
+             g_hash_table_remove(gaym-&gt;info_window_needed, normalized);
++            purple_notify_user_info_destroy(d-&gt;info);
+         }
+     }
+     g_free(normalized);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000230.html">[Qrc-svn] r300 - in qrc/trunk: . gaym/pixmaps gaym/pixmaps/16	gaym/pixmaps/22 gaym/pixmaps/48 gaym/src
+</A></li>
+	
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#231">[ date ]</a>
+              <a href="thread.html#231">[ thread ]</a>
+              <a href="subject.html#231">[ subject ]</a>
+              <a href="author.html#231">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,136 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r158 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r158%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507060637.j666bbhO014539%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000089.html">
+   <LINK REL="Next"  HREF="000091.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r158 - qrc/trunk/gaym/src</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r158%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507060637.j666bbhO014539%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r158 - qrc/trunk/gaym/src">jblebrun at berlios.de
+       </A><BR>
+    <I>Wed Jul  6 08:37:37 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000089.html">[Qrc-svn] r157 - debian/gaim-qrc/trunk/debian
+</A></li>
+        <LI>Next message: <A HREF="000091.html">[Qrc-svn] r159 - in qrc/trunk: . gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#90">[ date ]</a>
+              <a href="thread.html#90">[ thread ]</a>
+              <a href="subject.html#90">[ subject ]</a>
+              <a href="author.html#90">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-07-06 08:37:36 +0200 (Wed, 06 Jul 2005)
+New Revision: 158
+
+Modified:
+   qrc/trunk/gaym/src/helpers.c
+Log:
+Fix the initial pipe in nicks problem.
+
+
+
+Modified: qrc/trunk/gaym/src/helpers.c
+===================================================================
+--- qrc/trunk/gaym/src/helpers.c	2005-07-05 21:09:42 UTC (rev 157)
++++ qrc/trunk/gaym/src/helpers.c	2005-07-06 06:37:36 UTC (rev 158)
+@@ -26,6 +26,13 @@
+ void gaym_convert_nick_to_gaycom(char *name)
+ {
+     int i;
++    
++    //If the first character is a punctuation or a number,
++    //Gay.com inserts a | character in front. We remedy this by changing 
++    //it to a space. This changes it back.
++    if (name[0]==' ')
++	name[0]='|';
++    
+     if (!name) {
+         return;
+     }
+@@ -42,6 +49,9 @@
+     char *start = 0;
+     char *end = 0;
+ 
++    if(!source || !startbit || !endbit)
++	return 0;
++    
+     start = strstr(source, startbit);
+ 
+     if (start) {
+@@ -59,6 +69,7 @@
+     }
+ }
+ 
++/*
+ char *convert_nick_to_gc(char *nick)
+ {
+     int i;
+@@ -68,18 +79,22 @@
+             out[i] = '|';
+         }
+     }
+-    /**
+-     * gaim_debug_misc(&quot;gaym&quot;, &quot;Converted %s to %s\n&quot;, nick, out);
+-     */
+     return out;
+ }
+-
++*/
+ void convert_nick_from_gaycom(char *name)
+ {
+     int i;
++
+     if (!name) {
+         return;
+     }
++
++    //If the first character is a punctuation or a number,
++    //Gay.com inserts a | character in front. Get rid of it.
++    if (name[0]=='|')
++	name[0]=' ';
++
+     for (i = 0; i &lt; strlen(name); i++) {
+         if (name[i] == '|') {
+             name[i] = '.';
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000089.html">[Qrc-svn] r157 - debian/gaim-qrc/trunk/debian
+</A></li>
+	<LI>Next message: <A HREF="000091.html">[Qrc-svn] r159 - in qrc/trunk: . gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#90">[ date ]</a>
+              <a href="thread.html#90">[ thread ]</a>
+              <a href="subject.html#90">[ subject ]</a>
+              <a href="author.html#90">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

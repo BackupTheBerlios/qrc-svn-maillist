@@ -1,0 +1,188 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r196 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r196%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507121511.j6CFBUwn006729%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000126.html">
+   <LINK REL="Next"  HREF="000128.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r196 - qrc/trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r196%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507121511.j6CFBUwn006729%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r196 - qrc/trunk/gaym/src">deckrider at berlios.de
+       </A><BR>
+    <I>Tue Jul 12 17:11:30 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000126.html">[Qrc-svn] r195 - qrc/trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000128.html">[Qrc-svn] r197 - qrc/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#127">[ date ]</a>
+              <a href="thread.html#127">[ thread ]</a>
+              <a href="subject.html#127">[ subject ]</a>
+              <a href="author.html#127">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-12 17:11:23 +0200 (Tue, 12 Jul 2005)
+New Revision: 196
+
+Modified:
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/gaym.h
+Log:
+Additional checks for Bio/Away messages:
+
+Allow Bio/Away of only 1 character.
+Strip newlines from Bio/Away.
+Strip leading/trailing spaces from Bio/Away.
+Maximum Bio/Away length is 150 characters (based on gay.com's java
+client).
+
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-12 13:58:56 UTC (rev 195)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-12 15:11:23 UTC (rev 196)
+@@ -290,8 +290,20 @@
+     GaimAccount *account = gaim_connection_get_account(gc);
+     char *hostname = &quot;none&quot;;
+     char *buf, *bioline;
++    int i = 0;
+ 
+-    if (gc-&gt;away &amp;&amp; !info) {
++    char *tmpinfo = NULL;
++    if (info) {
++        tmpinfo = g_strdup(info);
++        for (i = 0; i &lt; strlen(tmpinfo); i++) {
++            if (tmpinfo[i] == '\n') {
++                tmpinfo[i] = ' ';
++            }
++        }
++        tmpinfo = g_strstrip(tmpinfo);
++    }
++
++    if (gc-&gt;away &amp;&amp; !tmpinfo) {
+         /**
+          * don't change any bio settings, since this is just
+          * setting an away message
+@@ -300,11 +312,12 @@
+         if (gaym-&gt;bio) {
+             g_free(gaym-&gt;bio);
+         }
+-        if (info &amp;&amp; strlen(info) &gt; 2) {
+-            gaim_debug_misc(&quot;gaym&quot;, &quot;option1, info=%x\n&quot;, info);
+-            gaym-&gt;bio = g_strdup_printf(&quot;%s&quot;, info);
++        if (tmpinfo &amp;&amp; strlen(tmpinfo) &gt; 0) {
++            gaim_debug_misc(&quot;gaym&quot;, &quot;option1, info=%x\n&quot;, tmpinfo);
++            /* java client allows MAX_BIO_LEN characters */
++            gaym-&gt;bio = g_strndup(tmpinfo, MAX_BIO_LEN);
+         } else if (gaym-&gt;server_bioline
+-                   &amp;&amp; strlen(gaym-&gt;server_bioline) &gt; 2) {
++                   &amp;&amp; strlen(gaym-&gt;server_bioline) &gt; 0) {
+             gaim_debug_misc(&quot;gaym&quot;, &quot;option2\n&quot;);
+             gaym-&gt;bio = gaym_bio_strdup(gaym-&gt;server_bioline);
+         } else {
+@@ -313,7 +326,7 @@
+         }
+         gaim_account_set_user_info(account, gaym-&gt;bio);
+         gaim_account_set_string(account, &quot;bioline&quot;, gaym-&gt;bio);
+-        gaim_debug_info(&quot;gaym&quot;, &quot;INFO=%x BIO=%x\n&quot;, info, gaym-&gt;bio);
++        gaim_debug_info(&quot;gaym&quot;, &quot;INFO=%x BIO=%x\n&quot;, tmpinfo, gaym-&gt;bio);
+         gaim_debug_misc(&quot;gaym&quot;, &quot;In login_cb, gc-&gt;account=%x\n&quot;,
+                         gc-&gt;account);
+     }
+@@ -334,6 +347,9 @@
+         gaim_connection_error(gc, &quot;Error registering with server&quot;);
+     }
+ 
++    if (tmpinfo) {
++        g_free(tmpinfo);
++    }
+     g_free(bioline);
+     g_free(buf);
+ 
+@@ -707,6 +723,8 @@
+                           const char *msg)
+ {
+     char *bio = NULL;
++    char *tmpmsg = NULL;
++    int i = 0;
+     struct gaym_conn *gaym = gc-&gt;proto_data;
+ 
+     if (gc-&gt;away) {
+@@ -721,8 +739,17 @@
+      */
+ 
+     if (msg) {
+-        gc-&gt;away = g_strdup(msg);
++        tmpmsg = g_strdup(msg);
++        for (i = 0; i &lt; strlen(tmpmsg); i++) {
++            if (tmpmsg[i] == '\n') {
++                tmpmsg[i] = ' ';
++            }
++        }
++        tmpmsg = g_strstrip(tmpmsg);
++
++        gc-&gt;away = g_strndup(tmpmsg, MAX_BIO_LEN);
+         gaym_set_info(gc, NULL);
++        g_free(tmpmsg);
+     } else {
+         if (gaym &amp;&amp; gaym-&gt;bio) {
+             bio = g_strdup(gaym-&gt;bio);
+
+Modified: qrc/trunk/gaym/src/gaym.h
+===================================================================
+--- qrc/trunk/gaym/src/gaym.h	2005-07-12 13:58:56 UTC (rev 195)
++++ qrc/trunk/gaym/src/gaym.h	2005-07-12 15:11:23 UTC (rev 196)
+@@ -37,9 +37,11 @@
+ 
+ #define IRC_INITIAL_BUFSIZE 1024
+ 
+-#define BLIST_UPDATE_PERIOD 60000       // buddy list updated every 45s
+-#define BLIST_CHUNK_INTERVAL 5000       // 5s between ISON chunks
++#define BLIST_UPDATE_PERIOD 60000       /* buddy list updated every 45s */
++#define BLIST_CHUNK_INTERVAL 5000       /* 5s between ISON chunks */
+ 
++#define MAX_BIO_LEN 150         /* max number of characters in bio */
++
+ #define GAYBOI_SPAM_URL &quot;<A HREF="http://gayboi.org/spam/spamlst.php">http://gayboi.org/spam/spamlst.php</A>&quot;
+ 
+ typedef struct _BListWhois BListWhois;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000126.html">[Qrc-svn] r195 - qrc/trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000128.html">[Qrc-svn] r197 - qrc/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#127">[ date ]</a>
+              <a href="thread.html#127">[ thread ]</a>
+              <a href="subject.html#127">[ subject ]</a>
+              <a href="author.html#127">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,408 @@
+From jblebrun at berlios.de  Sat Feb 18 23:34:27 2006
+From: jblebrun at berlios.de (jblebrun at BerliOS)
+Date: Sat, 18 Feb 2006 23:34:27 +0100
+Subject: [Qrc-svn] r289 - in qrc/branches/fork-for-gaim-2: gaym/src gaym-extras/src
+Message-ID: <200602182234.k1IMYRrC010250@sheep.berlios.de>
+
+Author: jblebrun
+Date: 2006-02-18 23:34:25 +0100 (Sat, 18 Feb 2006)
+New Revision: 289
+
+Modified:
+   qrc/branches/fork-for-gaim-2/gaym-extras/src/bio-popups.c
+   qrc/branches/fork-for-gaim-2/gaym-extras/src/roombrowse.c
+   qrc/branches/fork-for-gaim-2/gaym/src/cmds.c
+   qrc/branches/fork-for-gaim-2/gaym/src/dcc_send.c
+   qrc/branches/fork-for-gaim-2/gaym/src/gaym.c
+   qrc/branches/fork-for-gaim-2/gaym/src/gayminfo.c
+   qrc/branches/fork-for-gaim-2/gaym/src/helpers.c
+   qrc/branches/fork-for-gaim-2/gaym/src/helpers.h
+   qrc/branches/fork-for-gaim-2/gaym/src/msgs.c
+Log:
+Fixed the HTML escaping problem in private messages. 
+Updated more things to work with the most recent Gaim CVS version.
+(As of 2/18/2006)
+
+
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/cmds.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/cmds.c	2005-12-21 03:16:46 UTC (rev 288)
++++ qrc/branches/fork-for-gaim-2/gaym/src/cmds.c	2006-02-18 22:34:25 UTC (rev 289)
+@@ -414,6 +414,7 @@
+             end = cur + strlen(cur);
+         msg = g_strndup(cur, end - cur);
+         buf = gaym_format(gaym, "vt:", "PRIVMSG", nick, msg);
++	gaim_debug_misc("gaym_cmd_privmsg",buf);
+         gaym_send(gaym, buf);
+         g_free(msg);
+         g_free(buf);
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/dcc_send.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/dcc_send.c	2005-12-21 03:16:46 UTC (rev 288)
++++ qrc/branches/fork-for-gaim-2/gaym/src/dcc_send.c	2006-02-18 22:34:25 UTC (rev 289)
+@@ -282,7 +282,7 @@
+     xfer->filename = g_path_get_basename(xfer->local_filename);
+ 
+     /* Create a listening socket */
+-    sock = gaim_network_listen_range(0, 0);
++    sock = gaim_network_listen_range(0, 0, SOCK_DGRAM, NULL, NULL);
+ 
+     if (sock < 0) {
+         gaim_notify_error(gc, NULL, _("File Transfer Aborted"),
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/gaym.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/gaym.c	2005-12-21 03:16:46 UTC (rev 288)
++++ qrc/branches/fork-for-gaim-2/gaym/src/gaym.c	2006-02-18 22:34:25 UTC (rev 289)
+@@ -229,16 +229,16 @@
+     return status;
+ }
+ 
+-static char *gaym_tooltip_text(GaimBuddy * buddy)
++static void gaym_tooltip_text(GaimBuddy * buddy, GString *str, gboolean full)
+ {
+     if (!buddy || !buddy->account || !buddy->account->gc)
+-        return NULL;
++        return;
+ 
+     struct gaym_conn *gaym =
+         (struct gaym_conn *) buddy->account->gc->proto_data;
+ 
+     if (!gaym) {
+-        return NULL;
++        return;
+     }
+ 
+     struct gaym_buddy *ib = g_hash_table_lookup(gaym->channel_members,
+@@ -252,10 +252,12 @@
+                                                 buddy->name));
+ 
+     if (!ib) {
+-        return g_strdup("No info found.");
++	g_string_assign(str, "No info found.");
++        return;
+     }
+ 
+-    return build_tooltip_text(ib);
++    build_tooltip_text(ib, str);
++    
+ }
+ 
+ static GList *gaym_status_types(GaimAccount * account)
+@@ -390,7 +392,7 @@
+ static GList *gaym_blist_node_menu(GaimBlistNode * node)
+ {
+     GList *m = NULL;
+-    GaimBlistNodeAction *act = NULL;
++    GaimMenuAction *act = NULL;
+     int i = 0;
+ 
+     if (node->type != GAIM_BLIST_CHAT_NODE) {
+@@ -418,7 +420,7 @@
+         instance =
+             g_strdup_printf("%.*s%d", strlen(channel) - 1, channel, i);
+         act =
+-            gaim_blist_node_action_new(label, gaym_blist_join_chat_cb,
++            gaim_menu_action_new(label, GAIM_CALLBACK(gaym_blist_join_chat_cb),
+                                        instance, NULL);
+         m = g_list_prepend(m, act);
+     }
+@@ -782,19 +784,22 @@
+     } else {
+         args[0] = who;
+     }
++    stripped_msg = gaim_markup_strip_html(what);
+     if (flags & GAIM_MESSAGE_AUTO_RESP) {
+-        stripped_msg = gaim_markup_strip_html(what);
+         automsg = g_strdup_printf("<AUTO-REPLY> %s", stripped_msg);
+         g_free(stripped_msg);
+         args[1] = automsg;
+ 
+     } else {
+-        args[1] = what;
++        args[1] = stripped_msg;
+     }
+     gaym_cmd_privmsg(gaym, "msg", NULL, args);
+     if (automsg) {
+         g_free(automsg);
+     }
++    if (stripped_msg)
++	g_free(stripped_msg);
++
+     return 1;
+ }
+ 
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/gayminfo.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/gayminfo.c	2005-12-21 03:16:46 UTC (rev 288)
++++ qrc/branches/fork-for-gaim-2/gaym/src/gayminfo.c	2006-02-18 22:34:25 UTC (rev 289)
+@@ -137,39 +137,38 @@
+     if (!pic_data) {
+         return;
+     }
+-
++     
+     if (!d->gc)
+-        return;
++	return;
+     if (len && !g_strrstr_len(pic_data, len, "Server Error")) {
+-        gaim_debug_misc("gaym", "Setting buddy icon for %s\n", d->who);
+-        if (len < 1024) {
+-            void *new_pic_data = NULL;
+-            gaim_debug_misc("gaym", "Short icon file, padding to 1024\n");
+-            new_pic_data = g_malloc0(1024);
+-            memcpy(new_pic_data, pic_data, len);
+-            len = 1024;
+-            gaim_buddy_icon_new(d->gc->account, d->who,
+-                                (void *) new_pic_data, len);
+-            g_free(new_pic_data);
+-        } else {
+-            gaim_buddy_icon_new(d->gc->account, d->who, (void *) pic_data,
+-                                len);
+-        }
+-        GaimBuddyIcon *icon =
+-            gaim_buddy_icons_find(d->gc->account, d->who);
+-        guint len;
+-        const guchar *data = gaim_buddy_icon_get_data(icon, &len);
++	gaim_debug_misc("gaym","Setting buddy icon for %s\n",d->who);
++	if(len<1024) {
++	    void* new_pic_data=NULL;
++	    gaim_debug_misc("gaym","Short icon file, padding to 1024\n");
++	    new_pic_data=g_malloc0(1024);
++	    memcpy(new_pic_data, pic_data, len);
++	    len=1024;
++	    gaim_buddy_icon_new(d->gc->account, d->who, (void*)new_pic_data, len);
++	    g_free(new_pic_data);
++	}
++	else {
++	    gaim_buddy_icon_new(d->gc->account, d->who, (void*)pic_data, len);
++	}
++	GaimBuddyIcon *icon=gaim_buddy_icons_find(d->gc->account,d->who);
++	guint len;
++	const guchar* data=gaim_buddy_icon_get_data(icon, &len);
+     }
+     if (GAIM_CONNECTION_IS_VALID(d->gc) && len) {
+         gaim_signal_emit(gaim_accounts_get_handle(), "info-updated",
+                          d->gc->account, d->who);
+-        /* if (gaim_find_conversation_with_account(d->who,
+-           d->gc->account)) {
++      /*  if (gaim_find_conversation_with_account(d->who, d->gc->account)) {
++	    
++	    gaim_debug_misc("fetch_thumbnail_cb","setting buddy icon\n");
++            gaim_buddy_icons_set_for_user(gaim_connection_get_account
++             (d->gc), d->who,
++             (void *) pic_data, len);
++        }*/
+ 
+-           gaim_debug_misc("fetch_thumbnail_cb","setting buddy icon\n");
+-           gaim_buddy_icons_set_for_user(gaim_connection_get_account
+-           (d->gc), d->who, (void *) pic_data, len); } */
+-
+     } else {
+         gaim_debug_error("gaym", "Fetching buddy icon failed.\n");
+     }
+@@ -229,21 +228,21 @@
+ 
+     if (thumbnail && fetch_thumbnail) {
+         if (!ib || gaim_utf8_strcasecmp(thumbnail, ib->thumbnail)) {
+-            char *hashurl = NULL;
+-            hashurl =
+-                g_hash_table_lookup(gaym->confighash,
+-                                    "mini-profile-panel.thumbnail-prefix");
+-            g_return_if_fail(hashurl != NULL);
+-            data = g_new0(struct gaym_fetch_thumbnail_data, 1);
+-            data->gc = gaim_account_get_connection(gaym->account);
+-            data->who = g_strdup(gaim_normalize(gaym->account, name));
+-            data->filename = g_strdup(g_strrstr(thumbnail, "/"));
+-            gaim_debug_misc("gayminfo", "Found filename: %s\n",
+-                            data->filename);
+-            url = g_strdup_printf("%s%s", hashurl, thumbnail);
+-            gaim_url_fetch(url, FALSE, "Mozilla/4.0", FALSE,
+-                           gaym_fetch_thumbnail_cb, data);
+-            g_free(url);
++                char *hashurl = NULL;
++                hashurl =
++                    g_hash_table_lookup(gaym->confighash,
++                                        "mini-profile-panel.thumbnail-prefix");
++                g_return_if_fail(hashurl != NULL);
++                data = g_new0(struct gaym_fetch_thumbnail_data, 1);
++                data->gc = gaim_account_get_connection(gaym->account);
++                data->who = g_strdup(gaim_normalize(gaym->account, name));
++                data->filename = g_strdup(g_strrstr(thumbnail, "/"));
++                gaim_debug_misc("gayminfo", "Found filename: %s\n",
++                                data->filename);
++                url = g_strdup_printf("%s%s", hashurl, thumbnail);
++                gaim_url_fetch(url, FALSE, "Mozilla/4.0", FALSE,
++                               gaym_fetch_thumbnail_cb, data);
++                g_free(url);
+ 
+         }
+     }
+@@ -287,13 +286,11 @@
+         ib->gaymuser = gaymuser;
+         GaimBuddy *buddy = gaim_find_buddy(gaym->account, name);
+         if (buddy) {
+-            if (ib->online)
+-                gaim_prpl_got_user_status(gaym->account, buddy->name,
+-                                          GAYM_STATUS_ID_AVAILABLE, NULL);
+-            else
+-                gaim_prpl_got_user_status(gaym->account, buddy->name,
+-                                          GAYM_STATUS_ID_OFFLINE, NULL);
+-        }
++	if(ib->online)
++	    gaim_prpl_got_user_status(gaym->account, buddy->name, GAYM_STATUS_ID_AVAILABLE, NULL);
++	else
++	    gaim_prpl_got_user_status(gaym->account, buddy->name, GAYM_STATUS_ID_OFFLINE, NULL);
++	}
+     }
+     return;
+ }
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/helpers.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/helpers.c	2005-12-21 03:16:46 UTC (rev 288)
++++ qrc/branches/fork-for-gaim-2/gaym/src/helpers.c	2006-02-18 22:34:25 UTC (rev 289)
+@@ -456,12 +456,11 @@
+     return flags;
+ }
+ 
+-char *build_tooltip_text(struct gaym_buddy *ib)
++GString* build_tooltip_text(struct gaym_buddy *ib, GString* tooltip)
+ {
+     if (!ib->name)
+-        return g_strdup("No info found.");
++        return g_string_assign(tooltip, "No info found.");
+     char *escaped;
+-    GString *tooltip = g_string_new("");
+ 
+     // g_string_printf(tooltip, "<b><i>%s</i></b>", ib->name);
+ 
+@@ -502,7 +501,7 @@
+     }
+     // g_string_erase(tooltip, 0, 1);
+ 
+-    return g_string_free(tooltip, FALSE);
++    return tooltip;
+ }
+ 
+ GaimConvChatBuddyFlags include_chat_entry_order(GaimConvChatBuddyFlags
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/helpers.h
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/helpers.h	2005-12-21 03:16:46 UTC (rev 288)
++++ qrc/branches/fork-for-gaim-2/gaym/src/helpers.h	2006-02-18 22:34:25 UTC (rev 289)
+@@ -163,10 +163,11 @@
+  * Format and return the tooltip text for a buddy/user
+  *
+  * @param ib The stuct containing the information about the buddy
++ * @param str The GString in which to place the tooltop
+  *
+- * @return   The correctly formatted tooltip text
++ * @return   A pointer to the GString object
+  */
+-char *build_tooltip_text(struct gaym_buddy *ib);
++GString* build_tooltip_text(struct gaym_buddy *ib, GString* str);
+ 
+ GaimConvChatBuddyFlags include_chat_entry_order(GaimConvChatBuddyFlags
+                                                 flags, gint entry);
+
+Modified: qrc/branches/fork-for-gaim-2/gaym/src/msgs.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym/src/msgs.c	2005-12-21 03:16:46 UTC (rev 288)
++++ qrc/branches/fork-for-gaim-2/gaym/src/msgs.c	2006-02-18 22:34:25 UTC (rev 289)
+@@ -1041,8 +1041,9 @@
+         } else {
+             GaimConversationUiOps *ops =
+                 gaim_conversation_get_ui_ops(convo);
+-            if (ops != NULL && ops->chat_remove_user != NULL) {
+-                ops->chat_remove_user(convo, nick);
++            if (ops != NULL && ops->chat_remove_users != NULL) {
++		GList* users = g_list_append(NULL, (char*)nick);
++                ops->chat_remove_users(convo, users);
+             }
+             GaimConvChatBuddy *cb =
+                 gaim_conv_chat_cb_find(GAIM_CONV_CHAT(convo), nick);
+@@ -1172,7 +1173,7 @@
+                                             gaym->account);
+ 
+     notice = !strcmp(args[0], " notice ");
+-    tmp = gaym_parse_ctcp(gaym, nick, args[0], args[1], notice);
++    msg = gaym_parse_ctcp(gaym, nick, args[0], args[1], notice);
+ 
+     if (!tmp) {
+         g_free(nick);
+@@ -1184,9 +1185,9 @@
+         return;
+     }
+ 
+-    msg = g_markup_escape_text(tmp, -1);
++    //msg = g_markup_escape_text(tmp, -1);
+ 
+-    g_free(tmp);
++    //g_free(tmp);
+ 
+     if (notice) {
+         tmp = g_strdup_printf("(notice) %s", msg);
+
+Modified: qrc/branches/fork-for-gaim-2/gaym-extras/src/bio-popups.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym-extras/src/bio-popups.c	2005-12-21 03:16:46 UTC (rev 288)
++++ qrc/branches/fork-for-gaim-2/gaym-extras/src/bio-popups.c	2006-02-18 22:34:25 UTC (rev 289)
+@@ -98,7 +98,8 @@
+ #endif
+     PangoLayout *layout;
+     gboolean tooltip_top = FALSE;
+-    char *tooltiptext = NULL;
++    GString *tooltip_str = g_string_new("");
++    char* tooltiptext = NULL;
+     GdkRectangle mon_size;
+     guint *timeout;
+     GtkWidget *tipwindow;
+@@ -147,14 +148,13 @@
+     GaimBuddy *gb = g_new0(GaimBuddy, 1);
+     gb->name = g_strdup(name);
+     gb->account = account;
+-    tooltiptext = prpl_info->tooltip_text(gb);
++    prpl_info->tooltip_text(gb, tooltip_str, TRUE);
+     g_free(gb->name);
+     g_free(gb);
+-
++    tooltiptext = g_string_free(tooltip_str, FALSE);
+     if (!tooltiptext)
+         return FALSE;
+ 
+-
+     g_return_val_if_fail(tooltiptext != NULL, FALSE);
+ 
+     tipwindow = g_hash_table_lookup(popups, tv);
+@@ -172,7 +172,7 @@
+     pdata->tooltiptext =
+         g_strdup_printf("<b><i>%s</i></b>%s", name, tooltiptext);
+     // pdata->tooltiptext = tooltiptext;
+-    g_free(tooltiptext);
++   g_free(tooltiptext);
+ 
+     pdata->pixbuf = lookup_cached_thumbnail(account, name);
+     g_signal_connect(G_OBJECT(tipwindow), "expose_event",
+
+Modified: qrc/branches/fork-for-gaim-2/gaym-extras/src/roombrowse.c
+===================================================================
+--- qrc/branches/fork-for-gaim-2/gaym-extras/src/roombrowse.c	2005-12-21 03:16:46 UTC (rev 288)
++++ qrc/branches/fork-for-gaim-2/gaym-extras/src/roombrowse.c	2006-02-18 22:34:25 UTC (rev 289)
+@@ -630,8 +630,8 @@
+ 
+     label =
+         g_strdup_printf("Browse users in %s", gaim_chat_get_name(chat));
+-    GaimBlistNodeAction *act = gaim_blist_node_action_new(label,
+-                                                          roombrowse_menu_cb,
++    GaimMenuAction *act = gaim_menu_action_new(label,
++                                                          GAIM_CALLBACK(roombrowse_menu_cb),
+                                                           chat->account->
+                                                           gc, NULL);
+ 
+
+
+

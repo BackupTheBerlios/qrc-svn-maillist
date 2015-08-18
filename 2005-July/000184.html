@@ -1,0 +1,374 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r254 - in qrc/trunk: gaym/src gaym-extras
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r254%20-%20in%20qrc/trunk%3A%20gaym/src%20gaym-extras&In-Reply-To=%3C200507301650.j6UGomis025740%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000183.html">
+   <LINK REL="Next"  HREF="000185.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r254 - in qrc/trunk: gaym/src gaym-extras</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r254%20-%20in%20qrc/trunk%3A%20gaym/src%20gaym-extras&In-Reply-To=%3C200507301650.j6UGomis025740%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r254 - in qrc/trunk: gaym/src gaym-extras">jblebrun at berlios.de
+       </A><BR>
+    <I>Sat Jul 30 18:50:48 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000183.html">[Qrc-svn] r253 - qrc/trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000185.html">[Qrc-svn] r255 - qrc/tags
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#184">[ date ]</a>
+              <a href="thread.html#184">[ thread ]</a>
+              <a href="subject.html#184">[ subject ]</a>
+              <a href="author.html#184">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-07-30 18:50:31 +0200 (Sat, 30 Jul 2005)
+New Revision: 254
+
+Modified:
+   qrc/trunk/gaym-extras/bio-popups.c
+   qrc/trunk/gaym-extras/chaticon.c
+   qrc/trunk/gaym-extras/gaym-extras.h
+   qrc/trunk/gaym/src/helpers.c
+Log:
+Misc chaticon/popup fixes.
+Popups show name now.
+
+
+
+Modified: qrc/trunk/gaym/src/helpers.c
+===================================================================
+--- qrc/trunk/gaym/src/helpers.c	2005-07-30 09:09:22 UTC (rev 253)
++++ qrc/trunk/gaym/src/helpers.c	2005-07-30 16:50:31 UTC (rev 254)
+@@ -210,11 +210,11 @@
+      * replace $[0-9] with %s, so we can use printf style
+      * processing with the provided property values
+      */
+-    char* pos=(char*)value;
++    gchar* pos=(gchar*)value;
+     while((pos=(strchr(pos, '$'))))
+     {
+ 	pos++;
+-	if(g_ascii_isdigit(pos))
++	if(g_ascii_isdigit(*pos))
+ 	{
+ 		*pos='s';
+ 		*(pos-1)='%';
+@@ -460,7 +460,8 @@
+ char *build_tooltip_text(struct gaym_buddy *ib)
+ {
+     char *escaped;
+-    GString *tooltip = g_string_new(&quot;&quot;);
++     GString *tooltip = g_string_new(&quot;&quot;);
++    g_string_printf(tooltip, &quot;&lt;b&gt;&lt;i&gt;%s&lt;/i&gt;&lt;/b&gt;&quot;,ib-&gt;name);
+ 
+     g_return_val_if_fail(ib != NULL, NULL);
+ 
+@@ -495,7 +496,7 @@
+         g_string_append_printf(tooltip, _(&quot; No info.&quot;));
+     }
+ 
+-    g_string_erase(tooltip, 0, 1);
++    //g_string_erase(tooltip, 0, 1);
+ 
+     return g_string_free(tooltip, FALSE);
+ }
+
+Modified: qrc/trunk/gaym-extras/bio-popups.c
+===================================================================
+--- qrc/trunk/gaym-extras/bio-popups.c	2005-07-30 09:09:22 UTC (rev 253)
++++ qrc/trunk/gaym-extras/bio-popups.c	2005-07-30 16:50:31 UTC (rev 254)
+@@ -40,38 +40,12 @@
+ static void namelist_paint_tip(GtkWidget * tipwindow,
+                                GdkEventExpose * event, gpointer data)
+ {
++    g_return_if_fail(data);
++	
+     char *tooltiptext= ((struct paint_data *) data)-&gt;tooltiptext;
+-    const char *name = ((struct paint_data *) data)-&gt;name;
+-    GaimAccount* account = ((struct paint_data *)data)-&gt;account;
+-    GDir* gdir=NULL;
+-    GError* err=NULL;
++    GdkPixbuf* pixbuf = ((struct paint_data *)data)-&gt;pixbuf;
+     GtkStyle *style=NULL;
+-    GdkPixbuf *pixbuf=NULL;
+-    const char *filename=NULL;
+-    char* dirname=NULL;
+-    char* path=NULL;
+-   
+-    dirname=g_build_filename(gaim_user_dir(), &quot;icons&quot;, &quot;gaym&quot;, name, NULL);
+-    if(dirname) 
+-    {
+-	gdir=g_dir_open(dirname, 0 , &amp;err);
+-	if(gdir)
+-	{
+-	    while(filename=g_dir_read_name(gdir))
+-	    {	
+-		path=g_build_filename(dirname,filename,NULL);
+-		if(path)
+-		{
+-		    pixbuf=gdk_pixbuf_new_from_file(path, &amp;err);
+-		    g_free(path);
+-		}
+-	    }
+-	    g_free(gdir);
+-	}
+-	g_free(dirname);
+-    }
+-	
+-    
++        
+     PangoLayout *layout;
+ 
+     layout = gtk_widget_create_pango_layout(tipwindow, NULL);
+@@ -104,6 +78,34 @@
+ 
+     return;
+ }
++GdkPixbuf* lookup_cached_thumbnail(GaimAccount* account, const char*fullname) {
++    GDir* gdir=NULL;
++    GError* err=NULL;
++    GdkPixbuf *pixbuf=NULL;
++    const char *filename=NULL;
++    char* dirname=NULL;
++    char* path=NULL;
++    const char* name= gaim_normalize(account, fullname);
++    dirname=g_build_filename(gaim_user_dir(), &quot;icons&quot;, &quot;gaym&quot;, name, NULL);
++    if(dirname) 
++    {
++	gdir=g_dir_open(dirname, 0 , &amp;err);
++	if(gdir)
++	{
++	    filename=g_dir_read_name(gdir); //don't free filename: owned by glib.
++	    if(filename)
++	    {	
++		path=g_build_filename(dirname,filename,NULL);
++		if(path)
++		    pixbuf=gdk_pixbuf_new_from_file(path, &amp;err);
++		    g_free(path);
++	    }
++	    g_free(gdir);
++	}
++	g_free(dirname);
++    }
++    return pixbuf;
++}
+ 
+ static gboolean tooltip_timeout(struct timeout_cb_data *data)
+ {
+@@ -158,6 +160,8 @@
+         name = gtk_label_get_text(GTK_LABEL(tv));
+     } else
+         return FALSE;
++    
++    	
+ 
+ 
+     GaimBuddy *gb = g_new0(GaimBuddy, 1);
+@@ -170,7 +174,7 @@
+     if (!tooltiptext) 
+         return FALSE;
+ 
+-
++    
+     g_return_val_if_fail(tooltiptext != NULL, FALSE);
+ 
+     tipwindow = g_hash_table_lookup(popups, tv);
+@@ -186,8 +190,7 @@
+ 
+     struct paint_data *pdata = g_new0(struct paint_data, 1);
+     pdata-&gt;tooltiptext = tooltiptext;
+-    pdata-&gt;name = gaim_normalize(gaym-&gt;account, name);
+-    pdata-&gt;account = gaym-&gt;account;
++    pdata-&gt;pixbuf = lookup_cached_thumbnail(gaym-&gt;account, name);
+     g_signal_connect(G_OBJECT(tipwindow), &quot;expose_event&quot;,
+                      G_CALLBACK(namelist_paint_tip), pdata);
+     gtk_widget_ensure_style(tipwindow);
+@@ -219,8 +222,8 @@
+ 
+     /* 57 is the size of a large status icon plus 4 pixels padding on each 
+        side.  I should #define this or something */
+-    w = w + 65;
+-    h = MAX(h, 65);
++    w = w + gdk_pixbuf_get_width(pdata-&gt;pixbuf) + 4;
++    h = MAX(h, gdk_pixbuf_get_height(pdata-&gt;pixbuf)+4);
+ 
+ #if GTK_CHECK_VERSION(2,2,0)
+     if (w &gt; mon_size.width)
+
+Modified: qrc/trunk/gaym-extras/chaticon.c
+===================================================================
+--- qrc/trunk/gaym-extras/chaticon.c	2005-07-30 09:09:22 UTC (rev 253)
++++ qrc/trunk/gaym-extras/chaticon.c	2005-07-30 16:50:31 UTC (rev 254)
+@@ -5,7 +5,7 @@
+ {
+     *width = gdk_pixbuf_get_width(icon);
+     *height = gdk_pixbuf_get_height(icon);
+-
++    gaim_debug_misc(&quot;popups&quot;,&quot;current: w: %i, h: %i\n&quot;, *width,*height);
+     /* this should eventually get smarter about preserving the aspect
+        ratio when scaling, but gimmie a break, I just woke up */
+     if (spec &amp;&amp; spec-&gt;scale_rules &amp; GAIM_ICON_SCALE_DISPLAY) {
+@@ -25,18 +25,16 @@
+         *width = 100;
+     if (*height &gt; 100)
+         *height = 100;
++    gaim_debug_misc(&quot;popups&quot;,&quot;scaled: w: %i, h: %i\n&quot;, *width,*height);
+ }
+ 
+ void gaym_update_thumbnail(GaimConversation * conv, GdkPixbuf* pixbuf) 
+ {
+     GaimGtkConversation *gtkconv;
+ 
+-    char filename[256];
+-    GError *err = NULL;
+-
+     GdkPixbuf *scale;
+-    GdkPixmap *pm;
+-    GdkBitmap *bm;
++    GdkPixmap *pm=NULL;
++    GdkBitmap *bm=NULL;
+     int scale_width=0, 
+ 	scale_height=0;
+ 
+@@ -67,16 +65,16 @@
+ 
+ 
+ 
+-    //get_icon_scale_size(icon_data-&gt;pixbuf,
+-    //                    prpl_info ? &amp;prpl_info-&gt;icon_spec : NULL,
+-    //                    &amp;scale_width, &amp;scale_height);
+-    double aspect=gdk_pixbuf_get_width(pixbuf)/gdk_pixbuf_get_height(pixbuf); 
+-    gaim_debug_misc(&quot;popups&quot;,&quot;w: %i, h: %i, a: %d\n&quot;,gdk_pixbuf_get_width(pixbuf), gdk_pixbuf_get_height(pixbuf), aspect);
++    get_icon_scale_size(pixbuf,
++                        prpl_info ? &amp;prpl_info-&gt;icon_spec : NULL,
++                        &amp;scale_width, &amp;scale_height);
++    //double aspect=(double)gdk_pixbuf_get_width(pixbuf)/(double)gdk_pixbuf_get_height(pixbuf); 
++
+     scale =
+         gdk_pixbuf_scale_simple(pixbuf,
+-                                57*aspect,//gdk_pixbuf_get_width(icon_data-&gt;pixbuf) * scale_width,
+-                                77,//gdk_pixbuf_get_height(icon_data-&gt;buf) * scale_width,
+-                                GDK_INTERP_HYPER);
++                                scale_width,
++                                scale_height,
++                                GDK_INTERP_BILINEAR);
+ 
+     gdk_pixbuf_render_pixmap_and_mask(scale, &amp;pm, &amp;bm, 100);
+     g_object_unref(G_OBJECT(scale));
+@@ -114,7 +112,6 @@
+ 
+     GtkTreeIter iter;
+     GtkTreeModel *model=NULL;
+-    GError *err=NULL;
+     GdkPixbuf *pixbuf=NULL;
+     gchar *name;
+ 
+@@ -131,34 +128,8 @@
+ 
+     gtk_widget_grab_focus(GTK_WIDGET(model)-&gt;parent);
+ 
+-
+-    GDir* gdir=NULL;
+-    const char *filename=NULL;
+-    char* dirname=NULL;
+-    char* path=NULL;
+-    char* normalized=g_utf8_strdown(name, strlen(name));
+-    dirname=g_build_filename(gaim_user_dir(), &quot;icons&quot;, &quot;gaym&quot;, normalized, NULL);
+-    gaim_debug_misc(&quot;check&quot;,&quot;checking dirname %s\n&quot;,dirname);
+-    if(dirname) 
+-    {
+-	gdir=g_dir_open(dirname, 0 , &amp;err);
+-	if(gdir)
+-	{
+-	    filename=g_dir_read_name(gdir); //don't free filename: owned by glib.
+-	    if(filename)
+-	    {	
+-		path=g_build_filename(dirname,filename,NULL);
+-		gaim_debug_misc(&quot;check&quot;,&quot;trying file: %s\n&quot;,path);
+-		if(path)
+-		    pixbuf=gdk_pixbuf_new_from_file(path, &amp;err);
+-		    g_free(path);
+-	    }
+-	    g_free(gdir);
+-	}
+-	g_free(dirname);
+-    }
+-	
+-
++    pixbuf=lookup_cached_thumbnail(c-&gt;account, name);
++ 
+     if(pixbuf)
+ 	gaym_update_thumbnail(c, pixbuf);
+     
+@@ -199,7 +170,7 @@
+     icon_data-&gt;icon_container = gtk_vbox_new(FALSE, 0);
+ 
+     gtk_widget_set_size_request(GTK_WIDGET(icon_data-&gt;icon_container),
+-                                57,77);// prpl_info-&gt;icon_spec.max_width,
++                                57,77);//prpl_info-&gt;icon_spec.max_width,
+                                 //prpl_info-&gt;icon_spec.max_height);
+ 
+ 
+
+Modified: qrc/trunk/gaym-extras/gaym-extras.h
+===================================================================
+--- qrc/trunk/gaym-extras/gaym-extras.h	2005-07-30 09:09:22 UTC (rev 253)
++++ qrc/trunk/gaym-extras/gaym-extras.h	2005-07-30 16:50:31 UTC (rev 254)
+@@ -23,8 +23,7 @@
+ 
+ struct paint_data {
+     char *tooltiptext;
+-    const char *name;
+-    GaimAccount* account;
++    GdkPixbuf* pixbuf;
+ };
+ 
+ // Additional UI info for a conversation.
+@@ -59,6 +58,7 @@
+ };
+ 
+ 
++GdkPixbuf* lookup_cached_thumbnail(GaimAccount* account, const char*fullname);
+ void get_icon_scale_size(GdkPixbuf* icon, GaimBuddyIconSpec * spec,int *width, int *height);
+ void clean_popup_stuff(GaimConversation * c);
+ void add_chat_icon_stuff(GaimConversation *c);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000183.html">[Qrc-svn] r253 - qrc/trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000185.html">[Qrc-svn] r255 - qrc/tags
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#184">[ date ]</a>
+              <a href="thread.html#184">[ thread ]</a>
+              <a href="subject.html#184">[ subject ]</a>
+              <a href="author.html#184">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

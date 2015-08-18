@@ -1,0 +1,307 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r152 - in debian-qrc/gaim-qrc/trunk: . debian
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r152%20-%20in%20debian-qrc/gaim-qrc/trunk%3A%20.%20debian&In-Reply-To=%3C200507051708.j65H8BEv015204%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000083.html">
+   <LINK REL="Next"  HREF="000085.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r152 - in debian-qrc/gaim-qrc/trunk: . debian</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r152%20-%20in%20debian-qrc/gaim-qrc/trunk%3A%20.%20debian&In-Reply-To=%3C200507051708.j65H8BEv015204%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r152 - in debian-qrc/gaim-qrc/trunk: . debian">deckrider at berlios.de
+       </A><BR>
+    <I>Tue Jul  5 19:08:11 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000083.html">[Qrc-svn] r151 - debian-qrc/gaim-qrc
+</A></li>
+        <LI>Next message: <A HREF="000085.html">[Qrc-svn] r153 - debian-qrc/gaim-qrc/trunk/debian
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#84">[ date ]</a>
+              <a href="thread.html#84">[ thread ]</a>
+              <a href="subject.html#84">[ subject ]</a>
+              <a href="author.html#84">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-05 19:08:07 +0200 (Tue, 05 Jul 2005)
+New Revision: 152
+
+Added:
+   debian-qrc/gaim-qrc/trunk/debian/
+   debian-qrc/gaim-qrc/trunk/debian/changelog
+   debian-qrc/gaim-qrc/trunk/debian/compat
+   debian-qrc/gaim-qrc/trunk/debian/control
+   debian-qrc/gaim-qrc/trunk/debian/copyright
+   debian-qrc/gaim-qrc/trunk/debian/rules
+Log:
+Load newtrunk into debian-qrc/gaim-qrc/trunk.
+
+
+Added: debian-qrc/gaim-qrc/trunk/debian/changelog
+===================================================================
+--- debian-qrc/gaim-qrc/trunk/debian/changelog	2005-07-05 17:07:13 UTC (rev 151)
++++ debian-qrc/gaim-qrc/trunk/debian/changelog	2005-07-05 17:08:07 UTC (rev 152)
+@@ -0,0 +1,56 @@
++gaim-qrc (0.34.0-1) unstable; urgency=low
++
++  * New upstream release
++
++ -- David Everly &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">deckrider at yahoo.com</A>&gt;  Tue,  5 Jul 2005 10:01:19 -0600
++
++gaim-gaym (0.21+20050513-5) unstable; urgency=low
++
++  * Incorporating Jason LeBrun's excellent function to convert ASCII
++    based escaped unicode (from Java) back to native.  Among other
++    things, rooms containing special characters should now be displayed
++    properly.
++  * Break out formatting (gnu indent) into its own patch.
++  * Tweeked the icon I added earlier.
++
++ -- David Everly &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">deckrider at yahoo.com</A>&gt;  Tue, 24 May 2005 08:28:05 -0600
++
++gaim-gaym (0.21+20050513-4) unstable; urgency=low
++
++  * Added gaym.png which I made under the GNU Public License (GPL).
++    Hopefully someone else can make a better GPL'd one, since mine
++    sucks.
++
++ -- David Everly &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">deckrider at yahoo.com</A>&gt;  Mon, 23 May 2005 10:35:45 -0600
++
++gaim-gaym (0.21+20050513-3) unstable; urgency=low
++
++  * Use dh_gaim.
++
++ -- David Everly &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">deckrider at yahoo.com</A>&gt;  Mon, 23 May 2005 00:12:11 -0600
++
++gaim-gaym (0.21+20050513-2) unstable; urgency=low
++
++  * Worked a little more on the configure issues.  Not that I know that
++    much about autoconf.
++  * The title of rooms no longer have to be 'fixed' every time someone
++    goes in and out of a room.  This also eliminates conflicts related
++    to the notification plugin.
++  * Added retrieval of Member Created rooms to the roomlist.
++  * Added notification to the user for when the server is too busy to
++    retrieve the roomlist (Member Created rooms).
++  * Allow the #channel to be visible along with the room name.
++  * Give more control regarding which instance of a room is joined.
++    Currently (based on gay.com's own client) this amounts to instances
++    1 through 4 of every room in the static list.
++
++ -- David Everly &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">deckrider at yahoo.com</A>&gt;  Sun, 22 May 2005 21:15:33 -0600
++
++gaim-gaym (0.21+20050513-1) unstable; urgency=low
++
++  * Initial Release.
++  * Added autorconf patch to fix configure, make, make distclean.
++  * Added compile-warnings to eliminate warnings produced by gcc -Wall.
++
++ -- David Everly &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">deckrider at yahoo.com</A>&gt;  Sat, 14 May 2005 11:45:50 -0600
++
+
+Added: debian-qrc/gaim-qrc/trunk/debian/compat
+===================================================================
+--- debian-qrc/gaim-qrc/trunk/debian/compat	2005-07-05 17:07:13 UTC (rev 151)
++++ debian-qrc/gaim-qrc/trunk/debian/compat	2005-07-05 17:08:07 UTC (rev 152)
+@@ -0,0 +1 @@
++4
+
+Added: debian-qrc/gaim-qrc/trunk/debian/control
+===================================================================
+--- debian-qrc/gaim-qrc/trunk/debian/control	2005-07-05 17:07:13 UTC (rev 151)
++++ debian-qrc/gaim-qrc/trunk/debian/control	2005-07-05 17:08:07 UTC (rev 152)
+@@ -0,0 +1,17 @@
++Source: gaim-qrc
++Section: net
++Priority: optional
++Maintainer: David Everly &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">deckrider at yahoo.com</A>&gt;
++Build-Depends: debhelper (&gt;= 4.0.0), dpatch (&gt;= 1.11), gaim-dev (&gt;= 1.2.0), sharutils
++Standards-Version: 3.6.1
++
++Package: gaim-qrc
++Architecture: any
++Conflicts: gaim-gaym
++Depends: ${shlibs:Depends}, ${misc:Depends}
++Description: gay.com-related plugins for gaim
++ gaym allows you to participate in group and private chat on gay.com
++ from within gaim, and helps with chat room spam control.
++ .
++ bot-challenger provides a simple challenge-response system to prevent
++ spam/bots from sending you instant messages. 
+
+Added: debian-qrc/gaim-qrc/trunk/debian/copyright
+===================================================================
+--- debian-qrc/gaim-qrc/trunk/debian/copyright	2005-07-05 17:07:13 UTC (rev 151)
++++ debian-qrc/gaim-qrc/trunk/debian/copyright	2005-07-05 17:08:07 UTC (rev 152)
+@@ -0,0 +1,19 @@
++This package was debianized by David Everly &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">deckrider at yahoo.com</A>&gt; on
++Fri, 13 May 2005 17:24:55 -0600.
++
++It was downloaded from <A HREF="svn://svn.berlios.de/qrc">svn://svn.berlios.de/qrc</A>
++
++Copyright (C) 1998-1999, Mark Spencer &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">markster at marko.net</A>&gt;
++Copyright (C) 2000-2003, Rob Flynn &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">rob at tgflinux.com</A>&gt;
++Copyright (C) 2003, Ethan Blanton &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">eblanton at cs.purdue.edu</A>&gt;
++Copyright (C) 2003, Robbert Haarman &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">gaim at inglorion.net</A>&gt;
++Copyright (C) 2004, Timothy T Ringenbach &lt;<A HREF="https://lists.berlios.de/mailman/listinfo/qrc-svn">omarvo at hotmail.com</A>&gt;
++
++License:
++
++   You are free to distribute this software under the terms of
++   the GNU General Public License.
++
++   On Debian systems, the complete text of the GNU General Public
++   License can be found in the file `/usr/share/common-licenses/GPL'.
++
+
+Added: debian-qrc/gaim-qrc/trunk/debian/rules
+===================================================================
+--- debian-qrc/gaim-qrc/trunk/debian/rules	2005-07-05 17:07:13 UTC (rev 151)
++++ debian-qrc/gaim-qrc/trunk/debian/rules	2005-07-05 17:08:07 UTC (rev 152)
+@@ -0,0 +1,102 @@
++#!/usr/bin/make -f
++# -*- makefile -*-
++# Sample debian/rules that uses debhelper.
++# This file was originally written by Joey Hess and Craig Small.
++# As a special exception, when this file is copied by dh-make into a
++# dh-make output file, you may use that output file without restriction.
++# This special exception was added by Craig Small in version 0.37 of dh-make.
++
++# Uncomment this to turn on verbose mode.
++#export DH_VERBOSE=1
++
++# These are used for cross-compiling and for saving the configure script
++# from having to guess our platform (since we know it already)
++DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
++DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
++
++CFLAGS = -Wall -g
++
++ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
++	CFLAGS += -O0
++else
++	CFLAGS += -O2
++endif
++
++configure: configure-stamp
++configure-stamp:
++	dh_testdir
++	# Add here commands to configure the package.
++	CFLAGS=&quot;$(CFLAGS)&quot; ./configure \
++		--host=$(DEB_HOST_GNU_TYPE) \
++		--build=$(DEB_BUILD_GNU_TYPE) \
++		--prefix=/usr
++	touch configure-stamp
++
++
++build: build-stamp
++
++build-stamp:  configure-stamp
++	dh_testdir
++
++	# Add here commands to compile the package.
++	$(MAKE)
++
++	touch build-stamp
++
++clean:
++	dh_testdir
++	dh_testroot
++	rm -f build-stamp configure-stamp
++
++	# Add here commands to clean up after the build process.
++	-make distclean
++
++	dh_clean 
++
++install: build
++	dh_testdir
++	dh_testroot
++	dh_clean -k 
++	dh_installdirs
++	dh_gaim
++
++	# Add here commands to install the package into debian/gaim-qrc.
++	$(MAKE) install DESTDIR=$(CURDIR)/debian/gaim-qrc
++
++# Build architecture-independent files here.
++binary-indep: build install
++# We have nothing to do by default.
++
++# Build architecture-dependent files here.
++binary-arch: build install
++	dh_testdir
++	dh_testroot
++	dh_installchangelogs ChangeLog
++	dh_installdocs README TODO
++	dh_installexamples
++#	dh_install
++#	dh_installmenu
++#	dh_installdebconf	
++#	dh_installlogrotate
++#	dh_installemacsen
++#	dh_installpam
++#	dh_installmime
++#	dh_installinit
++#	dh_installcron
++#	dh_installinfo
++	dh_installman
++	dh_link
++	dh_strip
++	dh_compress
++	dh_fixperms
++#	dh_perl
++#	dh_python
++#	dh_makeshlibs
++	dh_installdeb
++	dh_shlibdeps
++	dh_gencontrol
++	dh_md5sums
++	dh_builddeb
++
++binary: binary-indep binary-arch
++.PHONY: build clean binary-indep binary-arch binary install configure
+
+
+Property changes on: debian-qrc/gaim-qrc/trunk/debian/rules
+___________________________________________________________________
+Name: svn:executable
+   + *
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000083.html">[Qrc-svn] r151 - debian-qrc/gaim-qrc
+</A></li>
+	<LI>Next message: <A HREF="000085.html">[Qrc-svn] r153 - debian-qrc/gaim-qrc/trunk/debian
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#84">[ date ]</a>
+              <a href="thread.html#84">[ thread ]</a>
+              <a href="subject.html#84">[ subject ]</a>
+              <a href="author.html#84">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,501 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r159 - in qrc/trunk: . gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r159%20-%20in%20qrc/trunk%3A%20.%20gaym/src&In-Reply-To=%3C200507061408.j66E8WnL026033%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000090.html">
+   <LINK REL="Next"  HREF="000092.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r159 - in qrc/trunk: . gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r159%20-%20in%20qrc/trunk%3A%20.%20gaym/src&In-Reply-To=%3C200507061408.j66E8WnL026033%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r159 - in qrc/trunk: . gaym/src">deckrider at berlios.de
+       </A><BR>
+    <I>Wed Jul  6 16:08:32 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000090.html">[Qrc-svn] r158 - qrc/trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000092.html">[Qrc-svn] r160 - in qrc/trunk: . gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#91">[ date ]</a>
+              <a href="thread.html#91">[ thread ]</a>
+              <a href="subject.html#91">[ subject ]</a>
+              <a href="author.html#91">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-06 16:08:31 +0200 (Wed, 06 Jul 2005)
+New Revision: 159
+
+Modified:
+   qrc/trunk/ChangeLog
+   qrc/trunk/gaym/src/cmds.c
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/helpers.c
+   qrc/trunk/gaym/src/helpers.h
+   qrc/trunk/gaym/src/msgs.c
+Log:
+We can't count on users entering a nick with a space in front of it if
+its needed.  Thus, I'm changing the nick conversion to work without
+needing a space.  Part of this change is to make the conversion TO
+gay.com allocate a string that must later be freed.  All invocations of
+the old function do that anyway before calling it, so this eliminates an
+extra line each time the function is called.  I've renamed the TO and
+FROM functions to try to be mirrors of each other, except the TO has
+_strdup as part of its name to be certain developers know that the
+returned string must be freed when it is no longer needed.
+
+Also relaxed the nick validation rules, in light of the above changes.
+
+This commit adds some documentation tweaks and addresses some memory
+leaks noticed while working on the above changes.
+
+
+Modified: qrc/trunk/ChangeLog
+===================================================================
+--- qrc/trunk/ChangeLog	2005-07-06 06:37:36 UTC (rev 158)
++++ qrc/trunk/ChangeLog	2005-07-06 14:08:31 UTC (rev 159)
+@@ -3,7 +3,8 @@
+ 	- none
+ 
+ 	Bug Fixes:
+-	- none
++	- Fixed protocol interaction with member names containing
++	  certain characters
+ 
+ 	Preference Changes:
+ 	- none
+
+Modified: qrc/trunk/gaym/src/cmds.c
+===================================================================
+--- qrc/trunk/gaym/src/cmds.c	2005-07-06 06:37:36 UTC (rev 158)
++++ qrc/trunk/gaym/src/cmds.c	2005-07-06 14:08:31 UTC (rev 159)
+@@ -285,8 +285,7 @@
+     if (!args || !args[0])
+         return 0;
+ 
+-    temp = g_strdup(args[0]);
+-    gaym_convert_nick_to_gaycom(temp);
++    temp = gaym_nick_to_gcom_strdup(args[0]);
+     buf = gaym_format(gaym, &quot;v:&quot;, &quot;NICK&quot;, temp);
+     gaym_send(gaym, buf);
+     g_free(buf);
+@@ -392,8 +391,7 @@
+     if (!args || !args[0] || !args[1])
+         return 0;
+ 
+-    nick = g_strdup(args[0]);
+-    gaym_convert_nick_to_gaycom(nick);
++    nick = gaym_nick_to_gcom_strdup(args[0]);
+     cur = args[1];
+     end = args[1];
+     while (*end &amp;&amp; *cur) {
+@@ -561,9 +559,8 @@
+         return 0;
+ 
+     gaym-&gt;whois.nick = g_strdup(args[0]);
+-    converted_nick = g_strdup(args[0]);
+-    convert_nick_from_gaycom(gaym-&gt;whois.nick);
+-    gaym_convert_nick_to_gaycom(converted_nick);
++    gcom_nick_to_gaym(gaym-&gt;whois.nick);
++    converted_nick = gaym_nick_to_gcom_strdup(args[0]);
+     buf = gaym_format(gaym, &quot;vn&quot;, &quot;WHOIS&quot;, converted_nick);
+     gaym_send(gaym, buf);
+     g_free(buf);
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-06 06:37:36 UTC (rev 158)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-06 14:08:31 UTC (rev 159)
+@@ -145,12 +145,11 @@
+         ib-&gt;stale = TRUE;
+         ib-&gt;done = TRUE;
+         ib-&gt;flag = FALSE;
+-        converted_name = g_strdup(name);
+-        gaym_convert_nick_to_gaycom(converted_name);
++        converted_name = gaym_nick_to_gcom_strdup(name);
+         g_string_append_printf(string, &quot;%s &quot;, converted_name);
++        g_free(converted_name);
+         return;
+     }
+-
+ }
+ 
+ static void gaym_ison_one(struct gaym_conn *gaym, struct gaym_buddy *ib)
+@@ -158,10 +157,10 @@
+     char *buf;
+     char *nick;
+     ib-&gt;flag = FALSE;
+-    nick = g_strdup(ib-&gt;name);
+-    gaym_convert_nick_to_gaycom(nick);
++    nick = gaym_nick_to_gcom_strdup(ib-&gt;name);
+     buf = gaym_format(gaym, &quot;vn&quot;, &quot;ISON&quot;, nick);
+     gaym_send(gaym, buf);
++    g_free(nick);
+     g_free(buf);
+ }
+ 
+@@ -474,8 +473,9 @@
+                         &quot;In login_cb, user_bioline: %x, gc-&gt;account=%x\n&quot;,
+                         user_bioline, gc-&gt;account);
+ 
+-        login_name = g_strdup(gaim_connection_get_display_name(gc));
+-        gaym_convert_nick_to_gaycom(login_name);
++        login_name =
++            gaym_nick_to_gcom_strdup(gaim_connection_get_display_name(gc));
++
+         bioline = g_strdup_printf(&quot;%s#%s&quot;,
+                                   gaym-&gt;thumbnail,
+                                   user_bioline ? user_bioline : &quot;&quot;);
+@@ -497,7 +497,7 @@
+             gaim_connection_error(gc, &quot;Error registering with server&quot;);
+             return;
+         }
+-
++        g_free(login_name);
+         g_free(buf);
+ 
+         const char *server = gaim_account_get_string(gc-&gt;account, &quot;server&quot;,
+@@ -1039,14 +1039,14 @@
+         gaym = (struct gaym_conn *) gc-&gt;proto_data;
+ 
+         gaym-&gt;info_window_needed = FALSE;
+-        name = g_strdup(conv-&gt;name);
+ 
+-        gaym-&gt;whois.nick = g_strdup(name);
+-        gaym_convert_nick_to_gaycom(name);
++        gaym-&gt;whois.nick = g_strdup(conv-&gt;name);
++        name = gaym_nick_to_gcom_strdup(conv-&gt;name);
+         buf = gaym_format(gaym, &quot;vn&quot;, &quot;WHOIS&quot;, name);
+         gaim_debug_misc(&quot;gaym&quot;, &quot;Conversation triggered command: %s\n&quot;,
+                         buf);
+         gaym_send(gaym, buf);
++        g_free(name);
+         g_free(buf);
+     }
+ }
+
+Modified: qrc/trunk/gaym/src/helpers.c
+===================================================================
+--- qrc/trunk/gaym/src/helpers.c	2005-07-06 06:37:36 UTC (rev 158)
++++ qrc/trunk/gaym/src/helpers.c	2005-07-06 14:08:31 UTC (rev 159)
+@@ -23,35 +23,69 @@
+ 
+ #include &quot;helpers.h&quot;
+ 
+-void gaym_convert_nick_to_gaycom(char *name)
++void gcom_nick_to_gaym(char *nick)
+ {
+-    int i;
+-    
+-    //If the first character is a punctuation or a number,
+-    //Gay.com inserts a | character in front. We remedy this by changing 
+-    //it to a space. This changes it back.
+-    if (name[0]==' ')
+-	name[0]='|';
+-    
+-    if (!name) {
++    int i = 0;
++
++    if (!nick) {
+         return;
+     }
+-    for (i = 0; i &lt; strlen(name); i++) {
+-        if (name[i] == '.') {
+-            name[i] = '|';
++
++    /**
++     * If there is a &quot;|&quot; in the first position, it must be removed.
++     */
++    if (nick[0] == '|') {
++        nick[0] = ' ';
++        nick = g_strchug(nick);
++    }
++
++    /**
++     * Any remaining &quot;|&quot; must be replaced with &quot;.&quot;
++     */
++    for (i = 0; i &lt; strlen(nick); i++) {
++        if (nick[i] == '|') {
++            nick[i] = '.';
+         }
+     }
++    return;
+ }
+ 
++char *gaym_nick_to_gcom_strdup(const char *nick)
++{
++    int i = 0;
++    char *converted = NULL;
++
++    /**
++     * If the first character is not an upper or lower case letter
++     * then gay.com's IRC server requires &quot;|&quot; to be prepended
++     */
++    if (g_ascii_isalpha(nick[0])) {
++        converted = g_strdup_printf(&quot;%s&quot;, nick);
++    } else {
++        converted = g_strdup_printf(&quot;|%s&quot;, nick);
++    }
++
++    /**
++     * gay.com's IRC server requires all &quot;.&quot; in nicks to be represented
++     * by &quot;|&quot;
++     */
++    for (i = 0; i &lt; strlen(converted); i++) {
++        if (converted[i] == '.') {
++            converted[i] = '|';
++        }
++    }
++    return converted;
++}
++
+ char *return_string_between(const char *startbit, const char *endbit,
+                             const char *source)
+ {
+     char *start = 0;
+     char *end = 0;
+ 
+-    if(!source || !startbit || !endbit)
+-	return 0;
+-    
++    if (!source || !startbit || !endbit)
++        return 0;
++
+     start = strstr(source, startbit);
+ 
+     if (start) {
+@@ -69,39 +103,6 @@
+     }
+ }
+ 
+-/*
+-char *convert_nick_to_gc(char *nick)
+-{
+-    int i;
+-    char *out = g_strdup(nick);
+-    for (i = 0; i &lt; strlen(out); i++) {
+-        if (out[i] == '.') {
+-            out[i] = '|';
+-        }
+-    }
+-    return out;
+-}
+-*/
+-void convert_nick_from_gaycom(char *name)
+-{
+-    int i;
+-
+-    if (!name) {
+-        return;
+-    }
+-
+-    //If the first character is a punctuation or a number,
+-    //Gay.com inserts a | character in front. Get rid of it.
+-    if (name[0]=='|')
+-	name[0]=' ';
+-
+-    for (i = 0; i &lt; strlen(name); i++) {
+-        if (name[i] == '|') {
+-            name[i] = '.';
+-        }
+-    }
+-}
+-
+ gchar *ascii2native(const gchar * str)
+ {
+     gint i;                     /* Temp variable */
+@@ -166,30 +167,15 @@
+         return retval;
+     }
+ 
+-    char *firstchar =
+-        &quot;ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\0&quot;;
+     char *allowed =
+         &quot;ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-\0&quot;;
+     int i = 0;
+     int j = 0;
+ 
+     /**
+-     * first character validation is different from the remaining
+-     * characters
++     * validate characters
+      */
+-    for (i = 0; firstchar[i]; i++) {
+-        if (nick[0] == firstchar[i]) {
+-            retval = TRUE;
+-            break;
+-        }
+-    }
+-    if (!retval) {
+-        return retval;
+-    }
+-    /**
+-     * validate remaining characters (but not the first character)
+-     */
+-    for (i = 1; nick[i]; i++) {
++    for (i = 0; nick[i]; i++) {
+         retval = FALSE;
+         for (j = 0; allowed[j]; j++) {
+             if (nick[i] == allowed[j]) {
+
+Modified: qrc/trunk/gaym/src/helpers.h
+===================================================================
+--- qrc/trunk/gaym/src/helpers.h	2005-07-06 06:37:36 UTC (rev 158)
++++ qrc/trunk/gaym/src/helpers.h	2005-07-06 14:08:31 UTC (rev 159)
+@@ -29,9 +29,26 @@
+ char *return_string_between(const char *startbit, const char *endbit,
+                             const char *source);
+ 
+-void gaym_convert_nick_to_gaycom(char *);
++/**
++ * Convert a nick from gay.com to what GayM needs to see.
++ * The conversion is done in place.  The converted value
++ * is for use within GayM/Gaim as well as with http requests
++ * to gay.com. When interacting with gay.com's IRC server,
++ * the nick must be converted using gaym_nick_to_gcom_strdup().
++ *
++ * @param nick The nick to convert.
++ */
++void gcom_nick_to_gaym(char *nick);
+ 
+-void convert_nick_from_gaycom(char *);
++/**
++ * Convert a nick to what the gay.com IRC server needs to see.
++ * The returned string should be freed when no longer needed.
++ *
++ * @param nick The nick to convert.
++ *
++ * @return The converted nick.
++ */
++char *gaym_nick_to_gcom_strdup(const char *nick);
+ 
+ /**
+  * Convert a string that is pure ascii, that uses a pure ascii approach
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-07-06 06:37:36 UTC (rev 158)
++++ qrc/trunk/gaym/src/msgs.c	2005-07-06 14:08:31 UTC (rev 159)
+@@ -156,7 +156,7 @@
+         return;
+     }
+ 
+-    convert_nick_from_gaycom(args[1]);
++    gcom_nick_to_gaym(args[1]);
+     serv_got_im(gc, args[1], args[2], GAIM_CONV_IM_AUTO_RESP, time(NULL));
+ }
+ 
+@@ -291,7 +291,7 @@
+         return;
+     }
+ 
+-    convert_nick_from_gaycom(args[1]);
++    gcom_nick_to_gaym(args[1]);
+     gaym-&gt;info_window_needed = 0;
+     char *buf;
+ 
+@@ -308,7 +308,7 @@
+ {
+     char *thumburl = NULL;
+ 
+-    convert_nick_from_gaycom(args[1]);
++    gcom_nick_to_gaym(args[1]);
+     if (!gaym-&gt;whois.nick) {
+         gaim_debug(GAIM_DEBUG_WARNING, &quot;gaym&quot;,
+                    &quot;Unexpected WHOIS reply for %s\n&quot;, args[1]);
+@@ -934,7 +934,7 @@
+     }
+ 
+     g_hash_table_insert(components, strdup(&quot;channel&quot;), strdup(args[1]));
+-    convert_nick_from_gaycom(nick);
++    gcom_nick_to_gaym(nick);
+     serv_got_chat_invite(gc, args[1], nick, NULL, components);
+ 
+     g_free(nick);
+@@ -966,7 +966,7 @@
+         return;
+     nicks = g_strsplit(args[1], &quot; &quot;, -1);
+     for (i = 0; (nicks[i] != NULL) &amp;&amp; (*nicks[i] != '\0'); i++) {
+-        convert_nick_from_gaycom(nicks[i]);
++        gcom_nick_to_gaym(nicks[i]);
+         if ((ib =
+              g_hash_table_lookup(gaym-&gt;buddies,
+                                  (gconstpointer) nicks[i])) == NULL) {
+@@ -1040,7 +1040,7 @@
+         return;
+     }
+ 
+-    convert_nick_from_gaycom(nick);
++    gcom_nick_to_gaym(nick);
+     if (!gaim_utf8_strcasecmp(nick, gaim_connection_get_display_name(gc))) {
+         /* We are joining a channel for the first time */
+         if (gaym-&gt;persist_room &amp;&amp; !strcmp(gaym-&gt;persist_room, args[0])) {
+@@ -1242,7 +1242,7 @@
+ 
+     convo = gaim_find_conversation_with_account(args[0], gaym-&gt;account);
+ 
+-    convert_nick_from_gaycom(nick);
++    gcom_nick_to_gaym(nick);
+     if (!gaim_utf8_strcasecmp(nick, gaim_connection_get_display_name(gc))) {
+         msg = g_strdup_printf(_(&quot;You have parted the channel&quot;));
+ 
+@@ -1350,9 +1350,9 @@
+         return;
+     }
+ 
+-    convert_nick_from_gaycom(args[1]);
+-    convert_nick_from_gaycom(args[0]);
+-    convert_nick_from_gaycom(nick);
++    gcom_nick_to_gaym(args[1]);
++    gcom_nick_to_gaym(args[0]);
++    gcom_nick_to_gaym(nick);
+ 
+     convo = gaim_find_conversation_with_account(args[0], gaym-&gt;account);
+ 
+@@ -1587,7 +1587,7 @@
+         return;
+     }
+ 
+-    convert_nick_from_gaycom(nick);
++    gcom_nick_to_gaym(nick);
+     gaim_debug(GAIM_DEBUG_INFO, &quot;gaym&quot;,
+                &quot;gaym_msg_richnames_list() Channel: %s Nick: %s Extra: %s\n&quot;,
+                channel, nick, extra);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000090.html">[Qrc-svn] r158 - qrc/trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000092.html">[Qrc-svn] r160 - in qrc/trunk: . gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#91">[ date ]</a>
+              <a href="thread.html#91">[ thread ]</a>
+              <a href="subject.html#91">[ subject ]</a>
+              <a href="author.html#91">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

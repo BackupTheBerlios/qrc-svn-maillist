@@ -1,0 +1,129 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r64 - gaym/trunk/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r64%20-%20gaym/trunk/src&In-Reply-To=%3C200506040815.j548FFwr026005%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000013.html">
+   <LINK REL="Next"  HREF="000015.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r64 - gaym/trunk/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r64%20-%20gaym/trunk/src&In-Reply-To=%3C200506040815.j548FFwr026005%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r64 - gaym/trunk/src">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Sat Jun  4 10:15:15 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000013.html">[Qrc-svn] r63 - gaym/trunk/src
+</A></li>
+        <LI>Next message: <A HREF="000015.html">[Qrc-svn] r66 - gaym/trunk/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14">[ date ]</a>
+              <a href="thread.html#14">[ thread ]</a>
+              <a href="subject.html#14">[ subject ]</a>
+              <a href="author.html#14">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-04 10:15:13 +0200 (Sat, 04 Jun 2005)
+New Revision: 64
+
+Modified:
+   gaym/trunk/src/gaym.c
+Log:
+Reverting an earlier change to gaym_normalize() that broke some things.
+Not sure why yet, but need to back this out until I understand it.
+
+
+Modified: gaym/trunk/src/gaym.c
+===================================================================
+--- gaym/trunk/src/gaym.c	2005-06-04 07:52:14 UTC (rev 63)
++++ gaym/trunk/src/gaym.c	2005-06-04 08:15:13 UTC (rev 64)
+@@ -777,46 +777,23 @@
+     return 0;
+ }
+ 
+-// According to <A HREF="http://www.gay.com/members/join/">http://www.gay.com/members/join/</A> the member name is:
+-// 
+-// - Up to 30 characters
+-// - Must begin with a letter
+-// - Can contain only letters, numbers, and underscores ( _ )
+-// - Cannot contain special characters, spaces, periods, or hyphens (-)
+-// 
+-// However, in testing as well as observing existing members, the
+-// the member name may in fact contain periods and hyphens.
+-
+ const char *gaym_normalize(const GaimAccount * acct, const char *nick)
+ {
+     if (!nick) {
+         return NULL;
+     }
+     char *retval = g_new0(char, 31);    // max 30, plus one for the NULL
+-    char *firstchar =
+-        &quot;ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\0&quot;;
+     char *allowed =
+-        &quot;ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-\0&quot;;
++        &quot;ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz0123456789\0&quot;;
+     int i = 0;
+     int j = 0;
+     int k = 0;
+     for (i = 0; nick[i]; i++) {
+-        if (k == 0) {
+-            for (j = 0; firstchar[j]; j++) {
+-                if ((k == 0) &amp;&amp; (nick[i] == firstchar[j])) {
+-                    retval[k] = nick[i];
+-                    k++;
+-                    break;
+-                }
++        for (j = 0; allowed[j]; j++) {
++            if ((k &lt; 31) &amp;&amp; (nick[i] == allowed[j])) {
++                retval[k] = nick[i];
++                k++;
+             }
+-        } else {
+-            for (j = 0; allowed[j]; j++) {
+-                if ((k &lt; 31) &amp;&amp; (nick[i] == allowed[j])) {
+-                    retval[k] = nick[i];
+-                    k++;
+-                    break;
+-                }
+-            }
+         }
+     }
+     return retval;
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000013.html">[Qrc-svn] r63 - gaym/trunk/src
+</A></li>
+	<LI>Next message: <A HREF="000015.html">[Qrc-svn] r66 - gaym/trunk/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#14">[ date ]</a>
+              <a href="thread.html#14">[ thread ]</a>
+              <a href="subject.html#14">[ subject ]</a>
+              <a href="author.html#14">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

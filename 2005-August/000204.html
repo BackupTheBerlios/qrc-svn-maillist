@@ -1,0 +1,121 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r274 - qrc/trunk/gaym-extras/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-August/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r274%20-%20qrc/trunk/gaym-extras/src&In-Reply-To=%3C200508220403.j7M431kl002846%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000203.html">
+   <LINK REL="Next"  HREF="000205.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r274 - qrc/trunk/gaym-extras/src</H1>
+    <B>Jason LeBrun at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r274%20-%20qrc/trunk/gaym-extras/src&In-Reply-To=%3C200508220403.j7M431kl002846%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r274 - qrc/trunk/gaym-extras/src">jblebrun at berlios.de
+       </A><BR>
+    <I>Mon Aug 22 06:03:01 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000203.html">[Qrc-svn] r273 - in qrc/trunk: . gaym/src gaym-extras/src
+</A></li>
+        <LI>Next message: <A HREF="000205.html">[Qrc-svn] r275 - in qrc/trunk: . display-options
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#204">[ date ]</a>
+              <a href="thread.html#204">[ thread ]</a>
+              <a href="subject.html#204">[ subject ]</a>
+              <a href="author.html#204">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: jblebrun
+Date: 2005-08-22 06:02:29 +0200 (Mon, 22 Aug 2005)
+New Revision: 274
+
+Modified:
+   qrc/trunk/gaym-extras/src/gaym-extras.c
+Log:
+Fixes the problem where a second thumbnail widget appeared if you
+disconnect and reconnect while in a channel.
+
+
+Modified: qrc/trunk/gaym-extras/src/gaym-extras.c
+===================================================================
+--- qrc/trunk/gaym-extras/src/gaym-extras.c	2005-08-18 14:36:32 UTC (rev 273)
++++ qrc/trunk/gaym-extras/src/gaym-extras.c	2005-08-22 04:02:29 UTC (rev 274)
+@@ -45,10 +45,18 @@
+ 
+ static void redo_im_window(GaimConversation * c)
+ {
++    gaim_debug_misc(&quot;chaticon&quot;,&quot;GOT CONVERSATION CREATED FOR %s\n&quot;,c-&gt;name);
+     if (!g_strrstr(gaim_account_get_protocol_id(c-&gt;account), &quot;prpl-gaym&quot;))
+         return;
+     if (c &amp;&amp; c-&gt;type == GAIM_CONV_IM)
+         add_im_popup_stuff(c);
++    else if (c-&gt;type == GAIM_CONV_CHAT)
++    {
++	add_chat_sort_functions(c);
++	add_chat_popup_stuff(c);
++	add_chat_icon_stuff(c);
++    }
++    
+ }
+ 
+ 
+@@ -59,14 +67,6 @@
+     gaim_debug_misc(&quot;gaym-extras&quot;, &quot;info update\n&quot;);
+ }
+ 
+-static void redochatwindow(GaimConversation * c)
+-{
+-    if (!g_strrstr(gaim_account_get_protocol_id(c-&gt;account), &quot;prpl-gaym&quot;))
+-        return;
+-    add_chat_sort_functions(c);
+-    add_chat_popup_stuff(c);
+-    add_chat_icon_stuff(c);
+-}
+ static gchar *find_file(const char *dir, const char *base)
+ {
+     char *filename;
+@@ -174,9 +174,6 @@
+     init_chat_icons(plugin);
+     init_popups();
+     init_roombrowse(plugin);
+-    gaim_signal_connect(gaim_conversations_get_handle(), &quot;chat-joined&quot;,
+-                        plugin, GAIM_CALLBACK(redochatwindow), NULL);
+-
+     gaim_signal_connect(gaim_conversations_get_handle(),
+                         &quot;conversation-created&quot;, plugin,
+                         GAIM_CALLBACK(redo_im_window), NULL);
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000203.html">[Qrc-svn] r273 - in qrc/trunk: . gaym/src gaym-extras/src
+</A></li>
+	<LI>Next message: <A HREF="000205.html">[Qrc-svn] r275 - in qrc/trunk: . display-options
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#204">[ date ]</a>
+              <a href="thread.html#204">[ thread ]</a>
+              <a href="subject.html#204">[ subject ]</a>
+              <a href="author.html#204">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

@@ -1,0 +1,159 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r177 - qrc/trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r177%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507090137.j691brb3008665%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000107.html">
+   <LINK REL="Next"  HREF="000109.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r177 - qrc/trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r177%20-%20qrc/trunk/gaym/src&In-Reply-To=%3C200507090137.j691brb3008665%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r177 - qrc/trunk/gaym/src">deckrider at berlios.de
+       </A><BR>
+    <I>Sat Jul  9 03:37:53 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000107.html">[Qrc-svn] r176 - qrc/trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000109.html">[Qrc-svn] r178 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#108">[ date ]</a>
+              <a href="thread.html#108">[ thread ]</a>
+              <a href="subject.html#108">[ subject ]</a>
+              <a href="author.html#108">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-09 03:37:49 +0200 (Sat, 09 Jul 2005)
+New Revision: 177
+
+Modified:
+   qrc/trunk/gaym/src/gaym.c
+   qrc/trunk/gaym/src/msgs.c
+Log:
+Adding back the ability to supress the join and part channel messages.
+Even though this is duplicated functionality with the another plugin,
+that plugin does not let you turn suppresson on/off on a per-prpl basis.
+So I'm now convinced it should be added back.  Sorry for removing it
+earlier.
+
+
+Modified: qrc/trunk/gaym/src/gaym.c
+===================================================================
+--- qrc/trunk/gaym/src/gaym.c	2005-07-09 01:28:11 UTC (rev 176)
++++ qrc/trunk/gaym/src/gaym.c	2005-07-09 01:37:49 UTC (rev 177)
+@@ -1063,12 +1063,22 @@
+ 
+     ppref =
+         gaim_plugin_pref_new_with_name_and_label
++        (&quot;/plugins/prpl/gaym/show_join&quot;, _(&quot;Show entrance announcement&quot;));
++    gaim_plugin_pref_frame_add(frame, ppref);
++
++    ppref =
++        gaim_plugin_pref_new_with_name_and_label
+         (&quot;/plugins/prpl/gaym/show_bio_with_join&quot;,
+          _(&quot;Show member bio with entrance announcement&quot;));
+     gaim_plugin_pref_frame_add(frame, ppref);
+ 
+     ppref =
+         gaim_plugin_pref_new_with_name_and_label
++        (&quot;/plugins/prpl/gaym/show_part&quot;, _(&quot;Show exit announcement&quot;));
++    gaim_plugin_pref_frame_add(frame, ppref);
++
++    ppref =
++        gaim_plugin_pref_new_with_name_and_label
+         (&quot;/plugins/prpl/gaym/chat_room_instances&quot;,
+          _(&quot;Number of chat room instances to display&quot;));
+     gaim_plugin_pref_set_bounds(ppref, 0, 9);
+@@ -1177,6 +1187,8 @@
+ 
+     gaim_prefs_add_none(&quot;/plugins/prpl/gaym&quot;);
+     gaim_prefs_add_int(&quot;/plugins/prpl/gaym/chat_room_instances&quot;, 4);
++    gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/show_join&quot;, TRUE);
++    gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/show_part&quot;, TRUE);
+     gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/show_bio_with_join&quot;, TRUE);
+ 
+     gaim_prefs_add_bool(&quot;/plugins/prpl/gaym/botfilter_enable&quot;, FALSE);
+
+Modified: qrc/trunk/gaym/src/msgs.c
+===================================================================
+--- qrc/trunk/gaym/src/msgs.c	2005-07-09 01:28:11 UTC (rev 176)
++++ qrc/trunk/gaym/src/msgs.c	2005-07-09 01:37:49 UTC (rev 177)
+@@ -1081,15 +1081,19 @@
+     }
+ 
+     gboolean gaym_privacy_permit = gaym_privacy_check(gc, nick);
++    gboolean show_join =
++        gaim_prefs_get_bool(&quot;/plugins/prpl/gaym/show_join&quot;);
+ 
+     if (gaim_prefs_get_bool(&quot;/plugins/prpl/gaym/show_bio_with_join&quot;)) {
+         gaim_conv_chat_add_user(GAIM_CONV_CHAT(convo), nick, bio_markedup,
+                                 flags, (gaym_privacy_permit
+-                                        &amp;&amp; gaym_botfilter_permit));
++                                        &amp;&amp; gaym_botfilter_permit
++                                        &amp;&amp; show_join));
+     } else {
+         gaim_conv_chat_add_user(GAIM_CONV_CHAT(convo), nick, NULL,
+                                 flags, (gaym_privacy_permit
+-                                        &amp;&amp; gaym_botfilter_permit));
++                                        &amp;&amp; gaym_botfilter_permit
++                                        &amp;&amp; show_join));
+     }
+ 
+     /**
+@@ -1241,6 +1245,8 @@
+     }
+ 
+     convo = gaim_find_conversation_with_account(args[0], gaym-&gt;account);
++    gboolean show_part =
++        gaim_prefs_get_bool(&quot;/plugins/prpl/gaym/show_part&quot;);
+ 
+     gcom_nick_to_gaym(nick);
+     if (!gaim_utf8_strcasecmp(nick, gaim_connection_get_display_name(gc))) {
+@@ -1252,7 +1258,8 @@
+         serv_got_chat_left(gc,
+                            gaim_conv_chat_get_id(GAIM_CONV_CHAT(convo)));
+     } else {
+-        if (!gaim_conv_chat_is_user_ignored(GAIM_CONV_CHAT(convo), nick)) {
++        if (!gaim_conv_chat_is_user_ignored(GAIM_CONV_CHAT(convo), nick)
++            &amp;&amp; show_part) {
+             gaim_conv_chat_remove_user(GAIM_CONV_CHAT(convo), nick, NULL);
+         } else {
+             GaimConversationUiOps *ops =
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000107.html">[Qrc-svn] r176 - qrc/trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000109.html">[Qrc-svn] r178 - qrc/trunk/gaym/src
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#108">[ date ]</a>
+              <a href="thread.html#108">[ thread ]</a>
+              <a href="subject.html#108">[ subject ]</a>
+              <a href="author.html#108">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

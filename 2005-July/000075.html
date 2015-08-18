@@ -1,0 +1,265 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r143 - qrc/trunk
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-July/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r143%20-%20qrc/trunk&In-Reply-To=%3C200507051349.j65DnLWt026120%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000074.html">
+   <LINK REL="Next"  HREF="000076.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r143 - qrc/trunk</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r143%20-%20qrc/trunk&In-Reply-To=%3C200507051349.j65DnLWt026120%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r143 - qrc/trunk">deckrider at berlios.de
+       </A><BR>
+    <I>Tue Jul  5 15:49:21 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000074.html">[Qrc-svn] r142 - qrc
+</A></li>
+        <LI>Next message: <A HREF="000076.html">[Qrc-svn] r144 - qrc/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#75">[ date ]</a>
+              <a href="thread.html#75">[ thread ]</a>
+              <a href="subject.html#75">[ subject ]</a>
+              <a href="author.html#75">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-07-05 15:49:20 +0200 (Tue, 05 Jul 2005)
+New Revision: 143
+
+Removed:
+   qrc/trunk/bioline.r18.patch
+Log:
+Removing this patch since it is not currently serving a purpose.  Of course, it can be retrieved from an earlier revision if someone decides it is useful.
+
+Deleted: qrc/trunk/bioline.r18.patch
+===================================================================
+--- qrc/trunk/bioline.r18.patch	2005-07-05 13:41:59 UTC (rev 142)
++++ qrc/trunk/bioline.r18.patch	2005-07-05 13:49:20 UTC (rev 143)
+@@ -1,189 +0,0 @@
+-Common subdirectories: gaym-plugin-release-0.18/src/.deps and gaym-current/src/.deps
+-diff -u gaym-plugin-release-0.18/src/gaym.c gaym-current/src/gaym.c
+---- gaym-plugin-release-0.18/src/gaym.c	2004-12-02 22:29:08.927084544 -0600
+-+++ gaym-current/src/gaym.c	2004-12-02 03:48:39.000000000 -0600
+-@@ -40,7 +40,7 @@
+- 
+- #include &quot;gaym.h&quot;
+- 
+--
+-+char *gaym_mask_bio(const char *biostring);
+- static const char *gaym_blist_icon(GaimAccount *a, GaimBuddy *b);
+- static void gaym_blist_emblems(GaimBuddy *b, char **se, char **sw, char **nw, char **ne);
+- static GList *gaym_away_states(GaimConnection *gc);
+-@@ -165,25 +165,44 @@
+- 	struct gaym_conn *gaym=gc-&gt;proto_data;
+- 	GaimAccount* account = gaim_connection_get_account(gc);
+- 	char* hostname=&quot;none&quot;;
+--	char* buf;
+--	gaym-&gt;bio = g_strdup(info);
+--	gaim_account_set_user_info(account, info);
+--	gaim_account_set_string(account, &quot;bioline&quot;,info);
+--	buf = gaym_format(gaym, &quot;vvvv:&quot;, &quot;USER&quot;, gaim_account_get_username(account), hostname, gaym-&gt;server,
+--			  gaym-&gt;bio);
+-+	char* buf, *bioline;
+-+
+-+	if (gaym-&gt;bio)
+-+		g_free (gaym-&gt;bio);
+-+		
+-+	if (info &amp;&amp; strlen(info) &gt; 2) {
+-+		gaym-&gt;bio = g_strdup(info);
+-+	} else if (gaym-&gt;server_bioline &amp;&amp; strlen(gaym-&gt;server_bioline) &gt; 2) {
+-+		gaym-&gt;bio = g_strdup(gaym_mask_bio(gaym-&gt;server_bioline));
+-+	} else {
+-+		gaym-&gt;bio = g_strdup(&quot;Gaim User&quot;);
+-+	}
+-+	
+-+	gaim_account_set_user_info(account, gaym-&gt;bio);
+-+	gaim_account_set_string(account, &quot;bioline&quot;,gaym-&gt;bio);
+-+	gaim_debug_info (&quot;gaym&quot;,&quot;INFO=%s BIO=%s\n&quot;,info,gaym-&gt;bio);
+-+	gaim_debug_misc(&quot;gaym&quot;,&quot;In login_cb, gc-&gt;account=%x\n&quot;,gc-&gt;account);
+-+	bioline=g_strdup_printf(&quot;%s#%s&quot;, gaym-&gt;thumbnail,gaym-&gt;bio); 
+-+
+-+	buf = gaym_format(gaym, &quot;vvvv:&quot;, &quot;USER&quot;, 
+-+		gaim_account_get_username(account), 
+-+		hostname, gaym-&gt;server, bioline);
+-+	
+-+	g_free (bioline);
+- 	
+- 	if (gaym_send(gaym, buf) &lt; 0) {
+- 		gaim_connection_error(gc, &quot;Error registering with server&quot;);
+- 		return;
+- 	}
+- }
+-+
+- static void gaym_show_set_info(GaimPluginAction *action)
+- {
+- 	GaimConnection *gc = (GaimConnection *) action-&gt;context;
+--	gaim_debug_misc(&quot;gaym&quot;,&quot;in show-set_info, gc-&gt;account=%x\n&quot;,gc-&gt;account);
+--	
+-+	gaim_debug_misc(&quot;gaym&quot;,&quot;in show-set_info, gc-&gt;account=%x\n&quot;,gc-&gt;account);	
+- 	gaim_account_request_change_user_info(gaim_connection_get_account(gc));
+- }
+-+
+- static GList *gaym_actions(GaimPlugin *plugin, gpointer context)
+- {
+- 	GList *list = NULL;
+-@@ -471,11 +490,6 @@
+-     last_room=room;
+-     }
+-     
+--   
+--    
+--    
+--       
+--        
+- }
+- 
+- static void gaym_login_cb(gpointer data, gint source, GaimInputCondition cond)
+-@@ -518,6 +532,7 @@
+- 	hostname[sizeof(hostname) - 1] = '\0';
+- 	username = gaim_account_get_string(gaym-&gt;account, &quot;username&quot;, &quot;&quot;);
+- 	user_bioline = gaim_account_get_string(gaym-&gt;account, &quot;bioline&quot;, &quot;&quot;); 
+-+	gaim_debug_info (&quot;gaym&quot;,&quot;USER BIOLINE=%s\n&quot;,user_bioline);
+- 	gaim_account_set_user_info(gc-&gt;account, user_bioline);
+- 	gaim_debug_misc(&quot;gaym&quot;,&quot;In login_cb, gc-&gt;account=%x\n&quot;,gc-&gt;account);
+- 	bioline=g_strdup_printf(&quot;%s#%s&quot;, gaym-&gt;thumbnail,user_bioline); 
+-@@ -592,8 +607,6 @@
+- 	args[0] = who;
+- 	gaym-&gt;info_window_needed=TRUE;
+- 	gaym_cmd_whois(gaym, &quot;whois&quot;, NULL, args);
+--	
+--	
+- }
+- 
+- static void gaym_set_away(GaimConnection *gc, const char *state, const char *msg)
+-diff -u gaym-plugin-release-0.18/src/msgs.c gaym-current/src/msgs.c
+---- gaym-plugin-release-0.18/src/msgs.c	2004-12-02 22:29:08.921085480 -0600
+-+++ gaym-current/src/msgs.c	2004-12-02 02:28:23.000000000 -0600
+-@@ -39,7 +39,7 @@
+- static void gaym_chat_remove_buddy(GaimConversation *convo, char *data[2]);
+- static void gaym_buddy_status(char *name, struct gaym_buddy *ib, struct gaym_conn *gaym);
+- 
+--static char * gaym_mask_thumbnail(const char* biostring)
+-+char * gaym_mask_thumbnail(const char* biostring)
+- {    
+-   char * start = strchr(biostring,':');
+-   char * end=0;
+-@@ -59,13 +59,14 @@
+- }
+- 
+- 
+--char* gaym_bot_detect(char * bio,GaimConversation *chat,const char *name)
+-+char * gaym_bot_detect(char * bio,GaimConversation *chat,const char *name)
+- {
+- 	static char * appendStr = 
+- 		&quot;  &lt;b&gt;&lt;font size=2&gt;** BOT ALERT **&lt;/font&gt;&lt;/b&gt;&quot;;
+- 	static char *badlines[] = {
+-                 &quot;geocities&quot;,&quot;tripod&quot;,&quot;angelcities&quot;,
+- 		&quot;icamsonline&quot;,&quot;ratefun&quot;,&quot;dudepages&quot;,
+-+		&quot;h0rnydolls&quot;,&quot;hornydolls&quot;,
+-                 &quot;gayonlinevideos&quot;,&quot;gaystreamingvideos&quot;,
+-                 &quot;gaypornfilms&quot;,
+- 		NULL
+-@@ -144,7 +145,7 @@
+- 	return bio;
+- }
+- 
+--static char* gaym_mask_bio(const char* biostring)
+-+char* gaym_mask_bio(const char* biostring)
+- {
+-   char * start = strchr(biostring,'#');
+-   char* end=0;
+-diff -u gaym-plugin-release-0.18/src/weblogin.c gaym-current/src/weblogin.c
+---- gaym-plugin-release-0.18/src/weblogin.c	2004-11-24 04:42:40.000000000 -0600
+-+++ gaym-current/src/weblogin.c	2004-12-02 03:49:10.000000000 -0600
+-@@ -63,6 +63,22 @@
+-   GaimUrlSession* session;
+- 
+- } GaimFetchUrlData;
+-+
+-+/* gaim_url_decode doesn't change pluses to spaces - edit in place */
+-+static const char * gaym_url_decode (const char *string)
+-+{
+-+	char * retval;
+-+
+-+	gaim_debug_info (&quot;gaym&quot;,&quot;Changing %s with gaym_url_decode\n&quot;, string);
+-+	retval = string = gaim_url_decode(string);
+-+	while (*retval != NULL) {
+-+		if (*retval == '+')
+-+			*retval = ' ';
+-+		retval++;
+-+	}
+-+	return string;
+-+}
+-+
+- static void
+-     destroy_fetch_url_data(GaimFetchUrlData *gfud)
+- {
+-@@ -496,7 +512,7 @@
+- 	if(temp &amp;&amp; temp2)
+- 	{
+- 		thumbnail=g_strndup(temp,(temp2-temp)*sizeof(char));
+--		result=gaim_url_decode(thumbnail);
+-+		result=gaym_url_decode(thumbnail);
+- 		(gaym-&gt;thumbnail=g_strdup(result)) ||(gaym-&gt;thumbnail=g_strdup(&quot; &quot;));
+- 		
+- 		g_free(thumbnail);
+-@@ -505,17 +521,16 @@
+- 		if(temp) 
+- 		{
+- 			bio=g_strndup(temp2,(temp-temp2)*sizeof(char));
+--			result=gaim_url_decode(bio);
+-+			result=gaym_url_decode(bio);
+-+			gaim_debug_info(&quot;gaym&quot;,&quot;Server BIO: %s Thumb: %s\n&quot;,
+-+				result, gaym-&gt;thumbnail);
+- 			(gaym-&gt;server_bioline=g_strdup(result))
+--					||(gaym-&gt;server_bioline=g_strdup(&quot; &quot;));
+-+					||(gaym-&gt;server_bioline=NULL);
+- 			g_free(bio);
+- 			
+- 		}
+- 		//We have established a session. Call session callback.
+- 		
+--		
+--	
+--		
+- 	}
+- 	else
+- 	{
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000074.html">[Qrc-svn] r142 - qrc
+</A></li>
+	<LI>Next message: <A HREF="000076.html">[Qrc-svn] r144 - qrc/trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#75">[ date ]</a>
+              <a href="thread.html#75">[ thread ]</a>
+              <a href="subject.html#75">[ subject ]</a>
+              <a href="author.html#75">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>

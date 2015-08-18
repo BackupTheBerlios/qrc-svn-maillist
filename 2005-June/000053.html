@@ -1,0 +1,113 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML>
+ <HEAD>
+   <TITLE> [Qrc-svn] r121 - trunk/gaym/src
+   </TITLE>
+   <LINK REL="Index" HREF="http://lists.berlios.de/pipermail/qrc-svn/2005-June/index.html" >
+   <LINK REL="made" HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r121%20-%20trunk/gaym/src&In-Reply-To=%3C200506231420.j5NEKa45029259%40sheep.berlios.de%3E">
+   <META NAME="robots" CONTENT="index,nofollow">
+   <style type="text/css">
+       pre {
+           white-space: pre-wrap;       /* css-2.1, curent FF, Opera, Safari */
+           }
+   </style>
+   <META http-equiv="Content-Type" content="text/html; charset=us-ascii">
+   <LINK REL="Previous"  HREF="000052.html">
+   <LINK REL="Next"  HREF="000054.html">
+ </HEAD>
+ <BODY BGCOLOR="#ffffff">
+   <H1>[Qrc-svn] r121 - trunk/gaym/src</H1>
+    <B>David Everly at BerliOS</B> 
+    <A HREF="mailto:qrc-svn%40lists.berlios.de?Subject=Re%3A%20%5BQrc-svn%5D%20r121%20-%20trunk/gaym/src&In-Reply-To=%3C200506231420.j5NEKa45029259%40sheep.berlios.de%3E"
+       TITLE="[Qrc-svn] r121 - trunk/gaym/src">deckrider at sheep.berlios.de
+       </A><BR>
+    <I>Thu Jun 23 16:20:36 CEST 2005</I>
+    <P><UL>
+        <LI>Previous message: <A HREF="000052.html">[Qrc-svn] r120 - trunk/gaym/src
+</A></li>
+        <LI>Next message: <A HREF="000054.html">[Qrc-svn] r122 - trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#53">[ date ]</a>
+              <a href="thread.html#53">[ thread ]</a>
+              <a href="subject.html#53">[ subject ]</a>
+              <a href="author.html#53">[ author ]</a>
+         </LI>
+       </UL>
+    <HR>  
+<!--beginarticle-->
+<PRE>Author: deckrider
+Date: 2005-06-23 16:20:35 +0200 (Thu, 23 Jun 2005)
+New Revision: 121
+
+Modified:
+   trunk/gaym/src/gaym.c
+Log:
+Use gaim function to retrieve config.txt, don't hard-code server it is
+retrieved from, and add error logging if it cannot be retrieved.
+
+
+Modified: trunk/gaym/src/gaym.c
+===================================================================
+--- trunk/gaym/src/gaym.c	2005-06-23 14:06:28 UTC (rev 120)
++++ trunk/gaym/src/gaym.c	2005-06-23 14:20:35 UTC (rev 121)
+@@ -357,6 +357,8 @@
+     GaimConnection *gc = gaim_account_get_connection(gaym-&gt;account);
+ 
+     if (!config_text) {
++        gaim_debug(GAIM_DEBUG_ERROR, &quot;gaym&quot;,
++                   &quot;Could not retrieve config.txt.\n&quot;);
+         return;
+     }
+     /**
+@@ -452,12 +454,21 @@
+         }
+ 
+         g_free(buf);
+-        const char *roomlisturl =
+-            &quot;<A HREF="http://www.gay.com/messenger/config.txt">http://www.gay.com/messenger/config.txt</A>&quot;;
+-        gaim_session_fetch(roomlisturl, FALSE,
+-                           &quot;Mozilla/4.0 (compatible; MSIE 5.0)&quot;, FALSE,
+-                           gaym_get_configtxt_cb, gaym, gaym-&gt;session);
+ 
++        const char *server = gaim_account_get_string(gc-&gt;account, &quot;server&quot;,
++                                                     IRC_DEFAULT_SERVER);
++
++        char *url =
++            g_strdup_printf
++            (&quot;<A HREF="http://%s/messenger/config.txt?%s">http://%s/messenger/config.txt?%s</A>&quot;, server, gaym-&gt;hash_pw);
++
++        char *user_agent = &quot;Mozilla/4.0&quot;;
++
++        gaim_url_fetch(url, FALSE, user_agent, FALSE,
++                       gaym_get_configtxt_cb, gaym);
++
++        g_free(url);
++
+         gc-&gt;inpa =
+             gaim_input_add(gaym-&gt;fd, GAIM_INPUT_READ, gaym_input_cb, gc);
+     }
+
+
+</PRE>
+
+<!--endarticle-->
+    <HR>
+    <P><UL>
+        <!--threads-->
+	<LI>Previous message: <A HREF="000052.html">[Qrc-svn] r120 - trunk/gaym/src
+</A></li>
+	<LI>Next message: <A HREF="000054.html">[Qrc-svn] r122 - trunk
+</A></li>
+         <LI> <B>Messages sorted by:</B> 
+              <a href="date.html#53">[ date ]</a>
+              <a href="thread.html#53">[ thread ]</a>
+              <a href="subject.html#53">[ subject ]</a>
+              <a href="author.html#53">[ author ]</a>
+         </LI>
+       </UL>
+
+<hr>
+<a href="https://lists.berlios.de/mailman/listinfo/qrc-svn">More information about the Qrc-svn
+mailing list</a><br>
+</body></html>
